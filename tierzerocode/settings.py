@@ -152,13 +152,13 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 if os.environ.get("DJANGO_DEV"):
-    TASKS = {
-        'default': {
-            'BACKEND': 'django_tasks.backends.immediate.ImmediateBackend',
-            'QUEUES': ['default'],
-        }
-    }
-else:
+#     TASKS = {
+#         'default': {
+#             'BACKEND': 'django_tasks.backends.immediate.ImmediateBackend',
+#             'QUEUES': ['default'],
+#         }
+#     }
+# else:
     TASKS = {
         'default': {
             'BACKEND': 'django_tasks_rq.RQBackend',
@@ -180,6 +180,8 @@ RQ_QUEUES = {
 
 # Ensure django-rq admin link is shown (default is True, but explicit for clarity)
 RQ_SHOW_ADMIN_LINK = True
+# Use django-tasks-rq Job class so workers can run tasks enqueued via django_tasks
+# RQ_JOB_CLASS = "django_tasks_rq.Job"
 # Disable automatic trailing slash appending
 APPEND_SLASH = False
 
