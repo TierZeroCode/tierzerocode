@@ -47,7 +47,7 @@ services:
       - db
       - redis
     restart: unless-stopped
-    command: python manage.py rqworker default --job-class django_tasks.backends.rq.Job --with-scheduler
+    command: python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler
 
   db:
     image: postgres:17-bookworm

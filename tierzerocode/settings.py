@@ -161,7 +161,7 @@ if os.environ.get("DJANGO_DEV"):
 else:
     TASKS = {
         'default': {
-            'BACKEND': 'django_tasks.backends.rq.RQBackend',
+            'BACKEND': 'django_tasks_rq.RQBackend',
             'QUEUES': ['default'],
         }
     }
