@@ -44,8 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'import_export',
-    'django_tasks', # Django tasks
+    # 'django_tasks', # Django tasks
     'django_rq', # Django RQ
+    'django_tasks_rq', # Django Tasks RQ backend
 ]
 
 MIDDLEWARE = [
