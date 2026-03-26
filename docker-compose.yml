@@ -1,54 +1,4 @@
 services:
-  web:
-    image: docker.io/andrewixl/tierzerocode:latest
-    ports:
-      - "${WEB_PORT:-8000}:8000"
-    environment:
-      # Django settings
-      - SECRET_KEY=${SECRET_KEY}
-      - DEBUG=${DEBUG:-False}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      # Database settings
-      - DATABASE_HOST=db
-      - DATABASE_NAME=${DATABASE_NAME:-dockerdjango}
-      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
-      - DATABASE_PORT=${DATABASE_PORT:-5432}
-      - DATABASE_ENGINE=${DATABASE_ENGINE:-postgresql_psycopg2}
-      # Redis settings
-      - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=${REDIS_DB:-0}
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-    command: python -m gunicorn --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} tierzerocode.wsgi:application
-
-  worker:
-    image: docker.io/andrewixl/tierzerocode:latest
-    environment:
-      # Django settings
-      - SECRET_KEY=${SECRET_KEY}
-      - DEBUG=${DEBUG:-False}
-      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      # Database settings
-      - DATABASE_HOST=db
-      - DATABASE_NAME=${DATABASE_NAME:-dockerdjango}
-      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
-      - DATABASE_PORT=${DATABASE_PORT:-5432}
-      - DATABASE_ENGINE=${DATABASE_ENGINE:-postgresql_psycopg2}
-      # Redis settings
-      - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=${REDIS_DB:-0}
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-    command: python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler
-
   db:
     image: postgres:17-bookworm
     environment:
@@ -58,6 +8,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -65,6 +20,69 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    image: docker.io/andrewixl/tierzerocode:latest
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    environment:
+      # Django settings
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - DEBUG=${DEBUG:-False}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - USE_HTTPS=${USE_HTTPS:-True}
+      # Database settings
+      - DATABASE_HOST=db
+      - DATABASE_NAME=${DATABASE_NAME:-dockerdjango}
+      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_ENGINE=${DATABASE_ENGINE:-postgresql_psycopg2}
+      # Redis settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint: ["/app/start.sh"]
+    command: ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "${GUNICORN_WORKERS:-3}", "--timeout", "300", "tierzerocode.wsgi:application"]
+
+  worker:
+    image: docker.io/andrewixl/tierzerocode:latest
+    environment:
+      # Django settings
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - DEBUG=${DEBUG:-False}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - USE_HTTPS=${USE_HTTPS:-True}
+      # Database settings
+      - DATABASE_HOST=db
+      - DATABASE_NAME=${DATABASE_NAME:-dockerdjango}
+      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_ENGINE=${DATABASE_ENGINE:-postgresql_psycopg2}
+      # Redis settings
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint: ["/app/start.sh"]
+    command: ["python", "manage.py", "rqworker", "default", "--job-class", "django_tasks_rq.Job", "--with-scheduler"]
 
 volumes:
   postgres_data:
