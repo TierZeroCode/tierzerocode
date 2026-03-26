@@ -39,29 +39,23 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Copy application code and startup script
+# Copy application code (start.sh is included in the COPY)
 COPY --chown=appuser:appuser . .
-COPY --chown=appuser:appuser start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Create static directory and collect static files
+# Create static and log directories with correct permissions
 RUN mkdir -p /app/static && \
     chown -R appuser:appuser /app/static && \
-    python manage.py collectstatic --noinput || true
-
-# --- CRITICAL FIX FOR LOG PERMISSIONS ---
-# Create the log file as root, then hand ownership to appuser
-# This ensures FileHandler doesn't fail with Permission Denied
-RUN touch /app/tierzerocode.log && \
+    touch /app/tierzerocode.log && \
     chown appuser:appuser /app/tierzerocode.log && \
     chmod 664 /app/tierzerocode.log
-# ----------------------------------------
 
 # Switch to non-root user
 USER appuser
 
 # Expose the application port
-EXPOSE 8000 
+EXPOSE 8000
 
-# Start both gunicorn and rqworker using the startup script
-CMD ["/app/start.sh"]
+# start.sh runs migrations and collectstatic, then exec's the CMD
+ENTRYPOINT ["/app/start.sh"]
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "300", "tierzerocode.wsgi:application"]

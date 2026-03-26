@@ -1,13 +1,32 @@
 #!/bin/sh
-# Start script to run both gunicorn and rqworker
+set -e
 
-# Start gunicorn in the background with increased timeout for long-running exports
-python -m gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 300 tierzerocode.wsgi:application &
+# Wait for database to be ready
+echo "Waiting for database..."
+while ! python -c "
+import os, sys
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tierzerocode.settings')
+import django; django.setup()
+from django.db import connections
+try:
+    connections['default'].cursor()
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; do
+    echo "Database not ready, retrying in 2s..."
+    sleep 2
+done
+echo "Database is ready."
 
-# Start rqworker in the background with scheduler
-# The scheduler will handle repeating jobs scheduled via Repeat class
-python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler &
+# Run migrations
+echo "Running migrations..."
+python manage.py migrate --noinput
+echo "Migrations complete."
 
-# Wait for all background processes
-wait
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+echo "Static files collected."
 
+# Start the requested service (default: gunicorn)
+exec "$@"
