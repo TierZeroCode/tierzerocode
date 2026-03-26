@@ -47,7 +47,7 @@ def updateMicrosoftEntraIDDeviceDatabase(json_data):
         os_platform = device_data['operatingSystem']
         try:
             manufacturer = (device_data['manufacturer'].lower()).title()
-        except:
+        except (KeyError, TypeError, AttributeError):
             manufacturer = None
 
         clean_data = cleanAPIData(os_platform)

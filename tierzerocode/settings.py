@@ -232,10 +232,13 @@ SECURE_SSL_REDIRECT = False
 CSRF_COOKIE_SECURE = USE_HTTPS
 SESSION_COOKIE_SECURE = USE_HTTPS
 
-# HSTS disabled behind reverse proxies to avoid issues; proxy should manage HSTS headers instead
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
+# HSTS settings — enable in production behind SSL-terminating proxies
+SECURE_HSTS_SECONDS = 31536000 if USE_HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_HTTPS
+SECURE_HSTS_PRELOAD = USE_HTTPS
+
+# Content Security Policy — restrict resource loading to same-origin
+SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Generate CSRF_TRUSTED_ORIGINS from ALLOWED_HOSTS using both http/https and common ports
 CSRF_TRUSTED_ORIGINS = []

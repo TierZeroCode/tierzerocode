@@ -15,14 +15,10 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 # Local imports
-from .integrations.device_integrations.CloudflareZeroTrust import *
-from .integrations.device_integrations.CrowdStrikeFalcon import *
-from .integrations.device_integrations.MicrosoftDefenderforEndpoint import *
-from .integrations.device_integrations.MicrosoftEntraID import *
-from .integrations.device_integrations.MicrosoftIntune import *
-from .integrations.device_integrations.Qualys import *
-from .integrations.device_integrations.SophosCentral import *
-from .integrations.user_integrations.MicrosoftEntraID import *
+from .integrations.user_integrations.MicrosoftEntraID import (
+    getMicrosoftEntraIDGuests, getMicrosoftEntraIDGroups,
+    getMicrosoftEntraIDApps, getMicrosoftEntraTenantDetails,
+)
 from .models import Device, DeviceComplianceSettings, Integration, Notification, UserData, PersonaGroup, Persona
 from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosoftGraphConnection
 
