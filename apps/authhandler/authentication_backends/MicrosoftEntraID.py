@@ -1,4 +1,5 @@
 import logging
+import secrets
 from django.contrib.auth.models import User
 from django.contrib.auth.backends import BaseBackend
 from apps.authhandler.models import SSOIntegration
@@ -90,6 +91,11 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 # redirect_uri = urlunparse(urlparse(request.build_absolute_uri("/admin/azure/callback/"))._replace(scheme="https"))
                 redirect_uri = urlunparse(urlparse(request.build_absolute_uri("/identity/azure/callback/"))._replace(scheme="https"))
             
+            # Generate cryptographic state nonce for CSRF protection
+            oauth_state = secrets.token_urlsafe(32)
+            if hasattr(request, 'session'):
+                request.session['oauth_state'] = oauth_state
+
             # OAuth2 parameters
             params = {
                 'client_id': sso_config.client_id,
@@ -97,7 +103,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 'redirect_uri': redirect_uri,
                 'response_mode': 'query',
                 'scope': 'openid profile email',
-                'state': 'random_state_string'
+                'state': oauth_state
             }
             
             # Build authorization URL with user's email as login hint
@@ -189,15 +195,32 @@ class MicrosoftEntraIDBackend(BaseBackend):
     
     def _extract_user_info_from_id_token(self, id_token):
         """
-        Description: Extract user information from ID token as fallback.   
+        Description: Extract user information from ID token with signature verification.
         Returns: Dict containing user information or None if failed
         """
         try:
             import jwt
-            
-            # Decode without verification to extract claims
-            payload = jwt.decode(id_token, options={"verify_signature": False})
-            
+            from jwt import PyJWKClient
+
+            # Get SSO config for tenant_id and client_id
+            sso_config = self._get_sso_config()
+            if not sso_config:
+                logger.error("Cannot validate ID token: SSO configuration not found")
+                return None
+
+            # Verify signature against Microsoft's published JWKS
+            jwks_url = f"https://login.microsoftonline.com/{sso_config.tenant_id}/discovery/v2.0/keys"
+            jwks_client = PyJWKClient(jwks_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+
+            payload = jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=sso_config.client_id,
+                issuer=f"https://login.microsoftonline.com/{sso_config.tenant_id}/v2.0",
+            )
+
             # Extract user information from ID token claims
             user_info = {
                 'id': payload.get('oid'),  # Object ID
@@ -207,12 +230,12 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 'surname': payload.get('family_name'),
                 'displayName': payload.get('name'),
             }
-            
+
             logger.info(f"Successfully extracted user info from ID token for: {user_info.get('userPrincipalName')}")
             return user_info
-            
+
         except Exception as e:
-            logger.error(f"Error extracting user info from ID token: {str(e)}")
+            logger.error(f"Error extracting/validating ID token: {str(e)}")
             return None
     
     def handle_entra_id_callback(self, request):
@@ -233,7 +256,15 @@ class MicrosoftEntraIDBackend(BaseBackend):
             # Get authorization code from callback
             code = request.GET.get('code')
             state = request.GET.get('state')
-            
+
+            # Validate OAuth state parameter to prevent CSRF
+            expected_state = request.session.pop('oauth_state', None)
+            if not state or state != expected_state:
+                logger.warning(f"OAuth state mismatch: expected={expected_state}, received={state}")
+                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data='OAuth state parameter mismatch - possible CSRF attack')
+                messages.error(request, 'Authentication failed: invalid state parameter. Please try again.')
+                return redirect('login')
+
             if not code:
                 messages.error(request, 'No authorization code received from Microsoft Entra ID')
                 return redirect('login')

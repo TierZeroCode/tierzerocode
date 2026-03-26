@@ -23,13 +23,13 @@ class AuthenticationMiddleware:
 
         # --- 2. DEFINE EXEMPT PATHS ---
         setup_paths = [
-            # '/admin/login',
-            # '/admin/logout',
             '/identity/unclaimed',
-            '/identity/accountcreation',
             '/static/',
         ]
-        
+        # Only exempt accountcreation during initial setup (no users exist)
+        if not checkUserCount():
+            setup_paths.append('/identity/accountcreation')
+
         if any(request.path.startswith(path) for path in setup_paths):
             return self.get_response(request)
 
