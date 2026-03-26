@@ -19,11 +19,18 @@ def getMicrosoftGraphAccessToken(client_id, client_secret, tenant_id, scope):
     except Exception as e:        
         return {'error': e}
 
-def testMicrosoftGraphConnection(access_token, required_permissions):
+def testMicrosoftGraphConnection(access_token, required_permissions, tenant_id=None):
     try:
         token = access_token.replace('Bearer ', '') if access_token.startswith('Bearer ') else access_token
-        # Decode without verification to read the token contents
-        payload = jwt.decode(token, options={"verify_signature": False})
+        # Validate token signature against Microsoft JWKS when tenant_id is available
+        if tenant_id:
+            from jwt import PyJWKClient
+            jwks_url = f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
+            jwks_client = PyJWKClient(jwks_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(token, signing_key.key, algorithms=["RS256"], options={"verify_aud": False})
+        else:
+            payload = jwt.decode(token, options={"verify_signature": False})
         # Extract scopes - can be in 'scp' (delegated tokens) or 'roles' (application tokens)
         # 'scp' can be a string (space-separated) or list, 'roles' is typically a list
         scp = payload.get('scp', '')

@@ -12,6 +12,7 @@ from django.forms.models import model_to_dict
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 # Local imports
 from .integrations.device_integrations.CloudflareZeroTrust import *
@@ -104,14 +105,7 @@ INTEGRATION_DEVICE_FETCH = (
 	('Tailscale', 'integrationTailscale', 'hostname', 'tailscale_device'),
 )
 
-@login_required
-def test(request):
-	# Device.objects.all().delete()
-	# Integration.objects.all().delete()
-	UserData.objects.all().delete()
-	return redirect('/')
-
-############################################################################################	
+############################################################################################
 
 # Mapping for short integration names
 integration_short_map = dict(zip(integration_names, integration_names_short))
@@ -891,27 +885,36 @@ def integrations(request):
 ############################################################################################
 
 @login_required
+@require_POST
 def enableIntegration(request, id):
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
 	integration_update.enabled = True
 	integration_update.save()
 
-	return redirect ('/integrations')
+	return redirect('integrations')
 
 ############################################################################################
 
 @login_required
+@require_POST
 def disableIntegration(request, id):
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
 	integration_update.enabled = False
 	integration_update.save()
 
-	return redirect ('/integrations')
+	return redirect('integrations')
 
 ############################################################################################
 
 @login_required
+@require_POST
 def updateIntegration(request, id):
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
 	integration_update.client_id = request.POST['client_id']
 	integration_update.client_secret = request.POST['client_secret']
@@ -919,7 +922,7 @@ def updateIntegration(request, id):
 	integration_update.tenant_domain = request.POST['tenant_domain']
 	integration_update.save()
 
-	return redirect ('/integrations')
+	return redirect('integrations')
 
 ############################################################################################
 
@@ -981,7 +984,7 @@ def testConnection(request, id):
 		required_permissions = []
 		scope = []
 	access_token = getMicrosoftGraphAccessToken(integration.client_id, integration.client_secret, integration.tenant_id, scope)
-	connection_test = testMicrosoftGraphConnection(access_token, required_permissions)
+	connection_test = testMicrosoftGraphConnection(access_token, required_permissions, tenant_id=integration.tenant_id)
 	if connection_test['has_required_permissions']:
 		messages.success(request, f'{integration.integration_type} Connection Test Passed')
 		integration.last_connection_test_at = datetime.now()
@@ -1107,6 +1110,7 @@ def reset_compliance_settings_api(request):
         }, status=500)
 
 @login_required
+@require_POST
 def delete_notification(request, id):
     """Delete a notification"""
     try:
@@ -1117,8 +1121,8 @@ def delete_notification(request, id):
         messages.error(request, 'Notification not found.')
     except Exception as e:
         messages.error(request, f'Error deleting notification: {str(e)}')
-    
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    return redirect('index')
 
 @login_required
 def add_persona(request):
