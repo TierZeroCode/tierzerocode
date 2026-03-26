@@ -100,8 +100,8 @@ else:
                 os.getenv('DATABASE_ENGINE', 'postgresql_psycopg2')
             ),
             'NAME': os.getenv('DATABASE_NAME', 'dockerdjango'),
-            'USER': os.getenv('DATABASE_USER', 'dbuser'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', 'dbpassword'),
+            'USER': os.environ.get('DATABASE_USER'),
+            'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
             'HOST': os.getenv('DATABASE_HOST', 'db'),
             'PORT': os.getenv('DATABASE_PORT', 5432),
         }

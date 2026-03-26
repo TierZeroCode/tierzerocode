@@ -1,6 +1,9 @@
 # Import Dependencies
+import logging
 import requests
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 # Import Models
 from ...models import Integration, Device, SophosCentralDeviceData, DeviceComplianceSettings
 # Import Functions Scripts
@@ -21,10 +24,11 @@ def getSophosAccessToken(client_id, client_secret):
         if response.status_code == 200:
             return 'Bearer ' + response.json()['access_token']
         else:
-            print("Failed to authenticate. Status code:", response.status_code)
-            print("Response:", response.text)
+            logger.error("Sophos auth failed. Status: %s", response.status_code)
+            return {'error': f'Authentication failed with status {response.status_code}'}
     except Exception as e:
-        print("An error occurred:", str(e))
+        logger.error("Sophos auth error: %s", str(e))
+        return {'error': str(e)}
 ######################################## End Get Sophos Central Access Token ########################################
 
 ######################################## Start Get Sophos Central Devices ########################################

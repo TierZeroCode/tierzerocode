@@ -1,6 +1,9 @@
 # Import Dependencies
+import logging
 import requests
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 # Import Models
 from apps.main.models import Integration, Device, TailscaleDeviceData, DeviceComplianceSettings
 # Import Function Scripts
@@ -16,9 +19,8 @@ def getTailscaleAccessToken(client_id, client_secret):
         access_token = 'Bearer ' + response.json()['access_token']
         return access_token
     else:
-        print("Failed to authenticate. Status code:", response.status_code)
-        print("Response:", response.text)
-        return {'error': response.text}
+        logger.error("Tailscale auth failed. Status: %s", response.status_code)
+        return {'error': f'Authentication failed with status {response.status_code}'}
 ######################################## End Get Tailscale Access Token ########################################
 
 ######################################## Start Get CrowdStrike Falcon Devices ########################################

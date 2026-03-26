@@ -11,8 +11,8 @@ services:
       # Database settings
       - DATABASE_HOST=db
       - DATABASE_NAME=${DATABASE_NAME:-dockerdjango}
-      - DATABASE_USER=${DATABASE_USER:-dbuser}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-dbpassword}
+      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
       - DATABASE_PORT=${DATABASE_PORT:-5432}
       - DATABASE_ENGINE=${DATABASE_ENGINE:-postgresql_psycopg2}
       # Redis settings
@@ -35,8 +35,8 @@ services:
       # Database settings
       - DATABASE_HOST=db
       - DATABASE_NAME=${DATABASE_NAME:-dockerdjango}
-      - DATABASE_USER=${DATABASE_USER:-dbuser}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-dbpassword}
+      - DATABASE_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
       - DATABASE_PORT=${DATABASE_PORT:-5432}
       - DATABASE_ENGINE=${DATABASE_ENGINE:-postgresql_psycopg2}
       # Redis settings
@@ -53,8 +53,8 @@ services:
     image: postgres:17-bookworm
     environment:
       - POSTGRES_DB=${DATABASE_NAME:-dockerdjango}
-      - POSTGRES_USER=${DATABASE_USER:-dbuser}
-      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:-dbpassword}
+      - POSTGRES_USER=${DATABASE_USER:?DATABASE_USER is required}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:?DATABASE_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped

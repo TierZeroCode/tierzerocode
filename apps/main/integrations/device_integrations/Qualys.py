@@ -1,6 +1,9 @@
 # Import Dependencies
+import logging
 import requests, json, xmltodict
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 # Import Models
 from ...models import QualysDevice, Integration, Device, DeviceComplianceSettings
 # Import Functions Scripts
@@ -37,10 +40,11 @@ def getQualysAccessToken(client_id, client_secret, tenant_id):
             # Print the access token (or use it for further API requests)
             return s
         else:
-            print("Failed to authenticate. Status code:", response.status_code)
-            print("Response:", response.text)
+            logger.error("Qualys auth failed. Status: %s", response.status_code)
+            return None
     except Exception as e:
-        print("An error occurred:", str(e))
+        logger.error("Qualys auth error: %s", str(e))
+        return None
 
 def getQualysLogout(s):
     url = 'https://qualysapi.qualys.com/api/2.0/fo/session/'
