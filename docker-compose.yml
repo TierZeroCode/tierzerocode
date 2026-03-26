@@ -53,8 +53,10 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    entrypoint: ["/app/start.sh"]
-    command: ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "${GUNICORN_WORKERS:-3}", "--timeout", "300", "tierzerocode.wsgi:application"]
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             python -m gunicorn --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout 300 tierzerocode.wsgi:application"
 
   worker:
     image: docker.io/andrewixl/tierzerocode:latest
@@ -81,8 +83,9 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    entrypoint: ["/app/start.sh"]
-    command: ["python", "manage.py", "rqworker", "default", "--job-class", "django_tasks_rq.Job", "--with-scheduler"]
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler"
 
 volumes:
   postgres_data:
