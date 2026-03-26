@@ -39,9 +39,8 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Copy application code (start.sh is included in the COPY)
+# Copy application code
 COPY --chown=appuser:appuser . .
-RUN chmod +x /app/start.sh
 
 # Create static and log directories with correct permissions
 RUN mkdir -p /app/static && \
@@ -56,6 +55,5 @@ USER appuser
 # Expose the application port
 EXPOSE 8000
 
-# start.sh runs migrations and collectstatic, then exec's the CMD
-ENTRYPOINT ["/app/start.sh"]
+# Default command — docker-compose.yml overrides with migrate + collectstatic prefixed
 CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "300", "tierzerocode.wsgi:application"]
