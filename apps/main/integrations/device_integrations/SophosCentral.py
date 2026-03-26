@@ -1,7 +1,7 @@
 # Import Dependencies
 import logging
 import requests
-from datetime import datetime
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 # Import Models
@@ -98,8 +98,7 @@ def syncSophos():
     tenant_id = data.tenant_id
     tenant_domain = data.tenant_domain
     updateSophosDeviceDatabase(getSophosDevices(getSophosAccessToken(client_id, client_secret), tenant_id))
-    data.last_synced_at = datetime.now()
+    data.last_synced_at = timezone.now()
     data.save()
-    print("Sophos Central Synced Successfully")
     return True
 ######################################## End Sync Sophos Central ########################################
