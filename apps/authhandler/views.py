@@ -4,10 +4,14 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.views.decorators.http import require_POST
+from django_ratelimit.decorators import ratelimit
 from .models import SSOIntegration
 from apps.logger.views import createLog
 from django.contrib.auth.models import User
 
+@require_POST
+@ratelimit(key='ip', rate='10/m', block=True)
 def loginUser(request):
     try:
         username = request.POST.get('email').lower()
@@ -43,6 +47,7 @@ def azure_callback(request):
     backend = MicrosoftEntraIDBackend()
     return backend.handle_entra_id_callback(request)
 
+@require_POST
 def logoutUser(request):
     try:
         data = {

@@ -11,6 +11,7 @@ cryptography==46.0.5
 diff-match-patch==20241021
 Django==6.0.3
 django-import-export==4.4.0
+django-ratelimit==4.1.0
 django-rq==3.2.2
 django-stubs-ext==5.2.9
 django-tasks==0.12.0
