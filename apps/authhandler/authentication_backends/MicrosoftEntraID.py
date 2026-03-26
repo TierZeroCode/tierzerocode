@@ -141,11 +141,10 @@ class MicrosoftEntraIDBackend(BaseBackend):
             
             response = requests.post(token_url, data=data)
             
-            # Log detailed error information for debugging
+            # Log error information for debugging (never log client_secret or tokens)
             if response.status_code != 200:
                 logger.error(f"Token exchange failed with status {response.status_code}")
-                logger.error(f"Response content: {response.text}")
-                logger.error(f"Request data: {data}")
+                logger.error(f"Token exchange failed for client_id={sso_config.client_id}, tenant_id={sso_config.tenant_id}")
                 return None
                 
             response.raise_for_status()

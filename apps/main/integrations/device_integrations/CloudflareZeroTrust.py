@@ -12,7 +12,6 @@ def getCloudflareZeroTrustDevices(access_token, tenant_id):
     url = 'https://api.cloudflare.com/client/v4/accounts/' + tenant_id +'/devices'
     headers = {'Authorization': 'Bearer ' + access_token,'Content-Type': 'application/json',}
     graph_result = requests.get(url=url, headers=headers)
-    print(graph_result.json())
     return graph_result.json()
 ######################################## End Get Cloudflare Zero Trust Devices ########################################
 ######################################## Start Update/Create Cloudflare Zero Trust Devices ########################################
