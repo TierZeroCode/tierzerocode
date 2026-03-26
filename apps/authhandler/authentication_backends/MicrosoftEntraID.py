@@ -2,6 +2,7 @@ import logging
 import secrets
 from django.contrib.auth.models import User
 from django.contrib.auth.backends import BaseBackend
+from django.utils.http import url_has_allowed_host_and_scheme
 from apps.authhandler.models import SSOIntegration
 from apps.logger.views import createLog
 from urllib.parse import urlencode, quote_plus, urlparse, urlunparse
@@ -60,9 +61,13 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 # Generate SSO login URL
                 auth_url = self._generate_sso_auth_url(request, user, sso_config)
                 
-                # Store the redirect URL in session for after SSO callback
+                # Store the redirect URL in session for after SSO callback (validate to prevent open redirect)
                 if hasattr(request, 'session'):
-                    request.session['sso_redirect_url'] = request.GET.get('next', '/')
+                    next_url = request.GET.get('next', '/')
+                    if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                        request.session['sso_redirect_url'] = next_url
+                    else:
+                        request.session['sso_redirect_url'] = '/'
                 
                 # Return a special response that indicates SSO redirect needed
                 # We'll use a custom attribute to signal this
@@ -333,10 +338,10 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 if request.user.is_authenticated:
                     print (f"User {user.username} logged in successfully")
                 
-                # Get redirect URL from session
-                redirect_url = request.session.get('sso_redirect_url', '/')
-                if 'sso_redirect_url' in request.session:
-                    del request.session['sso_redirect_url']
+                # Get redirect URL from session (validate to prevent open redirect)
+                redirect_url = request.session.pop('sso_redirect_url', '/')
+                if not url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+                    redirect_url = '/'
                 
                 messages.success(request, f"Welcome back, {user.first_name or user.username}!")
                 
