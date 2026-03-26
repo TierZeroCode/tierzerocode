@@ -404,7 +404,7 @@ class TailscaleDeviceData(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
     nodeId = models.CharField(max_length=50, null=True)
     hostname = models.CharField(max_length=200, null=True)
-    user = models.EmailField(max_length=50, null=True)
+    user = models.EmailField(max_length=254, null=True)
     name = models.CharField(max_length=200, null=True)
     clientVersion = models.CharField(max_length=200, null=True)
     updateAvailable = models.BooleanField(null=True)

@@ -33,22 +33,6 @@ def cleanAPIData(os_platform):
     return [osPlatform_clean, endpointType]
 
 def complianceSettings(os_platform):
-	try:
-		settings = DeviceComplianceSettings.objects.get(os_platform=os_platform)
-		return {
-            'Cloudflare Zero Trust': settings.cloudflare_zero_trust,
-            'CrowdStrike Falcon': settings.crowdstrike_falcon,
-            'Microsoft Defender for Endpoint': settings.microsoft_defender_for_endpoint,
-            'Microsoft Entra ID': settings.microsoft_entra_id,
-            'Microsoft Intune': settings.microsoft_intune,
-            'Sophos Central': settings.sophos_central,
-            'Qualys': settings.qualys,
-            'Tailscale': settings.tailscale,
-        }
-	except DeviceComplianceSettings.DoesNotExist:
-		return {}
-
-def complianceSettings(os_platform):
     try:
         settings = DeviceComplianceSettings.objects.get(os_platform=os_platform)
         return {
