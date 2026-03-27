@@ -1,7 +1,7 @@
 from django.db import models
 
 class Device(models.Model):
-    hostname = models.CharField(max_length=75, null=True)
+    hostname = models.CharField(max_length=75, null=True, db_index=True)
     compliant = models.BooleanField(null=False, default=False)
     OS_PLATFORM_CHOICES = (
         ("Android", "Android"),
@@ -452,7 +452,7 @@ class PersonaGroup(models.Model):
         return self.group_name or 'Unnamed Group'
     
 class UserData(models.Model):
-    upn = models.EmailField(max_length=200, null=True)
+    upn = models.EmailField(max_length=200, null=True, db_index=True)
     uid = models.CharField(max_length=200, null=True)
     network_id = models.CharField(max_length=200, null=True)
     persona = models.ForeignKey(Persona, on_delete=models.CASCADE, null=True)

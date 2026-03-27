@@ -222,15 +222,15 @@ def _update_or_create_user(user_fields, integration):
     userdata.integration.add(integration)
     return userdata
 
-def _process_user_data(user_data, authentication_data, persona_memberships):
+def _process_user_data(user_data, auth_by_upn, memberships_by_upn):
     """Process individual user data and return user fields."""
     if not user_data.get('userPrincipalName'):
         return None
-        
+
     # Handle disabled accounts
     if user_data.get('accountEnabled') == "false":
         return None
-        
+
     if not user_data.get('employeeId'):
         user_data['employeeId'] = 'none'
 
@@ -238,18 +238,13 @@ def _process_user_data(user_data, authentication_data, persona_memberships):
     last_logon = _parse_timestamp(user_data.get('signInActivity', {}).get('lastSuccessfulSignInDateTime'))
     created_at = _parse_timestamp(user_data.get('createdDateTime'))
 
-    # Find user authentication data
-    user_authentication_data = next(
-        (item for item in authentication_data if item['userPrincipalName'].lower() == user_data['userPrincipalName'].lower()), 
-        {}
-    )
+    upn_lower = user_data['userPrincipalName'].lower()
 
-    # Determine persona group membership
-    matching_groups = [
-        membership
-        for membership in persona_memberships
-        if membership.get("userPrincipalName", '').lower() == user_data['userPrincipalName'].lower()
-    ]
+    # O(1) lookup instead of O(n) list scan
+    user_authentication_data = auth_by_upn.get(upn_lower, {})
+
+    # O(1) lookup instead of O(n) list scan
+    matching_groups = memberships_by_upn.get(upn_lower, [])
     persona_group_result = _get_user_persona_group(matching_groups)
     
     # Determine persona based on matching groups
@@ -303,19 +298,27 @@ def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
     persona_memberships = getPersonaGroupMemberships(access_token)
     processed_upns = set()
 
+    # Build O(1) lookup maps — one pass through each list instead of O(n) per user
+    auth_by_upn = {
+        item['userPrincipalName'].lower(): item
+        for item in authentication_data
+        if item.get('userPrincipalName')
+    }
+    memberships_by_upn = {}
+    for membership in persona_memberships:
+        upn = membership.get('userPrincipalName', '').lower()
+        if upn:
+            memberships_by_upn.setdefault(upn, []).append(membership)
+
     # Process each user
     for user_data in users:
-        user_fields = _process_user_data(user_data, authentication_data, persona_memberships)
+        user_fields = _process_user_data(user_data, auth_by_upn, memberships_by_upn)
         if user_fields:
             _update_or_create_user(user_fields, integration)
             processed_upns.add(user_fields['upn'])
 
-    # Clean up users not updated during this sync
-    existing_users = UserData.objects.filter(integration=integration)
-    for existing_user in existing_users:
-        if existing_user.upn not in processed_upns:
-            print(f"Deleting user not updated during sync: {existing_user.upn}")
-            existing_user.delete()
+    # Bulk delete stale users in one query instead of per-row deletes
+    UserData.objects.filter(integration=integration).exclude(upn__in=processed_upns).delete()
 
 def syncMicrosoftEntraIDUser():
     print("Synchronizing Microsoft Entra ID users class started")
