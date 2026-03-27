@@ -9,12 +9,13 @@ class ComplianceSettingsForm(forms.ModelForm):
         model = DeviceComplianceSettings
         fields = [
             'cloudflare_zero_trust',
-            'crowdstrike_falcon', 
+            'crowdstrike_falcon',
             'microsoft_defender_for_endpoint',
             'microsoft_entra_id',
             'microsoft_intune',
             'sophos_central',
-            'qualys'
+            'qualys',
+            'tailscale',
         ]
         widgets = {
             'cloudflare_zero_trust': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -24,6 +25,7 @@ class ComplianceSettingsForm(forms.ModelForm):
             'microsoft_intune': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'sophos_central': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'qualys': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'tailscale': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -49,6 +51,9 @@ class ComplianceSettingsForm(forms.ModelForm):
         
         self.fields['qualys'].label = 'Qualys'
         self.fields['qualys'].help_text = 'Require Qualys for compliance'
+
+        self.fields['tailscale'].label = 'Tailscale'
+        self.fields['tailscale'].help_text = 'Require Tailscale for compliance'
 
 class BulkComplianceSettingsForm(forms.Form):
     """Form for bulk updating compliance settings across all platforms"""

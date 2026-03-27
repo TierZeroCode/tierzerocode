@@ -5,7 +5,6 @@ from datetime import date, datetime
 # Third-party imports
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q
 from django.forms.models import model_to_dict
@@ -161,12 +160,6 @@ def delete_persona_group(request, id):
 ############################################################################################
 
 @login_required
-def migration(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Unauthorized".encode())
-    call_command('migrate')
-    return HttpResponse("Migrations applied.".encode())
-
 ############################################################################################
 
 def _calculate_auth_method_counts(users_queryset):
@@ -427,11 +420,10 @@ def indexUser(request):
 ############################################################################################
 
 @login_required
-def personaMetrics(request, persona):
-	# of Users that have adopted each authentication method
-	persona = persona.replace("-", " ").title()
-	users = UserData.objects.filter(persona=persona)
-	persona_name = Persona.objects.get(id=persona).persona_name.replace("-", " ").title()
+def personaMetrics(request, persona_id):
+	persona_obj = get_object_or_404(Persona, id=persona_id)
+	persona_name = persona_obj.persona_name
+	users = UserData.objects.filter(persona=persona_obj)
    # Aggregate counts for highest and lowest authentication strengths
 	auth_strength_counts = users.aggregate(
         count_phishing_resistant=Count('id', filter=Q(highest_authentication_strength='Phishing Resistant')),
@@ -461,7 +453,7 @@ def personaMetrics(request, persona):
 		'page': 'user-dashboard',
 		'enabled_integrations': getEnabledIntegrations(),
 		'notifications': Notification.objects.all(),
-		'persona': persona,
+		'persona': persona_obj,
 		'persona_name': persona_name,
 		'persona_count': users.count(),
 		'percent_mfa': "{:.2f}".format(((auth_strength_counts['count_phishing_resistant'] + auth_strength_counts['count_passwordless'] + auth_strength_counts['count_mfa'] + auth_strength_counts['count_deprecated']) / users.count()) * 100 if users.count() > 0 else 0),
