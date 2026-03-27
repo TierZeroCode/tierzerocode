@@ -292,15 +292,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
             token_data = self.exchange_code_for_token(sso_config, code, redirect_uri)
             if not token_data or 'access_token' not in token_data:
                 messages.error(request, 'Failed to exchange authorization code for token (' + str(token_data) + ')')
-                # Safe session variable access
-                session_id = request.session.get('session_id', 'unknown')
-                user_id = request.session.get('user_id', 'unknown')
-                ip_address = request.session.get('ip_address', 'unknown')
-                user_agent = request.session.get('user_agent', 'unknown')
-                browser = request.session.get('browser', 'unknown')
-                operating_system = request.session.get('operating_system', 'unknown')
-                
-                createLog(session_id, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', 'Failed to exchange authorization code for token (' + str(token_data) + ')', user_id, ip_address, user_agent, browser, operating_system)
+                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Unauthenticated", False, 'User Login', 'Failure', additional_data='Failed to exchange authorization code for token')
                 return redirect('login')
             
             # Try to get user info from access token first
