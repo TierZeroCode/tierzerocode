@@ -40,6 +40,7 @@ def getMicrosoftIntuneDevices(access_token):
 ######################################## Start Update/Create Microsoft Intune Devices ########################################
 
 def updateMicrosoftIntuneDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Microsoft Intune")
     for device_data in json_data:
         hostname = device_data['deviceName'].lower()
         os_platform = device_data['operatingSystem']
@@ -56,7 +57,7 @@ def updateMicrosoftIntuneDeviceDatabase(json_data):
             'manufacturer': (manufacturer.lower()).title()
         }
         obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(Integration.objects.get(integration_type="Microsoft Intune"))
+        obj.integration.add(integration)
 
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])

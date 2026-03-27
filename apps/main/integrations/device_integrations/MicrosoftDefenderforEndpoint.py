@@ -47,6 +47,7 @@ def getMicrosoftDefenderforEndpointDevices(access_token):
 
 ######################################## Start Update/Create Microsoft Defender for Endpoint Devices ########################################
 def updateMicrosoftDefenderforEndpointDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Microsoft Defender for Endpoint")
     for device_data in json_data:
         if device_data.get('onboardingStatus') == 'Onboarded' and not device_data.get('healthStatus') == 'Inactive':
             computer_dns_name = device_data.get('computerDnsName')
@@ -65,7 +66,7 @@ def updateMicrosoftDefenderforEndpointDeviceDatabase(json_data):
             }
 
             obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-            obj.integration.add(Integration.objects.get(integration_type = "Microsoft Defender for Endpoint"))
+            obj.integration.add(integration)
 
             # Check compliance: device must have ALL required integrations
             os_platform = clean_data[0]

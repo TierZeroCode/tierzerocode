@@ -1,4 +1,5 @@
 # Django Model Imports
+from functools import lru_cache
 from apps.main.models import DeviceComplianceSettings
 
 def cleanAPIData(os_platform):
@@ -32,6 +33,7 @@ def cleanAPIData(os_platform):
         endpointType = 'Other'
     return [osPlatform_clean, endpointType]
 
+@lru_cache(maxsize=32)
 def complianceSettings(os_platform):
     try:
         settings = DeviceComplianceSettings.objects.get(os_platform=os_platform)

@@ -42,6 +42,7 @@ def getMicrosoftEntraIDDevices(access_token):
 
 ######################################## Start Update/Create Microsoft Entra ID Devices ########################################
 def updateMicrosoftEntraIDDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="Device")
     for device_data in json_data:
         hostname = device_data['displayName'].lower()
         os_platform = device_data['operatingSystem']
@@ -59,7 +60,7 @@ def updateMicrosoftEntraIDDeviceDatabase(json_data):
             'manufacturer': manufacturer,
         }
         obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="Device"))
+        obj.integration.add(integration)
 
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])
