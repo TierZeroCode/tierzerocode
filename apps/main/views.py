@@ -294,11 +294,18 @@ def indexDevice(request):
 	# Fetch all enabled integrations in a single query
 	enabled_integrations = getEnabledIntegrations()
 
-	# Count of devices for each integration
+	# Count of devices for each integration in a single annotated query
 	integration_device_counts = [["Master List Endpoints", Device.objects.count()]]
-	integrations_with_data = Integration.objects.filter(integration_type__in=integration_names, enabled=True, integration_context="Device")
-	for integration in integrations_with_data:
-		integration_device_counts.append([integration.integration_type, Device.objects.filter(integration__integration_type=integration).count(), integration.image_navbar_path])
+	integration_counts = (
+		Device.objects.filter(integration__enabled=True, integration__integration_context="Device")
+		.values('integration__integration_type', 'integration__image_navbar_path')
+		.annotate(count=Count('id'))
+	)
+	counts_by_type = {item['integration__integration_type']: item for item in integration_counts}
+	for integration_name in integration_names:
+		item = counts_by_type.get(integration_name)
+		if item:
+			integration_device_counts.append([integration_name, item['count'], item['integration__image_navbar_path']])
 
 	# Count each os platform and endpoint type
 	os_platform_counts = Device.objects.values('osPlatform').annotate(count=Count('osPlatform'))
@@ -352,16 +359,14 @@ def indexUser(request):
         highest_authentication_strength__in=['Passwordless', 'Phishing Resistant']
     ).count()
  
+	# Fetch all personas in one query, then build the map
+	persona_lookup = {p.id: p.persona_name for p in Persona.objects.all()}
 	persona_counts = UserData.objects.values('persona').annotate(count=Count('id'))
 	persona_map = {}
 	for item in persona_counts:
 		persona_id = item['persona']
-		if persona_id:
-			try:
-				persona_obj = Persona.objects.get(id=persona_id)
-				persona_map[persona_obj.persona_name] = item['count']
-			except Persona.DoesNotExist:
-				persona_map['Unknown'] = persona_map.get('Unknown', 0) + item['count']
+		if persona_id and persona_id in persona_lookup:
+			persona_map[persona_lookup[persona_id]] = item['count']
 		else:
 			persona_map['Unknown'] = persona_map.get('Unknown', 0) + item['count']
 	
@@ -405,15 +410,15 @@ def indexUser(request):
 		'count_total_users': UserData.objects.count(),
 
 		'auth_method_adoption_labels': ['Windows Hello for Business', 'Passkey Device', 'Passkey Authenticator', 'MS Authenticator Passwordless', 'MS Authenticator Push', 'Software OTP', 'Mobile Phone'],
-		'auth_method_adoption_data': [
-			users.filter(windowsHelloforBusiness_authentication_method=True).count(),
-			users.filter(passKeyDeviceBound_authentication_method=True).count(),
-			users.filter(passKeyDeviceBoundAuthenticator_authentication_method=True).count(),
-			users.filter(microsoftAuthenticatorPasswordless_authentication_method=True).count(),
-			users.filter(microsoftAuthenticatorPush_authentication_method=True).count(),
-			users.filter(softwareOneTimePasscode_authentication_method=True).count(),
-			users.filter(mobilePhone_authentication_method=True).count(),
-		],
+		'auth_method_adoption_data': list(users.aggregate(
+			whfb=Count('id', filter=Q(windowsHelloforBusiness_authentication_method=True)),
+			passkey=Count('id', filter=Q(passKeyDeviceBound_authentication_method=True)),
+			passkey_auth=Count('id', filter=Q(passKeyDeviceBoundAuthenticator_authentication_method=True)),
+			ms_auth_pl=Count('id', filter=Q(microsoftAuthenticatorPasswordless_authentication_method=True)),
+			ms_auth_push=Count('id', filter=Q(microsoftAuthenticatorPush_authentication_method=True)),
+			sw_otp=Count('id', filter=Q(softwareOneTimePasscode_authentication_method=True)),
+			mobile=Count('id', filter=Q(mobilePhone_authentication_method=True)),
+		).values()),
     }
 	return render(request, 'main/index-user.html', context)
 
@@ -842,23 +847,23 @@ def endpointList(request, integration):
 
 @login_required
 def integrations(request):
+	# Bulk fetch all integrations in two queries instead of N+1
+	device_integrations = {i.integration_type: i for i in Integration.objects.filter(integration_context="Device")}
+	user_integrations = {i.integration_type: i for i in Integration.objects.filter(integration_context="User")}
+
 	deviceIntegrationStatuses = []
-
 	for integration_name in integration_names:
-		integration = Integration.objects.get(integration_type = integration_name, integration_context = "Device")
-		if integration.client_secret:
-			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, True, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
-		else:
-			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, False, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
-	
-		userIntegrationStatuses = []
+		integration = device_integrations.get(integration_name)
+		if integration:
+			has_secret = bool(integration.client_secret)
+			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
 
+	userIntegrationStatuses = []
 	for integration_name in user_integration_names:
-		integration = Integration.objects.get(integration_type = integration_name, integration_context = "User")
-		if integration.client_secret:
-			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, True, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
-		else:
-			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, False, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
+		integration = user_integrations.get(integration_name)
+		if integration:
+			has_secret = bool(integration.client_secret)
+			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
 	context = {
 		'page':'integrations',
 		'notifications': Notification.objects.all(),

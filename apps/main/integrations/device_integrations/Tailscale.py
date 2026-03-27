@@ -33,6 +33,7 @@ def getTailscaleDevices(access_token, tenant_domain):
 
 ######################################## Start Update/Create CrowdStrike Falcon Devices ########################################
 def updateTailscaleDeviceDatabase(total_tailscale_results):
+    integration = Integration.objects.get(integration_type="Tailscale")
     for device_data in total_tailscale_results:
         hostname = device_data.get('hostname').lower()
         os_platform = device_data.get('os')
@@ -45,7 +46,7 @@ def updateTailscaleDeviceDatabase(total_tailscale_results):
         }
 
         obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(Integration.objects.get(integration_type="Tailscale"))
+        obj.integration.add(integration)
 
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])

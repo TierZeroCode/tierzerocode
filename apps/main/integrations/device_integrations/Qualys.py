@@ -82,6 +82,7 @@ def getQualysDevices(s):
         getQualysLogout(s)
 
 def updateQualysDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Qualys")
     host_list = json_data.get("HOST_LIST_OUTPUT", {}).get("RESPONSE", {}).get("HOST_LIST", {}).get("HOST", [])
     for host_data in host_list:
         # device_id = host_data.get("ID")
@@ -99,7 +100,7 @@ def updateQualysDeviceDatabase(json_data):
         }
         
         device, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        device.integration.add(Integration.objects.get(integration_type="Qualys"))
+        device.integration.add(integration)
         
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])

@@ -70,6 +70,7 @@ def getCrowdStrikeDevices(access_token, tenant_id):
 
 ######################################## Start Update/Create CrowdStrike Falcon Devices ########################################
 def updateCrowdStrikeDeviceDatabase(total_crowdstrike_results):
+    integration = Integration.objects.get(integration_type="CrowdStrike Falcon")
     for crowdstrike_results in total_crowdstrike_results:
         for device_data in crowdstrike_results['resources']:
             if device_data.get('hostname') is None or device_data.get('os_version') is None:
@@ -87,7 +88,7 @@ def updateCrowdStrikeDeviceDatabase(total_crowdstrike_results):
             }
 
             obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-            obj.integration.add(Integration.objects.get(integration_type="CrowdStrike Falcon"))
+            obj.integration.add(integration)
 
             # Check compliance: device must have ALL required integrations
             compliance_settings = complianceSettings(clean_data[0])

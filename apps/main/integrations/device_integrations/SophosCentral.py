@@ -44,6 +44,7 @@ def getSophosDevices(access_token, tenant_id):
 
 ######################################## Start Update/Create Sophos Central Devices ########################################
 def updateSophosDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Sophos Central")
     for device_data in json_data['items']:
         hostname = device_data.get('hostname').lower()
         os_platform = device_data.get('os', {}).get('name')
@@ -54,7 +55,7 @@ def updateSophosDeviceDatabase(json_data):
             'endpointType': clean_data[1],
         }
         obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(Integration.objects.get(integration_type="Sophos Central"))
+        obj.integration.add(integration)
 
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])
