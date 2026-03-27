@@ -57,12 +57,12 @@ def deviceIntegrationSyncTask(user_email, ip_address, user_agent, browser, opera
             syncSophos()
         print(f"Syncing {integration_clean} devices class completed")
 
-        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Success", f"{integration_clean} Device", user_email, ip_address, user_agent, browser, operating_system)
+        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Success", additional_data=f"{integration_clean} Device", user_id=user_email, ip_address=ip_address, user_agent=user_agent, browser=browser, operating_system=operating_system)
         obj.status = "Success"
         obj.updated_at = timezone.now()
         obj.save()
     except Exception as e:
-        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Failure", f"{integration_clean} Device - {e}", user_email, ip_address, user_agent, browser, operating_system)
+        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Failure", additional_data=f"{integration_clean} Device - {e}", user_id=user_email, ip_address=ip_address, user_agent=user_agent, browser=browser, operating_system=operating_system)
         print(f"Error syncing {integration_clean} devices: {e}")
         obj.status = "Failure"
         obj.updated_at = timezone.now()
@@ -96,13 +96,12 @@ def microsoftEntraIDUserSyncTask(user_email, ip_address, user_agent, browser, op
         print("Syncing Microsoft Entra ID users class started")
         syncMicrosoftEntraIDUser()
         print("Syncing Microsoft Entra ID users class completed")
-        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Success", "Microsoft Entra ID User", user_email, ip_address, user_agent, browser, operating_system)
+        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Success", additional_data="Microsoft Entra ID User", user_id=user_email, ip_address=ip_address, user_agent=user_agent, browser=browser, operating_system=operating_system)
         obj.status = "Success"
         obj.updated_at = timezone.now()
         obj.save()
-		# messages.info(request, 'Microsoft Entra ID User Integration Sync Success')
     except Exception as e:
-        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Failure", f"Microsoft Entra ID User - {e}", user_email, ip_address, user_agent, browser, operating_system)
+        createLog(None, "1505", "System Integration", "System Integration Event", "Superuser", True, "System Integration Sync", "Failure", additional_data=f"Microsoft Entra ID User - {e}", user_id=user_email, ip_address=ip_address, user_agent=user_agent, browser=browser, operating_system=operating_system)
         obj.status = "Failure"
         obj.updated_at = timezone.now()
         obj.save()

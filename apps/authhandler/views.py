@@ -36,7 +36,7 @@ def loginUser(request):
                 return redirect('admin-dashboard')
             else:
                 messages.error(request, 'Invalid Credentials')
-                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (' + str(e) + ')')
+                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (authenticate returned None)')
                 return redirect('login')
     except Exception as e:
         messages.error(request, 'Invalid Credentials')

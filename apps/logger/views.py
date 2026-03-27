@@ -31,30 +31,38 @@ def get_client_ip(request):
 def createLog(request, event_code, event_type, event_group, user_level, privileged, action, outcome, **kwargs):
     """
     Hybrid Logging:
-    - Technical data (IP, Browser) -> extracted from 'request'
+    - Technical data (IP, Browser) -> extracted from 'request' when available
     - Business data (Event Code, Group) -> passed explicitly
+    - For background tasks: pass request=None and provide user_id, ip_address, etc. via kwargs
     """
     try:
-        # --- 1. AUTOMATED EXTRACTION (From Request) ---
-        # Handle user_id safely (authenticated vs anonymous)
-        if request.user.is_authenticated:
-            user_id = str(request.user.id)
-            # If you want the username/email instead, change to request.user.email
+        # --- 1. EXTRACT DATA (from request or kwargs) ---
+        if request is not None and hasattr(request, 'META'):
+            # Web request context — extract from request object
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                user_id = str(request.user.id)
+            else:
+                user_id = "Anonymous"
+
+            ip_address = get_client_ip(request)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')[:255]
+
+            if hasattr(request, 'session'):
+                if not request.session.session_key:
+                    request.session.save()
+                session_id = request.session.session_key
+            else:
+                session_id = "N/A"
+
+            parsed_browser, parsed_os = _parse_user_agent(user_agent)
         else:
-            user_id = "Anonymous"
+            # Background task context — use kwargs for everything
+            user_id = kwargs.get('user_id', 'System')
+            ip_address = kwargs.get('ip_address', 'N/A')
+            user_agent = kwargs.get('user_agent', 'Background Task')
+            session_id = kwargs.get('session_id', 'N/A')
+            parsed_browser, parsed_os = 'N/A', 'N/A'
 
-        ip_address = get_client_ip(request)
-
-        # Get User Agent (and truncate to max length if needed)
-        user_agent = request.META.get('HTTP_USER_AGENT', '')[:255]
-        
-        # Get Session ID safely
-        if not request.session.session_key:
-            request.session.save() # Force a session if one doesn't exist
-        session_id = request.session.session_key
-
-        # Parse browser and OS from user_agent; kwargs can override
-        parsed_browser, parsed_os = _parse_user_agent(user_agent)
         browser = kwargs.get('browser', parsed_browser)
         operating_system = kwargs.get('operating_system', parsed_os)
         additional_data = kwargs.get('additional_data', '')
@@ -90,7 +98,7 @@ def createLog(request, event_code, event_type, event_group, user_level, privileg
             f"Privileged={privileged} "
             f"Action={action} "
             f"Outcome={outcome} "
-            f"AdditionalData={additional_data}"
+            f"AdditionalData={additional_data} "
             f"UserID={user_id} "
             f"IPAddress={ip_address} "
             f"UserAgent={user_agent} "
