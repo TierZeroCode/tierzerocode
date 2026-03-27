@@ -1,6 +1,9 @@
 # Import Dependencies
+import logging
 import requests
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 # Import Models
 from apps.main.models import Integration, Device, TailscaleDeviceData, DeviceComplianceSettings
 # Import Function Scripts
@@ -16,9 +19,8 @@ def getTailscaleAccessToken(client_id, client_secret):
         access_token = 'Bearer ' + response.json()['access_token']
         return access_token
     else:
-        print("Failed to authenticate. Status code:", response.status_code)
-        print("Response:", response.text)
-        return {'error': response.text}
+        logger.error("Tailscale auth failed. Status: %s", response.status_code)
+        return {'error': f'Authentication failed with status {response.status_code}'}
 ######################################## End Get Tailscale Access Token ########################################
 
 ######################################## Start Get CrowdStrike Falcon Devices ########################################
@@ -31,6 +33,7 @@ def getTailscaleDevices(access_token, tenant_domain):
 
 ######################################## Start Update/Create CrowdStrike Falcon Devices ########################################
 def updateTailscaleDeviceDatabase(total_tailscale_results):
+    integration = Integration.objects.get(integration_type="Tailscale")
     for device_data in total_tailscale_results:
         hostname = device_data.get('hostname').lower()
         os_platform = device_data.get('os')
@@ -43,7 +46,7 @@ def updateTailscaleDeviceDatabase(total_tailscale_results):
         }
 
         obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(Integration.objects.get(integration_type="Tailscale"))
+        obj.integration.add(integration)
 
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])

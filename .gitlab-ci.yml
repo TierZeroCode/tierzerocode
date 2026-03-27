@@ -1,15 +1,52 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
-stages:
-- test
-sast:
-  stage: test
-include:
-- template: Security/SAST.gitlab-ci.yml
-- template: Security/Secret-Detection.gitlab-ci.yml
+image: docker:latest
 
+services:
+  - docker:dind
+
+stages:
+  - test
+  - build
+
+include:
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
+
+variables:
+  DOCKER_IMAGE: hub.awbtech.org/tierzerocode/tierzerocode
+  DOCKER_TLS_CERTDIR: ""
+
+# Shared configuration for build jobs
+.build_template: &build_configuration
+  stage: build
+  before_script:
+    - docker login hub.awbtech.org -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD"
+    # 1. Create a buildx builder (required for attestations)
+    - docker buildx create --use --name gitlab-builder
+    # 2. Boot the builder
+    - docker buildx inspect --bootstrap
+  script:
+    # We use buildx build here to match your build.sh logic
+    - |
+      docker buildx build \
+        --platform linux/amd64 \
+        --attest type=sbom \
+        --attest type=provenance \
+        --tag $DOCKER_IMAGE:$TAG \
+        --push \
+        .
+
+# Job 1: Runs when you push to 'dev'
+build_dev:
+  <<: *build_configuration
+  variables:
+    TAG: latest-dev
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+# Job 2: Runs when you push to 'master'
+build_master:
+  <<: *build_configuration
+  variables:
+    TAG: latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"

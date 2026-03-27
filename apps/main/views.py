@@ -5,23 +5,19 @@ from datetime import date, datetime
 # Third-party imports
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q
 from django.forms.models import model_to_dict
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 
 # Local imports
-from .integrations.device_integrations.CloudflareZeroTrust import *
-from .integrations.device_integrations.CrowdStrikeFalcon import *
-from .integrations.device_integrations.MicrosoftDefenderforEndpoint import *
-from .integrations.device_integrations.MicrosoftEntraID import *
-from .integrations.device_integrations.MicrosoftIntune import *
-from .integrations.device_integrations.Qualys import *
-from .integrations.device_integrations.SophosCentral import *
-from .integrations.user_integrations.MicrosoftEntraID import *
+from .integrations.user_integrations.MicrosoftEntraID import (
+    getMicrosoftEntraIDGuests, getMicrosoftEntraIDGroups,
+    getMicrosoftEntraIDApps, getMicrosoftEntraTenantDetails,
+)
 from .models import Device, DeviceComplianceSettings, Integration, Notification, UserData, PersonaGroup, Persona
 from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosoftGraphConnection
 
@@ -34,6 +30,9 @@ user_integration_names = ['Microsoft Entra ID']
 #X6969
 integration_names_short = ['Cloudflare', 'CrowdStrike', 'Defender', 'Entra ID', 'Intune', 'Sophos', 'Qualys', 'Tailscale']
 user_integration_names_short = ['Entra ID']
+
+VALID_DEVICE_INTEGRATION_SLUGS = {'microsoft-entra-id', 'microsoft-intune', 'microsoft-defender-for-endpoint', 'crowdstrike-falcon', 'tailscale', 'cloudflare-zero-trust', 'qualys', 'sophos-central'}
+VALID_USER_INTEGRATION_SLUGS = {'microsoft-entra-id'}
 os_platforms = ['Android', 'iOS/iPadOS', 'MacOS', 'Ubuntu', 'Windows', 'Windows Server', 'Other']
 endpoint_types = ['Client', 'Mobile', 'Server', 'Other']
 
@@ -104,14 +103,7 @@ INTEGRATION_DEVICE_FETCH = (
 	('Tailscale', 'integrationTailscale', 'hostname', 'tailscale_device'),
 )
 
-@login_required
-def test(request):
-	# Device.objects.all().delete()
-	# Integration.objects.all().delete()
-	UserData.objects.all().delete()
-	return redirect('/')
-
-############################################################################################	
+############################################################################################
 
 # Mapping for short integration names
 integration_short_map = dict(zip(integration_names, integration_names_short))
@@ -169,13 +161,6 @@ def delete_persona_group(request, id):
     return redirect(reverse('general-settings') + f'#{current_tab}')
 
 ############################################################################################
-
-@login_required
-def migration(request):
-    if not request.user.is_superuser:
-        return HttpResponseForbidden("Unauthorized".encode())
-    call_command('migrate')
-    return HttpResponse("Migrations applied.".encode())
 
 ############################################################################################
 
@@ -272,7 +257,7 @@ def index(request):
 	
 	context = {
 		'page': 'dashboard',
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'count_users': count_users,
 		'count_guests': guests,
 		'count_groups': groups,
@@ -311,11 +296,18 @@ def indexDevice(request):
 	# Fetch all enabled integrations in a single query
 	enabled_integrations = getEnabledIntegrations()
 
-	# Count of devices for each integration
+	# Count of devices for each integration in a single annotated query
 	integration_device_counts = [["Master List Endpoints", Device.objects.count()]]
-	integrations_with_data = Integration.objects.filter(integration_type__in=integration_names, enabled=True, integration_context="Device")
-	for integration in integrations_with_data:
-		integration_device_counts.append([integration.integration_type, Device.objects.filter(integration__integration_type=integration).count(), integration.image_navbar_path])
+	integration_counts = (
+		Device.objects.filter(integration__enabled=True, integration__integration_context="Device")
+		.values('integration__integration_type', 'integration__image_navbar_path')
+		.annotate(count=Count('id'))
+	)
+	counts_by_type = {item['integration__integration_type']: item for item in integration_counts}
+	for integration_name in integration_names:
+		item = counts_by_type.get(integration_name)
+		if item:
+			integration_device_counts.append([integration_name, item['count'], item['integration__image_navbar_path']])
 
 	# Count each os platform and endpoint type
 	os_platform_counts = Device.objects.values('osPlatform').annotate(count=Count('osPlatform'))
@@ -331,7 +323,7 @@ def indexDevice(request):
 		'page': 'device-dashboard',
 		'enabled_integrations': enabled_integrations,
 		'enabled_user_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'endpoint_device_counts': integration_device_counts,
 		'osPlatformLabels': os_platforms,
 		'osPlatformData': osPlatformData,
@@ -369,16 +361,14 @@ def indexUser(request):
         highest_authentication_strength__in=['Passwordless', 'Phishing Resistant']
     ).count()
  
+	# Fetch all personas in one query, then build the map
+	persona_lookup = {p.id: p.persona_name for p in Persona.objects.all()}
 	persona_counts = UserData.objects.values('persona').annotate(count=Count('id'))
 	persona_map = {}
 	for item in persona_counts:
 		persona_id = item['persona']
-		if persona_id:
-			try:
-				persona_obj = Persona.objects.get(id=persona_id)
-				persona_map[persona_obj.persona_name] = item['count']
-			except Persona.DoesNotExist:
-				persona_map['Unknown'] = persona_map.get('Unknown', 0) + item['count']
+		if persona_id and persona_id in persona_lookup:
+			persona_map[persona_lookup[persona_id]] = item['count']
 		else:
 			persona_map['Unknown'] = persona_map.get('Unknown', 0) + item['count']
 	
@@ -394,7 +384,7 @@ def indexUser(request):
 	context = {
 		'page': 'user-dashboard',
 		# 'enabled_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'count_duplicate_persona': count_duplicate_persona,
 		'count_unknown_persona': count_unknown_persona,
         'auth_method_labels': ['Phishing Resistant', 'Passwordless', 'MFA', 'Deprecated', 'None'],
@@ -422,26 +412,25 @@ def indexUser(request):
 		'count_total_users': UserData.objects.count(),
 
 		'auth_method_adoption_labels': ['Windows Hello for Business', 'Passkey Device', 'Passkey Authenticator', 'MS Authenticator Passwordless', 'MS Authenticator Push', 'Software OTP', 'Mobile Phone'],
-		'auth_method_adoption_data': [
-			users.filter(windowsHelloforBusiness_authentication_method=True).count(),
-			users.filter(passKeyDeviceBound_authentication_method=True).count(),
-			users.filter(passKeyDeviceBoundAuthenticator_authentication_method=True).count(),
-			users.filter(microsoftAuthenticatorPasswordless_authentication_method=True).count(),
-			users.filter(microsoftAuthenticatorPush_authentication_method=True).count(),
-			users.filter(softwareOneTimePasscode_authentication_method=True).count(),
-			users.filter(mobilePhone_authentication_method=True).count(),
-		],
+		'auth_method_adoption_data': list(users.aggregate(
+			whfb=Count('id', filter=Q(windowsHelloforBusiness_authentication_method=True)),
+			passkey=Count('id', filter=Q(passKeyDeviceBound_authentication_method=True)),
+			passkey_auth=Count('id', filter=Q(passKeyDeviceBoundAuthenticator_authentication_method=True)),
+			ms_auth_pl=Count('id', filter=Q(microsoftAuthenticatorPasswordless_authentication_method=True)),
+			ms_auth_push=Count('id', filter=Q(microsoftAuthenticatorPush_authentication_method=True)),
+			sw_otp=Count('id', filter=Q(softwareOneTimePasscode_authentication_method=True)),
+			mobile=Count('id', filter=Q(mobilePhone_authentication_method=True)),
+		).values()),
     }
 	return render(request, 'main/index-user.html', context)
 
 ############################################################################################
 
 @login_required
-def personaMetrics(request, persona):
-	# of Users that have adopted each authentication method
-	persona = persona.replace("-", " ").title()
-	users = UserData.objects.filter(persona=persona)
-	persona_name = Persona.objects.get(id=persona).persona_name.replace("-", " ").title()
+def personaMetrics(request, persona_id):
+	persona_obj = get_object_or_404(Persona, id=persona_id)
+	persona_name = persona_obj.persona_name
+	users = UserData.objects.filter(persona=persona_obj)
    # Aggregate counts for highest and lowest authentication strengths
 	auth_strength_counts = users.aggregate(
         count_phishing_resistant=Count('id', filter=Q(highest_authentication_strength='Phishing Resistant')),
@@ -470,8 +459,8 @@ def personaMetrics(request, persona):
 	context = {
 		'page': 'user-dashboard',
 		'enabled_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.all(),
-		'persona': persona,
+		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'persona': persona_obj,
 		'persona_name': persona_name,
 		'persona_count': users.count(),
 		'percent_mfa': "{:.2f}".format(((auth_strength_counts['count_phishing_resistant'] + auth_strength_counts['count_passwordless'] + auth_strength_counts['count_mfa'] + auth_strength_counts['count_deprecated']) / users.count()) * 100 if users.count() > 0 else 0),
@@ -510,7 +499,7 @@ def personaMetrics(request, persona):
         'count_passwordless_capable_data': [passwordless_capable_count, non_passwordless_capable_count],
 
 		'auth_strengths': ['None', 'MFA', 'Passwordless', 'Phishing Resistant', 'Deprecated'],
-        'personas': ['Internal Worker', 'Internal Admin', 'External Worker', 'External Admin', 'Hourly Worker', 'Test Account', 'Robot Account', 'Shared Admin', 'OnPrem Internal Admin', 'OnPrem External Admin', 'Service Account Non-Interactive', 'Service Account Interactive', 'OnPrem Service Account Non-Interactive', 'OnPrem Service Account Interactive', 'Unknown', 'DUPLICATE'],
+        'personas': list(Persona.objects.values_list('persona_name', flat=True).order_by('priority')),
 		'user_list':user_list,
     }
 	return render(request, 'main/persona-metrics.html', context)
@@ -552,7 +541,7 @@ def generalSettings(request):
 	context = {
 		'page': "general-settings",
 		'enabled_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'devicecomps': compliance_settings,  # Use the new structured data
 		'compliance_summary': compliance_summary,
 		'compliance_report': compliance_report,
@@ -575,9 +564,9 @@ def update_compliance(request, id):
 		integration_settings = {}
 		integration_mapping = {
 			'Cloudflare Zero Trust': 'Cloudflare Zero Trust',
-			'Crowdstrike Falcon': 'Crowdstrike Falcon', 
-			'Microsoft Defender For Endpoint': 'Microsoft Defender For Endpoint',
-			'Microsoft Entra Id': 'Microsoft Entra Id',
+			'CrowdStrike Falcon': 'CrowdStrike Falcon',
+			'Microsoft Defender for Endpoint': 'Microsoft Defender for Endpoint',
+			'Microsoft Entra ID': 'Microsoft Entra ID',
 			'Microsoft Intune': 'Microsoft Intune',
 			'Sophos Central': 'Sophos Central',
 			'Qualys': 'Qualys',
@@ -624,7 +613,7 @@ def deviceData(request, id):
 		'page': 'device-data',
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'device': device,
 		'ints': integrations,
 		**integration_device_data,
@@ -667,7 +656,7 @@ def masterList(request):
 		'page':"master-list",
 		'enabled_integrations': enabled_integrations,
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'endpoint_list':endpoint_list,
 		'os_platforms': os_platforms,
 		'endpoint_types': endpoint_types,
@@ -685,7 +674,7 @@ def userMasterList(request):
 
 	context = {
 		'page':"master-list-user",
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'auth_strengths': ['None', 'MFA', 'Passwordless', 'Phishing Resistant', 'Deprecated'],
 		'personas': Persona.objects.all().order_by('priority', 'persona_name'),
 		'user_list':user_list,
@@ -720,7 +709,7 @@ def user_master_list_api(request):
     lowest_auth = request.GET.getlist('lowest_auth[]')
     personas = request.GET.getlist('personas[]')
 
-    users = UserData.objects.all()
+    users = UserData.objects.select_related('persona').all()
 
     # Apply sorting
     if order_column.isdigit() and int(order_column) < len(columns):
@@ -850,7 +839,7 @@ def endpointList(request, integration):
 		'page':integration,
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'integration':integration_clean.title(),
 		'endpoint_list':endpoint_list,
 	}
@@ -860,29 +849,28 @@ def endpointList(request, integration):
 
 @login_required
 def integrations(request):
+	# Bulk fetch all integrations in two queries instead of N+1
+	device_integrations = {i.integration_type: i for i in Integration.objects.filter(integration_context="Device")}
+	user_integrations = {i.integration_type: i for i in Integration.objects.filter(integration_context="User")}
+
 	deviceIntegrationStatuses = []
-
 	for integration_name in integration_names:
-		integration = Integration.objects.get(integration_type = integration_name, integration_context = "Device")
-		if integration.client_secret:
-			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, True, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
-		else:
-			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, False, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
-	
-		userIntegrationStatuses = []
+		integration = device_integrations.get(integration_name)
+		if integration:
+			has_secret = bool(integration.client_secret)
+			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
 
+	userIntegrationStatuses = []
 	for integration_name in user_integration_names:
-		integration = Integration.objects.get(integration_type = integration_name, integration_context = "User")
-		if integration.client_secret:
-			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, True, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
-		else:
-			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, False, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
+		integration = user_integrations.get(integration_name)
+		if integration:
+			has_secret = bool(integration.client_secret)
+			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
 	context = {
 		'page':'integrations',
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
 		'deviceIntegrationStatuses':deviceIntegrationStatuses,
 		'userIntegrationStatuses':userIntegrationStatuses,
 	}
@@ -891,27 +879,36 @@ def integrations(request):
 ############################################################################################
 
 @login_required
+@require_POST
 def enableIntegration(request, id):
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
 	integration_update.enabled = True
 	integration_update.save()
 
-	return redirect ('/integrations')
+	return redirect('integrations')
 
 ############################################################################################
 
 @login_required
+@require_POST
 def disableIntegration(request, id):
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
 	integration_update.enabled = False
 	integration_update.save()
 
-	return redirect ('/integrations')
+	return redirect('integrations')
 
 ############################################################################################
 
 @login_required
+@require_POST
 def updateIntegration(request, id):
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
 	integration_update.client_id = request.POST['client_id']
 	integration_update.client_secret = request.POST['client_secret']
@@ -919,7 +916,7 @@ def updateIntegration(request, id):
 	integration_update.tenant_domain = request.POST['tenant_domain']
 	integration_update.save()
 
-	return redirect ('/integrations')
+	return redirect('integrations')
 
 ############################################################################################
 
@@ -933,6 +930,8 @@ from apps.main.tasks import deviceIntegrationSyncTask, microsoftEntraIDUserSyncT
 
 @login_required
 def syncDevices(request, integration):
+	if integration not in VALID_DEVICE_INTEGRATION_SLUGS:
+		return HttpResponseBadRequest("Invalid integration")
 	user_email = request.session.get('user_email', 'unknown') if hasattr(request, 'session') else 'unknown'
 	ip_address = request.META.get('REMOTE_ADDR', 'unknown') if hasattr(request, 'META') else 'unknown'
 	user_agent = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
@@ -954,6 +953,8 @@ def syncDevices(request, integration):
 
 @login_required
 def syncUsers(request, integration):
+	if integration not in VALID_USER_INTEGRATION_SLUGS:
+		return HttpResponseBadRequest("Invalid integration")
 	user_email = request.session.get('user_email', 'unknown') if hasattr(request, 'session') else 'unknown'
 	ip_address = request.META.get('REMOTE_ADDR', 'unknown') if hasattr(request, 'META') else 'unknown'
 	user_agent = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
@@ -981,7 +982,7 @@ def testConnection(request, id):
 		required_permissions = []
 		scope = []
 	access_token = getMicrosoftGraphAccessToken(integration.client_id, integration.client_secret, integration.tenant_id, scope)
-	connection_test = testMicrosoftGraphConnection(access_token, required_permissions)
+	connection_test = testMicrosoftGraphConnection(access_token, required_permissions, tenant_id=integration.tenant_id)
 	if connection_test['has_required_permissions']:
 		messages.success(request, f'{integration.integration_type} Connection Test Passed')
 		integration.last_connection_test_at = datetime.now()
@@ -1047,9 +1048,9 @@ def bulk_update_compliance_api(request):
         # Parse the integration settings from the request
         integration_mapping = {
             'cloudflare_zero_trust': 'Cloudflare Zero Trust',
-            'crowdstrike_falcon': 'Crowdstrike Falcon',
-            'microsoft_defender_for_endpoint': 'Microsoft Defender For Endpoint',
-            'microsoft_entra_id': 'Microsoft Entra Id',
+            'crowdstrike_falcon': 'CrowdStrike Falcon',
+            'microsoft_defender_for_endpoint': 'Microsoft Defender for Endpoint',
+            'microsoft_entra_id': 'Microsoft Entra ID',
             'microsoft_intune': 'Microsoft Intune',
             'sophos_central': 'Sophos Central',
             'qualys': 'Qualys',
@@ -1107,6 +1108,7 @@ def reset_compliance_settings_api(request):
         }, status=500)
 
 @login_required
+@require_POST
 def delete_notification(request, id):
     """Delete a notification"""
     try:
@@ -1117,8 +1119,8 @@ def delete_notification(request, id):
         messages.error(request, 'Notification not found.')
     except Exception as e:
         messages.error(request, f'Error deleting notification: {str(e)}')
-    
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    return redirect('index')
 
 @login_required
 def add_persona(request):

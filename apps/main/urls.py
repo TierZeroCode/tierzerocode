@@ -9,7 +9,7 @@ urlpatterns = [
     path('', views.index, name='admin-dashboard'),  # Alias for index
     path('device-dashboard', views.indexDevice, name='device-dashboard'),
     path('user-dashboard', views.indexUser, name='user-dashboard'),
-    path('user-dashboard/<str:persona>', views.personaMetrics, name='persona-metrics'),
+    path('user-dashboard/<int:persona_id>', views.personaMetrics, name='persona-metrics'),
     
     # ============================================================================
     # Device Management
@@ -74,7 +74,5 @@ urlpatterns = [
     # Utility & Admin Routes
     # ============================================================================
     # path('initial-setup/', views.initialSetup, name='initial-setup'),
-    path('migrate', views.migration, name='migration'),
-    path('test', views.test, name='test'),
     path('error500', views.error500, name='error500'),
 ]

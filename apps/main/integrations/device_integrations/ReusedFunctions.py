@@ -1,8 +1,34 @@
 # Django Model Imports
+import time
+import requests
+from functools import lru_cache
 from apps.main.models import DeviceComplianceSettings
 
+
+def _fetch_paginated_data(url, headers, max_retries=5, retry_delay=1):
+    """Generic function to fetch paginated data with retry logic."""
+    results = []
+    while url:
+        for attempt in range(max_retries):
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                results.extend(data.get('value', []))
+                url = data.get('@odata.nextLink')
+                break
+            elif response.status_code == 429:  # Throttling error
+                retry_after = int(response.headers.get('Retry-After', retry_delay))
+                time.sleep(retry_after)
+            else:
+                raise Exception(f"Failed to fetch data: {response.status_code} - {response.text}")
+        else:
+            raise Exception("Max retries exceeded while fetching data.")
+    return results
+
 def cleanAPIData(os_platform):
-    os_platform_lower = (os_platform).lower()
+    if not os_platform:
+        return ['Other', 'Other']
+    os_platform_lower = os_platform.lower()
     if 'server' in os_platform_lower and 'windows' in os_platform_lower:
         osPlatform_clean = 'Windows Server'
         endpointType = 'Server'
@@ -32,22 +58,7 @@ def cleanAPIData(os_platform):
         endpointType = 'Other'
     return [osPlatform_clean, endpointType]
 
-def complianceSettings(os_platform):
-	try:
-		settings = DeviceComplianceSettings.objects.get(os_platform=os_platform)
-		return {
-            'Cloudflare Zero Trust': settings.cloudflare_zero_trust,
-            'CrowdStrike Falcon': settings.crowdstrike_falcon,
-            'Microsoft Defender for Endpoint': settings.microsoft_defender_for_endpoint,
-            'Microsoft Entra ID': settings.microsoft_entra_id,
-            'Microsoft Intune': settings.microsoft_intune,
-            'Sophos Central': settings.sophos_central,
-            'Qualys': settings.qualys,
-            'Tailscale': settings.tailscale,
-        }
-	except DeviceComplianceSettings.DoesNotExist:
-		return {}
-
+@lru_cache(maxsize=32)
 def complianceSettings(os_platform):
     try:
         settings = DeviceComplianceSettings.objects.get(os_platform=os_platform)

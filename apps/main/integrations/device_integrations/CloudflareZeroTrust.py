@@ -12,11 +12,11 @@ def getCloudflareZeroTrustDevices(access_token, tenant_id):
     url = 'https://api.cloudflare.com/client/v4/accounts/' + tenant_id +'/devices'
     headers = {'Authorization': 'Bearer ' + access_token,'Content-Type': 'application/json',}
     graph_result = requests.get(url=url, headers=headers)
-    print(graph_result.json())
     return graph_result.json()
 ######################################## End Get Cloudflare Zero Trust Devices ########################################
 ######################################## Start Update/Create Cloudflare Zero Trust Devices ########################################
 def updateCloudflareZeroTrustDeviceDatabase(total_cloudflare_zero_trust_results):
+    integration = Integration.objects.get(integration_type="Cloudflare Zero Trust")
     devices = total_cloudflare_zero_trust_results.get('result', [])
     for device_data in devices:
         hostname = (device_data.get('name') or device_data.get('hostname') or '').lower()
@@ -32,7 +32,7 @@ def updateCloudflareZeroTrustDeviceDatabase(total_cloudflare_zero_trust_results)
         }
 
         obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(Integration.objects.get(integration_type="Cloudflare Zero Trust"))
+        obj.integration.add(integration)
 
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])

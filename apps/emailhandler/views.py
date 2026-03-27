@@ -56,15 +56,15 @@ def enableEmailIntegration(request, id):
         integration_update.save()
         message = 'Email Integration Enabled Successfully (' + integration_update.integration_type + ')'
         messages.success(request, message)
-        createLog(request.session['session_id'], '1201', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Enabled', 'Success', message, request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+        createLog(request, '1201', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Enabled', 'Success', additional_data=message)
         return redirect ('system-integrations')
     except Exception as e:
         try:
             messages.error(request, '(' + integration_update.integration_type + ')' + ' (' + str(e) + ')' )
-            createLog(request.session['session_id'], '1202', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', '(' + integration_update.integration_type + ')' + ' (' + str(e) + ')', request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+            createLog(request, '1202', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', additional_data='(' + integration_update.integration_type + ')' + ' (' + str(e) + ')')
         except EmailIntegration.DoesNotExist:
             messages.error(request, 'Email Integration ID: ' + id + ' (' + str(e) + ')')
-            createLog(request.session['session_id'], '1202', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', 'Email Integration ID: ' + id + ' (' + str(e) + ')', request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+            createLog(request, '1202', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', additional_data='Email Integration ID: ' + id + ' (' + str(e) + ')')
         return redirect ('system-integrations')
 
 # Class Messages and Success / Error Logging Completed
@@ -76,15 +76,15 @@ def disableEmailIntegration(request, id):
         integration_update.save()
         message = 'Email Integration Disabled Successfully (' + integration_update.integration_type + ')'
         messages.success(request, message)
-        createLog(request.session['session_id'], '1203', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Success', message, request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+        createLog(request, '1203', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Success', additional_data=message)
         return redirect ('system-integrations')
     except Exception as e:
         try:
             messages.error(request, '(' + integration_update.integration_type + ')' + ' (' + str(e) + ')' )
-            createLog(request.session['session_id'], '1204', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', '(' + integration_update.integration_type + ')' + ' (' + str(e) + ')', request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+            createLog(request, '1204', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', additional_data='(' + integration_update.integration_type + ')' + ' (' + str(e) + ')')
         except EmailIntegration.DoesNotExist:
             messages.error(request, 'Email Integration ID: ' + id + ' (' + str(e) + ')')
-            createLog(request.session['session_id'], '1204', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', 'Email Integration ID: ' + id + ' (' + str(e) + ')', request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+            createLog(request, '1204', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Disabled', 'Failure', additional_data='Email Integration ID: ' + id + ' (' + str(e) + ')')
         return redirect ('system-integrations')
 
 # Class Messages and Success / Error Logging Completed
@@ -99,13 +99,13 @@ def updateEmailIntegration(request, id):
         integration_update.save()
         message = 'Email Integration Configured Successfully (' + integration_update.integration_type + ')'
         messages.success(request, message)
-        createLog(request.session['session_id'], '1205', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Configured', 'Success', message, request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+        createLog(request, '1205', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Configured', 'Success', additional_data=message)
         return redirect ('system-integrations')
     except Exception as e:
         try:
             messages.error(request, '(' + integration_update.integration_type + ')' + ' (' + str(e) + ')' )
-            createLog(request.session['session_id'], '1206', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Configured', 'Failure', '(' + integration_update.integration_type + ')' + ' (' + str(e) + ')', request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+            createLog(request, '1206', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Configured', 'Failure', additional_data='(' + integration_update.integration_type + ')' + ' (' + str(e) + ')')
         except EmailIntegration.DoesNotExist:
             messages.error(request, 'Email Integration ID: ' + id + ' (' + str(e) + ')')
-            createLog(request.session['session_id'], '1206', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Configured', 'Failure', 'Email Integration ID: ' + id + ' (' + str(e) + ')', request.session['user_id'], request.session['ip_address'], request.session['user_agent'], request.session['browser'], request.session['operating_system'])
+            createLog(request, '1206', 'Email Integration', 'Email Integration Event', "Admin", True, 'Email Integration Configured', 'Failure', additional_data='Email Integration ID: ' + id + ' (' + str(e) + ')')
         return redirect ('system-integrations')

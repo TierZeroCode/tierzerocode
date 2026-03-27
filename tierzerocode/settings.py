@@ -22,6 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY and not os.environ.get("DJANGO_DEV"):
+    raise RuntimeError("SECRET_KEY environment variable is not set. Refusing to start.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
@@ -43,8 +45,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_tasks', # Django tasks
+    'import_export',
+    # 'django_tasks', # Django tasks
     'django_rq', # Django RQ
+    'django_tasks_rq', # Django Tasks RQ backend
 ]
 
 MIDDLEWARE = [
@@ -98,8 +102,8 @@ else:
                 os.getenv('DATABASE_ENGINE', 'postgresql_psycopg2')
             ),
             'NAME': os.getenv('DATABASE_NAME', 'dockerdjango'),
-            'USER': os.getenv('DATABASE_USER', 'dbuser'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD', 'dbpassword'),
+            'USER': os.environ.get('DATABASE_USER'),
+            'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
             'HOST': os.getenv('DATABASE_HOST', 'db'),
             'PORT': os.getenv('DATABASE_PORT', 5432),
         }
@@ -160,7 +164,7 @@ if os.environ.get("DJANGO_DEV"):
 else:
     TASKS = {
         'default': {
-            'BACKEND': 'django_tasks.backends.rq.RQBackend',
+            'BACKEND': 'django_tasks_rq.RQBackend',
             'QUEUES': ['default'],
         }
     }
@@ -228,10 +232,13 @@ SECURE_SSL_REDIRECT = False
 CSRF_COOKIE_SECURE = USE_HTTPS
 SESSION_COOKIE_SECURE = USE_HTTPS
 
-# HSTS disabled behind reverse proxies to avoid issues; proxy should manage HSTS headers instead
-SECURE_HSTS_SECONDS = 0
-SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-SECURE_HSTS_PRELOAD = False
+# HSTS settings — enable in production behind SSL-terminating proxies
+SECURE_HSTS_SECONDS = 31536000 if USE_HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = USE_HTTPS
+SECURE_HSTS_PRELOAD = USE_HTTPS
+
+# Content Security Policy — restrict resource loading to same-origin
+SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Generate CSRF_TRUSTED_ORIGINS from ALLOWED_HOSTS using both http/https and common ports
 CSRF_TRUSTED_ORIGINS = []
@@ -258,3 +265,45 @@ for host in ALLOWED_HOSTS:
 
 # Remove duplicates while preserving order
 CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
+
+
+# Define the log path dynamically, just like in your script
+if os.environ.get("DJANGO_DEV"):
+    AUDIT_LOG_PATH = 'tierzerocode.log'
+else:
+    AUDIT_LOG_PATH = os.path.join('/app', 'tierzerocode.log')
+    
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        # We use a 'raw' formatter because you are building the key=value string yourself
+        'raw_message': {
+            'format': '{message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'raw_message',
+        },
+        'audit_file': {
+            'level': 'INFO',
+            # using WatchedFileHandler is better for Linux/Docker than standard FileHandler
+            'class': 'logging.handlers.WatchedFileHandler', 
+            'filename': AUDIT_LOG_PATH,
+            'formatter': 'raw_message',
+        },
+    },
+    'loggers': {
+        # This is the specific logger for your audit function
+        'tierzerocode_audit': {
+            'handlers': ['console', 'audit_file'],
+            'level': 'INFO',
+            'propagate': False, # Don't send this to the main django logs
+        },
+    },
+}

@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
+from django.http import HttpResponseForbidden
 # Import Django User Model
 from django.contrib.auth.models import User
 # Import Models
@@ -26,7 +27,6 @@ def unclaimed(request):
 def login_page(request):
     if request.user.is_authenticated:
         return redirect('index')
-    startSession(request)
     enabled_sso = getEnabledSSOIntegrations()
     context = {
         'sso': bool(enabled_sso),
@@ -37,19 +37,31 @@ def login_page(request):
 ############################################################################################
 
 def accountcreation(request):
+	# Security: If users already exist, require authentication and superuser status
+	is_initial_setup = not User.objects.exists()
+	if not is_initial_setup:
+		if not request.user.is_authenticated:
+			return redirect('login')
+		if not request.user.is_superuser:
+			return HttpResponseForbidden("You do not have permission to create users.")
+
 	user_email = request.POST.get('email').lower()
 	user_first_name = request.POST.get('firstName')
 	user_last_name = request.POST.get('lastName')
 
 	if not user_email or not user_first_name or not user_last_name:
 		messages.warning(request, 'Info Missing from User Creation Form')
-		return redirect(reverse('general-settings') + '#user-management')  # Redirect to an error page if required data is missing
-	
+		return redirect(reverse('general-settings') + '#user-management')
+
 	if User.objects.filter(email = user_email):
 		messages.warning(request, 'User with Email Already Exists (Ensure SSO Users are not Local Users)')
 		return redirect(reverse('general-settings') + '#user-management')
-	
-	user = User.objects.create_superuser(user_email, user_email)
+
+	# First user gets superuser; subsequent users get staff only
+	if is_initial_setup:
+		user = User.objects.create_superuser(user_email, user_email)
+	else:
+		user = User.objects.create_user(user_email, user_email, is_staff=True)
 	user.first_name = user_first_name
 	user.last_name = user_last_name
 
@@ -65,10 +77,7 @@ def accountcreation(request):
 	else:
 		user_password = generate_random_password()
 		user.set_password(user_password)
-	try:
-		messages.info(request, 'User Created Successfully' + ' Password: ' + user_password)
-	except Exception as e:
-		messages.warning(request, 'User Created Successfully')
+	messages.info(request, 'User Created Successfully')
 	user.save()
 	return redirect(reverse('general-settings') + '#user-management')
 

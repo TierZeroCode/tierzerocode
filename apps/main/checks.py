@@ -1,6 +1,5 @@
 from apps.main.models import DeviceComplianceSettings, Integration
 from django.contrib.auth.models import User
-from django.shortcuts import redirect
 
 # Configuration for required integrations and settings
 #X6969
@@ -51,7 +50,6 @@ def systemDeviceInitialSetup():
 			image_navbar_path=image_paths['navbar'],
 			image_integration_path=image_paths['integration']
 		)
-	return redirect('index')
 
 def systemUserInitialSetup():
 	"""Create missing system integrations with default values."""
@@ -68,7 +66,6 @@ def systemUserInitialSetup():
 			image_navbar_path=image_paths['navbar'],
 			image_integration_path=image_paths['integration']
 		)
-	return redirect('index')
 
 def deviceComplianceSettingsInitialSetup():
 	"""Create missing device compliance settings with default values."""
@@ -76,4 +73,3 @@ def deviceComplianceSettingsInitialSetup():
 		if DeviceComplianceSettings.objects.filter(os_platform=os_platform).exists():
 			continue
 		DeviceComplianceSettings.objects.create(os_platform=os_platform)
-	return redirect('index')

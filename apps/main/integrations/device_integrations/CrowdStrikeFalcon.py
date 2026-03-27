@@ -1,6 +1,9 @@
 # Import Dependencies
+import logging
 import requests
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 # Import Models
 from apps.main.models import Integration, Device, CrowdStrikeFalconDeviceData, DeviceComplianceSettings
 # Import Function Scripts
@@ -13,13 +16,14 @@ def getCrowdStrikeAccessToken(client_id, client_secret, tenant_id):
     auth_payload = {'client_id': client_id, 'client_secret': client_secret}
     try:
         response = requests.post(auth_url, data=auth_payload)
-        if response.status_code == 200 or response.status_code == 201:
+        if response.status_code in (200, 201):
             return 'Bearer ' + response.json()['access_token']
         else:
-            print("Failed to authenticate. Status code:", response.status_code)
-            print("Response:", response.text)
+            logger.error("CrowdStrike auth failed. Status: %s", response.status_code)
+            return {'error': f'Authentication failed with status {response.status_code}'}
     except Exception as e:
-        print("An error occurred:", str(e))
+        logger.error("CrowdStrike auth error: %s", str(e))
+        return {'error': str(e)}
 ######################################## End Get CrowdStrike Falcon Access Token ########################################
 
 ######################################## Start Get CrowdStrike Falcon Devices ########################################
@@ -28,44 +32,26 @@ def getCrowdStrikeDevices(access_token, tenant_id):
     headers = {'Authorization': access_token}
     crowdstrike_aids = ((requests.get(url=url, headers=headers)).json())['resources']
 
-    total_devices = len(crowdstrike_aids)
-    total_devices_count = total_devices
-    device_pagination_arr = [0]
-    while total_devices_count > 0:
-        if total_devices_count > 5000 and len(device_pagination_arr) == 0:
-            device_pagination_arr.append(5000)
-            total_devices_count -= 5000
-        elif total_devices_count < 5000 and len(device_pagination_arr) == 0:
-            device_pagination_arr.append(total_devices_count)
-            total_devices_count = 0
-        elif total_devices_count > 5000:
-            device_pagination_arr.append(5000 + device_pagination_arr[-1])
-            total_devices_count -= 5000
-        elif total_devices_count < 5000:
-            device_pagination_arr.append(total_devices_count + device_pagination_arr[-1])
-            total_devices_count = 0
-            
+    # Fetch device details in batches of 5000
     total_crowdstrike_results = []
-    for pagination_arr in range(len(device_pagination_arr)):
-        print(device_pagination_arr[pagination_arr])
-        if pagination_arr == 0:
-            pass
-        else:
-            url = f'{tenant_id}/devices/entities/devices/v2'
-            headers = {
-                'accept': 'application/json',
-                'Authorization': access_token,
-                'Content-Type': 'application/json',
-            }
-            body = {'ids': crowdstrike_aids[device_pagination_arr[pagination_arr-1]:device_pagination_arr[pagination_arr]]}
-            crowdstrike_result = requests.post(url=url, headers=headers, json=body)
-            total_crowdstrike_results.append(crowdstrike_result.json())
+    batch_size = 5000
+    for i in range(0, len(crowdstrike_aids), batch_size):
+        batch_ids = crowdstrike_aids[i:i + batch_size]
+        detail_url = f'{tenant_id}/devices/entities/devices/v2'
+        detail_headers = {
+            'accept': 'application/json',
+            'Authorization': access_token,
+            'Content-Type': 'application/json',
+        }
+        result = requests.post(url=detail_url, headers=detail_headers, json={'ids': batch_ids})
+        total_crowdstrike_results.append(result.json())
 
     return total_crowdstrike_results
 ######################################## End Get CrowdStrike Falcon Devices ########################################
 
 ######################################## Start Update/Create CrowdStrike Falcon Devices ########################################
 def updateCrowdStrikeDeviceDatabase(total_crowdstrike_results):
+    integration = Integration.objects.get(integration_type="CrowdStrike Falcon")
     for crowdstrike_results in total_crowdstrike_results:
         for device_data in crowdstrike_results['resources']:
             if device_data.get('hostname') is None or device_data.get('os_version') is None:
@@ -83,7 +69,7 @@ def updateCrowdStrikeDeviceDatabase(total_crowdstrike_results):
             }
 
             obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-            obj.integration.add(Integration.objects.get(integration_type="CrowdStrike Falcon"))
+            obj.integration.add(integration)
 
             # Check compliance: device must have ALL required integrations
             compliance_settings = complianceSettings(clean_data[0])

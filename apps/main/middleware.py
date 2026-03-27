@@ -1,67 +1,51 @@
 from django.shortcuts import redirect
-# from django.core.cache import cache
+from django.core.cache import cache
 from .checks import checkSystemDeviceIntegrations, checkSystemUserIntegrations, checkDeviceComplianceSettings, systemDeviceInitialSetup, systemUserInitialSetup, deviceComplianceSettingsInitialSetup
+
+CACHE_KEY = 'model_verification_status'
+CACHE_TTL = 60  # seconds
 
 class ModelVerificationMiddleware:
     """
     Middleware to verify required models exist and redirect to setup if needed.
     Uses caching to avoid repeated database queries on every request.
     """
-    
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # Skip verification for setup pages to avoid redirect loops
-        setup_paths = [
-            # '/admin/system-initial-setup', 
-            # '/admin/general-setting-initial-setup',
-            # '/admin/login',
-            # '/admin/logout',
-            # '/admin/unclaimed',
-            # '/debug'
-        ]
-        
-        if any(request.path.startswith(path) for path in setup_paths):
-            response = self.get_response(request)
-            return response
+        # Skip verification for non-authenticated or non-staff users
+        if not hasattr(request, 'user') or not request.user.is_authenticated or not request.user.is_staff:
+            return self.get_response(request)
 
-        # Check if user is authenticated and is staff (only verify for admin users)
-        # if not (request.user.is_authenticated and request.user.is_staff):
-        #     response = self.get_response(request)
-        #     return response
+        # Skip verification for static files and login paths
+        skip_paths = ['/static/', '/identity/']
+        if any(request.path.startswith(path) for path in skip_paths):
+            return self.get_response(request)
 
-        # Perform verification checks
-        verification_status = self._perform_model_verification_checks()
-        
+        # Check cache first — avoid 3 DB queries on every request
+        verification_status = cache.get(CACHE_KEY)
+        if verification_status is None:
+            verification_status = self._perform_model_verification_checks()
+            cache.set(CACHE_KEY, verification_status, CACHE_TTL)
+
         if verification_status['system_device_integrations']:
             systemDeviceInitialSetup()
+            cache.delete(CACHE_KEY)
         if verification_status['system_user_integrations']:
             systemUserInitialSetup()
+            cache.delete(CACHE_KEY)
         if verification_status['device_compliance_settings']:
             deviceComplianceSettingsInitialSetup()
-        response = self.get_response(request)
-        return response
+            cache.delete(CACHE_KEY)
+
+        return self.get_response(request)
 
     def _perform_model_verification_checks(self):
         """Perform all verification checks and return status."""
-        results = {
-            'user_count': False,
-            'system_device_integrations': False,
-            'system_user_integrations': False,
-            'device_compliance_settings': False,
+        return {
+            'system_device_integrations': not checkSystemDeviceIntegrations(),
+            'system_user_integrations': not checkSystemUserIntegrations(),
+            'device_compliance_settings': not checkDeviceComplianceSettings(),
         }
-        
-        # Check system integrations
-        if not checkSystemDeviceIntegrations():
-            results['system_device_integrations'] = True
-        
-        # Check general settings
-        if not checkSystemUserIntegrations():
-            results['system_user_integrations'] = True
-        
-        # Check device compliance settings
-        if not checkDeviceComplianceSettings():
-            results['device_compliance_settings'] = True
-        
-        return results

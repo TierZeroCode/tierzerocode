@@ -1,6 +1,8 @@
 import logging
+import secrets
 from django.contrib.auth.models import User
 from django.contrib.auth.backends import BaseBackend
+from django.utils.http import url_has_allowed_host_and_scheme
 from apps.authhandler.models import SSOIntegration
 from apps.logger.views import createLog
 from urllib.parse import urlencode, quote_plus, urlparse, urlunparse
@@ -15,7 +17,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
             # Get Entra ID configuration
             sso_config = self._get_sso_config()
             if not sso_config or not sso_config.enabled:
-                createLog(request.session['session_id'],'1503', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', "Microsoft Entra ID SSO is not enabled or configured", None, getattr(request, 'META', {}).get('REMOTE_ADDR'), getattr(request, 'META', {}).get('HTTP_USER_AGENT'), None, None)
+                createLog(request, '1503', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data="Microsoft Entra ID SSO is not enabled or configured")
                 return None
             
             try:
@@ -32,7 +34,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
             
             # Log authentication failure
             if hasattr(request, 'session') and 'session_id' in request.session:
-                createLog(request.session['session_id'],'1502', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', f"Authentication failed: {str(e)}", None, getattr(request, 'META', {}).get('REMOTE_ADDR'), getattr(request, 'META', {}).get('HTTP_USER_AGENT'), None, None)
+                createLog(request, '1502', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"Authentication failed: {str(e)}")
             return None
     
     def get_user(self, user_id):
@@ -59,9 +61,13 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 # Generate SSO login URL
                 auth_url = self._generate_sso_auth_url(request, user, sso_config)
                 
-                # Store the redirect URL in session for after SSO callback
+                # Store the redirect URL in session for after SSO callback (validate to prevent open redirect)
                 if hasattr(request, 'session'):
-                    request.session['sso_redirect_url'] = request.GET.get('next', '/')
+                    next_url = request.GET.get('next', '/')
+                    if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                        request.session['sso_redirect_url'] = next_url
+                    else:
+                        request.session['sso_redirect_url'] = '/'
                 
                 # Return a special response that indicates SSO redirect needed
                 # We'll use a custom attribute to signal this
@@ -90,6 +96,11 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 # redirect_uri = urlunparse(urlparse(request.build_absolute_uri("/admin/azure/callback/"))._replace(scheme="https"))
                 redirect_uri = urlunparse(urlparse(request.build_absolute_uri("/identity/azure/callback/"))._replace(scheme="https"))
             
+            # Generate cryptographic state nonce for CSRF protection
+            oauth_state = secrets.token_urlsafe(32)
+            if hasattr(request, 'session'):
+                request.session['oauth_state'] = oauth_state
+
             # OAuth2 parameters
             params = {
                 'client_id': sso_config.client_id,
@@ -97,7 +108,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 'redirect_uri': redirect_uri,
                 'response_mode': 'query',
                 'scope': 'openid profile email',
-                'state': 'random_state_string'
+                'state': oauth_state
             }
             
             # Build authorization URL with user's email as login hint
@@ -135,11 +146,10 @@ class MicrosoftEntraIDBackend(BaseBackend):
             
             response = requests.post(token_url, data=data)
             
-            # Log detailed error information for debugging
+            # Log error information for debugging (never log client_secret or tokens)
             if response.status_code != 200:
                 logger.error(f"Token exchange failed with status {response.status_code}")
-                logger.error(f"Response content: {response.text}")
-                logger.error(f"Request data: {data}")
+                logger.error(f"Token exchange failed for client_id={sso_config.client_id}, tenant_id={sso_config.tenant_id}")
                 return None
                 
             response.raise_for_status()
@@ -189,15 +199,32 @@ class MicrosoftEntraIDBackend(BaseBackend):
     
     def _extract_user_info_from_id_token(self, id_token):
         """
-        Description: Extract user information from ID token as fallback.   
+        Description: Extract user information from ID token with signature verification.
         Returns: Dict containing user information or None if failed
         """
         try:
             import jwt
-            
-            # Decode without verification to extract claims
-            payload = jwt.decode(id_token, options={"verify_signature": False})
-            
+            from jwt import PyJWKClient
+
+            # Get SSO config for tenant_id and client_id
+            sso_config = self._get_sso_config()
+            if not sso_config:
+                logger.error("Cannot validate ID token: SSO configuration not found")
+                return None
+
+            # Verify signature against Microsoft's published JWKS
+            jwks_url = f"https://login.microsoftonline.com/{sso_config.tenant_id}/discovery/v2.0/keys"
+            jwks_client = PyJWKClient(jwks_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+
+            payload = jwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=sso_config.client_id,
+                issuer=f"https://login.microsoftonline.com/{sso_config.tenant_id}/v2.0",
+            )
+
             # Extract user information from ID token claims
             user_info = {
                 'id': payload.get('oid'),  # Object ID
@@ -207,12 +234,12 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 'surname': payload.get('family_name'),
                 'displayName': payload.get('name'),
             }
-            
+
             logger.info(f"Successfully extracted user info from ID token for: {user_info.get('userPrincipalName')}")
             return user_info
-            
+
         except Exception as e:
-            logger.error(f"Error extracting user info from ID token: {str(e)}")
+            logger.error(f"Error extracting/validating ID token: {str(e)}")
             return None
     
     def handle_entra_id_callback(self, request):
@@ -233,7 +260,15 @@ class MicrosoftEntraIDBackend(BaseBackend):
             # Get authorization code from callback
             code = request.GET.get('code')
             state = request.GET.get('state')
-            
+
+            # Validate OAuth state parameter to prevent CSRF
+            expected_state = request.session.pop('oauth_state', None)
+            if not state or state != expected_state:
+                logger.warning(f"OAuth state mismatch: expected={expected_state}, received={state}")
+                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data='OAuth state parameter mismatch - possible CSRF attack')
+                messages.error(request, 'Authentication failed: invalid state parameter. Please try again.')
+                return redirect('login')
+
             if not code:
                 messages.error(request, 'No authorization code received from Microsoft Entra ID')
                 return redirect('login')
@@ -303,10 +338,10 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 if request.user.is_authenticated:
                     print (f"User {user.username} logged in successfully")
                 
-                # Get redirect URL from session
-                redirect_url = request.session.get('sso_redirect_url', '/')
-                if 'sso_redirect_url' in request.session:
-                    del request.session['sso_redirect_url']
+                # Get redirect URL from session (validate to prevent open redirect)
+                redirect_url = request.session.pop('sso_redirect_url', '/')
+                if not url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+                    redirect_url = '/'
                 
                 messages.success(request, f"Welcome back, {user.first_name or user.username}!")
                 

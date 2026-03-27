@@ -1,6 +1,9 @@
 # Import Dependencies
+import logging
 import requests, json, xmltodict
-from datetime import datetime
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 # Import Models
 from ...models import QualysDevice, Integration, Device, DeviceComplianceSettings
 # Import Functions Scripts
@@ -37,10 +40,11 @@ def getQualysAccessToken(client_id, client_secret, tenant_id):
             # Print the access token (or use it for further API requests)
             return s
         else:
-            print("Failed to authenticate. Status code:", response.status_code)
-            print("Response:", response.text)
+            logger.error("Qualys auth failed. Status: %s", response.status_code)
+            return None
     except Exception as e:
-        print("An error occurred:", str(e))
+        logger.error("Qualys auth error: %s", str(e))
+        return None
 
 def getQualysLogout(s):
     url = 'https://qualysapi.qualys.com/api/2.0/fo/session/'
@@ -55,10 +59,8 @@ def getQualysLogout(s):
     # Make a GET request to the provided url, passing the access token in a header
     api_result = s.post(url=url, headers=headers, data=auth_payload)
 
-    if api_result.status_code == 200:
-        print("Logout Successful")
-    else:
-        print("Failed to Logout. Status code:", api_result.status_code)
+    if api_result.status_code != 200:
+        logger.error("Qualys logout failed. Status: %s", api_result.status_code)
 
 def getQualysDevices(s):
     url = 'https://qualysapi.qualys.com/api/2.0/fo/asset/host/?action=list'
@@ -66,25 +68,21 @@ def getQualysDevices(s):
         'X-Requested-With': 'Tier Zero Code',
         'Content-Type': 'application/json',
     }
-    auth_payload = {
-        'action': 'list',
-    }
 
-    # Make a GET request to the provided url, passing the access token in a header
-    api_result = s.get(url=url, headers=headers)
+    try:
+        api_result = s.get(url=url, headers=headers)
 
-    if api_result.status_code == 200:
-        xml_parse = xmltodict.parse(api_result.text)
-
-        # Print the results in a JSON format
+        if api_result.status_code == 200:
+            xml_parse = xmltodict.parse(api_result.text)
+            return xml_parse
+        else:
+            logger.error("Qualys failed to fetch assets. Status: %s", api_result.status_code)
+            return None
+    finally:
         getQualysLogout(s)
-        return (xml_parse)
-    else:
-        print("Failed to fetch assets. Status code:", api_result.status_code)
-        getQualysLogout(s)
-        return None
 
 def updateQualysDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Qualys")
     host_list = json_data.get("HOST_LIST_OUTPUT", {}).get("RESPONSE", {}).get("HOST_LIST", {}).get("HOST", [])
     for host_data in host_list:
         # device_id = host_data.get("ID")
@@ -102,7 +100,7 @@ def updateQualysDeviceDatabase(json_data):
         }
         
         device, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        device.integration.add(Integration.objects.get(integration_type="Qualys"))
+        device.integration.add(integration)
         
         # Check compliance: device must have ALL required integrations
         compliance_settings = complianceSettings(clean_data[0])
@@ -125,6 +123,6 @@ def syncQualys():
     tenant_id = data.tenant_id
     tenant_domain = data.tenant_domain
     updateQualysDeviceDatabase(getQualysDevices(getQualysAccessToken(client_id, client_secret, tenant_id)))
-    data.last_synced_at = datetime.now()
+    data.last_synced_at = timezone.now()
     data.save()
     return True

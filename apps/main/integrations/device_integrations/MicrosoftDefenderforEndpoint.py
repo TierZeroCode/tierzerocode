@@ -1,12 +1,10 @@
 # Import Dependencies
-import requests, time, json
 from django.utils import timezone
 # Import Models
 from apps.main.models import Integration, Device, MicrosoftDefenderforEndpointDeviceData, DeviceComplianceSettings
 # Import Function Scripts
-from apps.main.integrations.device_integrations.ReusedFunctions import *
+from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
-from apps.main.integrations.device_integrations.ReusedFunctions import complianceSettings
 
 def _truncate_string(value, max_length=200):
     """Truncate string to max_length if it exceeds the limit."""
@@ -16,26 +14,6 @@ def _truncate_string(value, max_length=200):
     if len(str_value) > max_length:
         return str_value[:max_length]
     return str_value
-
-def _fetch_paginated_data(url, headers, max_retries=5, retry_delay=1):
-    """Generic function to fetch paginated data with retry logic."""
-    results = []
-    while url:
-        for attempt in range(max_retries):
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                results.extend(data.get('value', []))
-                url = data.get('@odata.nextLink')
-                break
-            elif response.status_code == 429:  # Throttling error
-                retry_after = int(response.headers.get('Retry-After', retry_delay))
-                time.sleep(retry_after)
-            else:
-                raise Exception(f"Failed to fetch data: {response.status_code} - {response.text}")
-        else:
-            raise Exception("Max retries exceeded while fetching data.")
-    return results
 
 ######################################## Start Get Microsoft Defender for Endpoint Devices ########################################
 def getMicrosoftDefenderforEndpointDevices(access_token):
@@ -47,6 +25,7 @@ def getMicrosoftDefenderforEndpointDevices(access_token):
 
 ######################################## Start Update/Create Microsoft Defender for Endpoint Devices ########################################
 def updateMicrosoftDefenderforEndpointDeviceDatabase(json_data):
+    integration = Integration.objects.get(integration_type="Microsoft Defender for Endpoint")
     for device_data in json_data:
         if device_data.get('onboardingStatus') == 'Onboarded' and not device_data.get('healthStatus') == 'Inactive':
             computer_dns_name = device_data.get('computerDnsName')
@@ -65,7 +44,7 @@ def updateMicrosoftDefenderforEndpointDeviceDatabase(json_data):
             }
 
             obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-            obj.integration.add(Integration.objects.get(integration_type = "Microsoft Defender for Endpoint"))
+            obj.integration.add(integration)
 
             # Check compliance: device must have ALL required integrations
             os_platform = clean_data[0]
