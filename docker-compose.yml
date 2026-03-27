@@ -57,6 +57,12 @@ services:
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
              python -m gunicorn --bind 0.0.0.0:8000 --workers ${TZC_GUNICORN_WORKERS:-3} --timeout 300 tierzerocode.wsgi:application"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/identity/login\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   worker:
     image: docker.io/andrewixl/tierzerocode:latest
@@ -78,14 +84,10 @@ services:
       - REDIS_PORT=${TZC_REDIS_PORT:-6379}
       - REDIS_DB=${TZC_REDIS_DB:-0}
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
+      web:
         condition: service_healthy
     restart: unless-stopped
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler"
+    command: python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler
 
 volumes:
   postgres_data:
