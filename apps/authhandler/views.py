@@ -51,12 +51,12 @@ def azure_callback(request):
 def logoutUser(request):
     try:
         data = {
-            'session_id': request.session['session_id'],
-            'user_id': request.session['user_id'],
-            'ip_address': request.session['ip_address'],
-            'user_agent': request.session['user_agent'],
-            'browser': request.session['browser'],
-            'operating_system': request.session['operating_system']
+            'session_id': request.session.get('session_id', 'unknown'),
+            'user_id': request.session.get('user_id', 'unknown'),
+            'ip_address': request.session.get('ip_address', 'unknown'),
+            'user_agent': request.session.get('user_agent', 'unknown'),
+            'browser': request.session.get('browser', 'unknown'),
+            'operating_system': request.session.get('operating_system', 'unknown')
         }
         if request.user.has_usable_password() == False:
             response = MicrosoftEntraIDBackend().logout(request)
