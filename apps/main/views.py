@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q
 from django.forms.models import model_to_dict
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -30,6 +30,9 @@ user_integration_names = ['Microsoft Entra ID']
 #X6969
 integration_names_short = ['Cloudflare', 'CrowdStrike', 'Defender', 'Entra ID', 'Intune', 'Sophos', 'Qualys', 'Tailscale']
 user_integration_names_short = ['Entra ID']
+
+VALID_DEVICE_INTEGRATION_SLUGS = {'microsoft-entra-id', 'microsoft-intune', 'microsoft-defender-for-endpoint', 'crowdstrike-falcon', 'tailscale', 'cloudflare-zero-trust', 'qualys', 'sophos-central'}
+VALID_USER_INTEGRATION_SLUGS = {'microsoft-entra-id'}
 os_platforms = ['Android', 'iOS/iPadOS', 'MacOS', 'Ubuntu', 'Windows', 'Windows Server', 'Other']
 endpoint_types = ['Client', 'Mobile', 'Server', 'Other']
 
@@ -255,7 +258,7 @@ def index(request):
 	
 	context = {
 		'page': 'dashboard',
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'count_users': count_users,
 		'count_guests': guests,
 		'count_groups': groups,
@@ -321,7 +324,7 @@ def indexDevice(request):
 		'page': 'device-dashboard',
 		'enabled_integrations': enabled_integrations,
 		'enabled_user_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'endpoint_device_counts': integration_device_counts,
 		'osPlatformLabels': os_platforms,
 		'osPlatformData': osPlatformData,
@@ -382,7 +385,7 @@ def indexUser(request):
 	context = {
 		'page': 'user-dashboard',
 		# 'enabled_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'count_duplicate_persona': count_duplicate_persona,
 		'count_unknown_persona': count_unknown_persona,
         'auth_method_labels': ['Phishing Resistant', 'Passwordless', 'MFA', 'Deprecated', 'None'],
@@ -457,7 +460,7 @@ def personaMetrics(request, persona_id):
 	context = {
 		'page': 'user-dashboard',
 		'enabled_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'persona': persona_obj,
 		'persona_name': persona_name,
 		'persona_count': users.count(),
@@ -497,7 +500,7 @@ def personaMetrics(request, persona_id):
         'count_passwordless_capable_data': [passwordless_capable_count, non_passwordless_capable_count],
 
 		'auth_strengths': ['None', 'MFA', 'Passwordless', 'Phishing Resistant', 'Deprecated'],
-        'personas': ['Internal Worker', 'Internal Admin', 'External Worker', 'External Admin', 'Hourly Worker', 'Test Account', 'Robot Account', 'Shared Admin', 'OnPrem Internal Admin', 'OnPrem External Admin', 'Service Account Non-Interactive', 'Service Account Interactive', 'OnPrem Service Account Non-Interactive', 'OnPrem Service Account Interactive', 'Unknown', 'DUPLICATE'],
+        'personas': list(Persona.objects.values_list('persona_name', flat=True).order_by('priority')),
 		'user_list':user_list,
     }
 	return render(request, 'main/persona-metrics.html', context)
@@ -539,7 +542,7 @@ def generalSettings(request):
 	context = {
 		'page': "general-settings",
 		'enabled_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'devicecomps': compliance_settings,  # Use the new structured data
 		'compliance_summary': compliance_summary,
 		'compliance_report': compliance_report,
@@ -611,7 +614,7 @@ def deviceData(request, id):
 		'page': 'device-data',
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'device': device,
 		'ints': integrations,
 		**integration_device_data,
@@ -654,7 +657,7 @@ def masterList(request):
 		'page':"master-list",
 		'enabled_integrations': enabled_integrations,
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'endpoint_list':endpoint_list,
 		'os_platforms': os_platforms,
 		'endpoint_types': endpoint_types,
@@ -672,7 +675,7 @@ def userMasterList(request):
 
 	context = {
 		'page':"master-list-user",
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'auth_strengths': ['None', 'MFA', 'Passwordless', 'Phishing Resistant', 'Deprecated'],
 		'personas': Persona.objects.all().order_by('priority', 'persona_name'),
 		'user_list':user_list,
@@ -837,7 +840,7 @@ def endpointList(request, integration):
 		'page':integration,
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'integration':integration_clean.title(),
 		'endpoint_list':endpoint_list,
 	}
@@ -866,10 +869,9 @@ def integrations(request):
 			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
 	context = {
 		'page':'integrations',
-		'notifications': Notification.objects.all(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.all(),
 		'deviceIntegrationStatuses':deviceIntegrationStatuses,
 		'userIntegrationStatuses':userIntegrationStatuses,
 	}
@@ -929,6 +931,8 @@ from apps.main.tasks import deviceIntegrationSyncTask, microsoftEntraIDUserSyncT
 
 @login_required
 def syncDevices(request, integration):
+	if integration not in VALID_DEVICE_INTEGRATION_SLUGS:
+		return HttpResponseBadRequest("Invalid integration")
 	user_email = request.session.get('user_email', 'unknown') if hasattr(request, 'session') else 'unknown'
 	ip_address = request.META.get('REMOTE_ADDR', 'unknown') if hasattr(request, 'META') else 'unknown'
 	user_agent = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
@@ -950,6 +954,8 @@ def syncDevices(request, integration):
 
 @login_required
 def syncUsers(request, integration):
+	if integration not in VALID_USER_INTEGRATION_SLUGS:
+		return HttpResponseBadRequest("Invalid integration")
 	user_email = request.session.get('user_email', 'unknown') if hasattr(request, 'session') else 'unknown'
 	ip_address = request.META.get('REMOTE_ADDR', 'unknown') if hasattr(request, 'META') else 'unknown'
 	user_agent = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'

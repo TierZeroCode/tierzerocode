@@ -32,38 +32,19 @@ def getCrowdStrikeDevices(access_token, tenant_id):
     headers = {'Authorization': access_token}
     crowdstrike_aids = ((requests.get(url=url, headers=headers)).json())['resources']
 
-    total_devices = len(crowdstrike_aids)
-    total_devices_count = total_devices
-    device_pagination_arr = [0]
-    while total_devices_count > 0:
-        if total_devices_count > 5000 and len(device_pagination_arr) == 0:
-            device_pagination_arr.append(5000)
-            total_devices_count -= 5000
-        elif total_devices_count < 5000 and len(device_pagination_arr) == 0:
-            device_pagination_arr.append(total_devices_count)
-            total_devices_count = 0
-        elif total_devices_count > 5000:
-            device_pagination_arr.append(5000 + device_pagination_arr[-1])
-            total_devices_count -= 5000
-        elif total_devices_count < 5000:
-            device_pagination_arr.append(total_devices_count + device_pagination_arr[-1])
-            total_devices_count = 0
-            
+    # Fetch device details in batches of 5000
     total_crowdstrike_results = []
-    for pagination_arr in range(len(device_pagination_arr)):
-        print(device_pagination_arr[pagination_arr])
-        if pagination_arr == 0:
-            pass
-        else:
-            url = f'{tenant_id}/devices/entities/devices/v2'
-            headers = {
-                'accept': 'application/json',
-                'Authorization': access_token,
-                'Content-Type': 'application/json',
-            }
-            body = {'ids': crowdstrike_aids[device_pagination_arr[pagination_arr-1]:device_pagination_arr[pagination_arr]]}
-            crowdstrike_result = requests.post(url=url, headers=headers, json=body)
-            total_crowdstrike_results.append(crowdstrike_result.json())
+    batch_size = 5000
+    for i in range(0, len(crowdstrike_aids), batch_size):
+        batch_ids = crowdstrike_aids[i:i + batch_size]
+        detail_url = f'{tenant_id}/devices/entities/devices/v2'
+        detail_headers = {
+            'accept': 'application/json',
+            'Authorization': access_token,
+            'Content-Type': 'application/json',
+        }
+        result = requests.post(url=detail_url, headers=detail_headers, json={'ids': batch_ids})
+        total_crowdstrike_results.append(result.json())
 
     return total_crowdstrike_results
 ######################################## End Get CrowdStrike Falcon Devices ########################################

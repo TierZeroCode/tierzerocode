@@ -28,7 +28,7 @@ class Device(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True)
 
     def __str__(self):
-        return self.hostname
+        return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class DeviceComplianceSettings(models.Model):
     os_platform = models.CharField(max_length=200, null=True)
@@ -110,7 +110,7 @@ class CloudflareZeroTrustDeviceData(models.Model):
         verbose_name_plural = "Cloudflare Zero Trust Devices"
 
     def __str__(self):
-        return self.hostname
+        return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class CrowdStrikeFalconDeviceData(models.Model):
     id = models.CharField(max_length=200, primary_key=True)
@@ -202,7 +202,7 @@ class CrowdStrikeFalconDeviceData(models.Model):
         verbose_name_plural = "CrowdStrike Falcon Devices"
 
     def __str__(self):
-        return self.hostname
+        return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class MicrosoftEntraIDDeviceData(models.Model):
     id = models.CharField(max_length=200, primary_key=True)
@@ -338,7 +338,7 @@ class SophosCentralDeviceData(models.Model):
         verbose_name_plural = "Sophos Central Devices"
 
     def __str__(self):
-        return self.hostname
+        return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class MicrosoftDefenderforEndpointDeviceData(models.Model):
     id = models.CharField(max_length=200, primary_key=True)
@@ -398,7 +398,7 @@ class QualysDevice(models.Model):
         verbose_name_plural = "Qualys Devices"
 
     def __str__(self):
-        return self.hostname
+        return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class TailscaleDeviceData(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
@@ -430,7 +430,7 @@ class TailscaleDeviceData(models.Model):
         verbose_name_plural = "Tailscale Devices"
 
     def __str__(self):
-        return self.hostname
+        return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class Persona(models.Model):
     persona_name = models.CharField(max_length=200, null=True)
