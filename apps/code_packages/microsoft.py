@@ -141,7 +141,7 @@ class MicrosoftEntraIDUser:
             graph_result = requests.post(url=url, headers=headers, json=body)
             graph_data = graph_result.json()
             try:
-                createLog(request, '1703', 'Application', 'Manage ID', "Unauthenticated", False, 'TAP Code Generation', 'Success', additional_data=self.userPrincipalName + " - " + graph_data.get('temporaryAccessPass', ''))
+                createLog(request, '1703', 'Application', 'Manage ID', "Unauthenticated", False, 'TAP Code Generation', 'Success', additional_data=self.userPrincipalName + " - TAP Issued")
             except Exception as e:
                 # Log error
                 pass

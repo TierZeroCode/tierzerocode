@@ -32,14 +32,43 @@ def getSophosAccessToken(client_id, client_secret):
 ######################################## End Get Sophos Central Access Token ########################################
 
 ######################################## Start Get Sophos Central Devices ########################################
+def _get_sophos_api_host(access_token):
+    """Discover the correct regional API host via Sophos whoami endpoint."""
+    response = requests.get(
+        'https://api.central.sophos.com/whoami/v1',
+        headers={'Authorization': access_token}
+    )
+    if response.status_code != 200:
+        raise Exception(f"Sophos whoami failed with status {response.status_code}")
+    data = response.json()
+    api_url = data.get('apiHosts', {}).get('dataRegion')
+    if not api_url:
+        raise Exception("Sophos whoami did not return a dataRegion API host")
+    return api_url
+
 def getSophosDevices(access_token, tenant_id):
-    url = 'https://api-us03.central.sophos.com/endpoint/v1/endpoints'
+    """Fetch all Sophos Central devices with pagination and regional API discovery."""
+    api_host = _get_sophos_api_host(access_token)
+    url = f'{api_host}/endpoint/v1/endpoints'
     headers = {
         'Authorization': access_token,
         'X-Tenant-ID': tenant_id
     }
-    response = requests.get(url=url, headers=headers)
-    return response.json()
+    all_items = []
+    while url:
+        response = requests.get(url=url, headers=headers)
+        if response.status_code != 200:
+            logger.error("Sophos device fetch failed. Status: %s", response.status_code)
+            break
+        data = response.json()
+        all_items.extend(data.get('items', []))
+        # Sophos uses pages.nextKey for cursor-based pagination
+        next_key = data.get('pages', {}).get('nextKey')
+        if next_key:
+            url = f'{api_host}/endpoint/v1/endpoints?pageFromKey={next_key}'
+        else:
+            url = None
+    return {'items': all_items}
 ######################################## End Get Sophos Central Devices ########################################
 
 ######################################## Start Update/Create Sophos Central Devices ########################################
@@ -94,11 +123,14 @@ def updateSophosDeviceDatabase(json_data):
 ######################################## Start Sync Sophos Central ######################################## 
 def syncSophos():
     data = Integration.objects.get(integration_type="Sophos Central")
-    client_id = data.client_id
-    client_secret = data.client_secret
-    tenant_id = data.tenant_id
-    tenant_domain = data.tenant_domain
-    updateSophosDeviceDatabase(getSophosDevices(getSophosAccessToken(client_id, client_secret), tenant_id))
+    if not data.client_id or not data.client_secret or not data.tenant_id:
+        raise Exception("Sophos Central integration is not properly configured. Missing client_id, client_secret, or tenant_id.")
+
+    access_token = getSophosAccessToken(data.client_id, data.client_secret)
+    if isinstance(access_token, dict) and 'error' in access_token:
+        raise Exception(f"Failed to get access token: {access_token['error']}")
+
+    updateSophosDeviceDatabase(getSophosDevices(access_token, data.tenant_id))
     data.last_synced_at = timezone.now()
     data.save()
     return True
