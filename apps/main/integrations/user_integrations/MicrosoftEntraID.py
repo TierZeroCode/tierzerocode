@@ -207,71 +207,59 @@ def _build_authentication_fields(auth_method_types):
         auth_fields[field_name] = api_method in auth_method_types
     return auth_fields
 
-def _update_or_create_user(user_fields, integration):
-    """Update existing user or create new one."""
-    try:
-        userdata = UserData.objects.get(upn=user_fields['upn'])
-        for field, value in user_fields.items():
-            setattr(userdata, field, value)
-        userdata.updated_at = timezone.now()
-        userdata.save()
-    except UserData.DoesNotExist:
-        userdata = UserData(**user_fields)
-        userdata.save()
-    
-    userdata.integration.add(integration)
-    return userdata
+# Fields to update on existing UserData records (excludes upn, auto fields, and M2M)
+_USER_UPDATE_FIELDS = [
+    'uid', 'network_id', 'persona', 'persona_group', 'given_name', 'surname',
+    'job_title', 'department', 'last_logon_timestamp', 'created_at_timestamp',
+    'highest_authentication_strength', 'lowest_authentication_strength',
+    'isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable',
+    'isSsprEnabled', 'isSsprRegistered',
+    'passKeyDeviceBound_authentication_method', 'passKeyDeviceBoundAuthenticator_authentication_method',
+    'windowsHelloforBusiness_authentication_method', 'microsoftAuthenticatorPasswordless_authentication_method',
+    'microsoftAuthenticatorPush_authentication_method', 'softwareOneTimePasscode_authentication_method',
+    'temporaryAccessPass_authentication_method', 'mobilePhone_authentication_method',
+    'email_authentication_method', 'securityQuestion_authentication_method',
+]
 
-def _process_user_data(user_data, auth_by_upn, memberships_by_upn):
-    """Process individual user data and return user fields."""
+def _process_user_data(user_data, auth_by_upn, memberships_by_upn, persona_duplicate, persona_unknown):
+    """Process individual user data and return user fields dict, or None to skip."""
     if not user_data.get('userPrincipalName'):
         return None
 
-    # Handle disabled accounts
     if user_data.get('accountEnabled') == "false":
         return None
 
     if not user_data.get('employeeId'):
         user_data['employeeId'] = 'none'
 
-    # Parse timestamps
     last_logon = _parse_timestamp(user_data.get('signInActivity', {}).get('lastSuccessfulSignInDateTime'))
     created_at = _parse_timestamp(user_data.get('createdDateTime'))
 
     upn_lower = user_data['userPrincipalName'].lower()
 
-    # O(1) lookup instead of O(n) list scan
     user_authentication_data = auth_by_upn.get(upn_lower, {})
-
-    # O(1) lookup instead of O(n) list scan
     matching_groups = memberships_by_upn.get(upn_lower, [])
     persona_group_result = _get_user_persona_group(matching_groups)
-    
-    # Determine persona based on matching groups
+
     if persona_group_result == 'DUPLICATE':
-        # User is in multiple persona groups - assign DUPLICATE persona
-        persona, _ = Persona.objects.get_or_create(persona_name='DUPLICATE', defaults={'priority': 999})
-        persona_group = None  # No specific persona group for duplicates
+        persona = persona_duplicate
+        persona_group = None
     elif persona_group_result:
-        # User is in exactly one persona group
         persona_group = persona_group_result
         persona = persona_group.persona if persona_group else None
     else:
-        # No matching persona groups found - assign Unknown persona
-        persona, _ = Persona.objects.get_or_create(persona_name='Unknown', defaults={'priority': 998})
-        persona_group = None  # No persona group for unknown users
+        persona = persona_unknown
+        persona_group = None
 
-    # Determine authentication strengths
     auth_method_types = set(user_authentication_data.get('methodsRegistered', []))
     highest_strength, lowest_strength = determine_authentication_strength(auth_method_types)
 
-    # Build user fields
     user_fields = {
-        'upn': user_data['userPrincipalName'].lower(),
+        'upn': upn_lower,
         'uid': user_data['id'],
         'network_id': user_data['employeeId'].lower(),
-        'persona': persona,  # ForeignKey to Persona model
-        'persona_group': persona_group,  # ForeignKey to PersonaGroup model
+        'persona': persona,
+        'persona_group': persona_group,
         'given_name': user_data.get('givenName', ''),
         'surname': user_data.get('surname', ''),
         'job_title': user_data.get('jobTitle', ''),
@@ -282,23 +270,23 @@ def _process_user_data(user_data, auth_by_upn, memberships_by_upn):
         'lowest_authentication_strength': lowest_strength,
     }
 
-    # Add authentication capabilities
     capability_fields = ['isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable', 'isSsprEnabled', 'isSsprRegistered']
     for field in capability_fields:
         user_fields[field] = user_authentication_data.get(field, False)
 
-    # Add authentication methods
     user_fields.update(_build_authentication_fields(auth_method_types))
-
     return user_fields
 
 def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token):
-    """Update the local UserData database with Microsoft Entra ID user and authentication data."""
+    """Update the local UserData database with Microsoft Entra ID user and authentication data using bulk operations."""
     integration = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
     persona_memberships = getPersonaGroupMemberships(access_token)
-    processed_upns = set()
 
-    # Build O(1) lookup maps — one pass through each list instead of O(n) per user
+    # Pre-create personas outside the loop (avoids per-user get_or_create)
+    persona_duplicate, _ = Persona.objects.get_or_create(persona_name='DUPLICATE', defaults={'priority': 999})
+    persona_unknown, _ = Persona.objects.get_or_create(persona_name='Unknown', defaults={'priority': 998})
+
+    # Build O(1) lookup maps
     auth_by_upn = {
         item['userPrincipalName'].lower(): item
         for item in authentication_data
@@ -310,15 +298,63 @@ def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
         if upn:
             memberships_by_upn.setdefault(upn, []).append(membership)
 
-    # Process each user
+    # --- Phase 1: Process all API data into field dicts ---
+    all_user_fields = []
     for user_data in users:
-        user_fields = _process_user_data(user_data, auth_by_upn, memberships_by_upn)
-        if user_fields:
-            _update_or_create_user(user_fields, integration)
-            processed_upns.add(user_fields['upn'])
+        fields = _process_user_data(user_data, auth_by_upn, memberships_by_upn, persona_duplicate, persona_unknown)
+        if fields:
+            all_user_fields.append(fields)
 
-    # Bulk delete stale users in one query instead of per-row deletes
-    UserData.objects.filter(integration=integration).exclude(upn__in=processed_upns).delete()
+    if not all_user_fields:
+        return
+
+    incoming_upns = {f['upn'] for f in all_user_fields}
+
+    # --- Phase 2: Fetch existing state in ONE query ---
+    existing_users = {u.upn: u for u in UserData.objects.filter(upn__in=incoming_upns)}
+
+    # --- Phase 3: Split into create vs update ---
+    to_create = []
+    to_update = []
+
+    for fields in all_user_fields:
+        upn = fields['upn']
+        if upn in existing_users:
+            obj = existing_users[upn]
+            for field, value in fields.items():
+                if field != 'upn':
+                    setattr(obj, field, value)
+            to_update.append(obj)
+        else:
+            to_create.append(UserData(**fields))
+
+    # --- Phase 4: Bulk write — 2 queries instead of N×2 ---
+    if to_create:
+        UserData.objects.bulk_create(to_create)
+
+    if to_update:
+        UserData.objects.bulk_update(to_update, _USER_UPDATE_FIELDS, batch_size=500)
+
+    # --- Phase 5: Bulk set M2M integration links ---
+    # Re-fetch all users to get PKs for newly created ones
+    all_users = {u.upn: u for u in UserData.objects.filter(upn__in=incoming_upns)}
+    UserIntegrationThrough = UserData.integration.through
+    existing_links = set(
+        UserIntegrationThrough.objects.filter(
+            integration=integration,
+            userdata__upn__in=incoming_upns
+        ).values_list('userdata_id', flat=True)
+    )
+    new_links = [
+        UserIntegrationThrough(userdata=user_obj, integration=integration)
+        for user_obj in all_users.values()
+        if user_obj.pk not in existing_links
+    ]
+    if new_links:
+        UserIntegrationThrough.objects.bulk_create(new_links, ignore_conflicts=True)
+
+    # --- Phase 6: Bulk delete stale users ---
+    UserData.objects.filter(integration=integration).exclude(upn__in=incoming_upns).delete()
 
 def syncMicrosoftEntraIDUser():
     print("Synchronizing Microsoft Entra ID users class started")
