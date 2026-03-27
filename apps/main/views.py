@@ -564,9 +564,9 @@ def update_compliance(request, id):
 		integration_settings = {}
 		integration_mapping = {
 			'Cloudflare Zero Trust': 'Cloudflare Zero Trust',
-			'Crowdstrike Falcon': 'Crowdstrike Falcon', 
-			'Microsoft Defender For Endpoint': 'Microsoft Defender For Endpoint',
-			'Microsoft Entra Id': 'Microsoft Entra Id',
+			'CrowdStrike Falcon': 'CrowdStrike Falcon',
+			'Microsoft Defender for Endpoint': 'Microsoft Defender for Endpoint',
+			'Microsoft Entra ID': 'Microsoft Entra ID',
 			'Microsoft Intune': 'Microsoft Intune',
 			'Sophos Central': 'Sophos Central',
 			'Qualys': 'Qualys',
@@ -1048,9 +1048,9 @@ def bulk_update_compliance_api(request):
         # Parse the integration settings from the request
         integration_mapping = {
             'cloudflare_zero_trust': 'Cloudflare Zero Trust',
-            'crowdstrike_falcon': 'Crowdstrike Falcon',
-            'microsoft_defender_for_endpoint': 'Microsoft Defender For Endpoint',
-            'microsoft_entra_id': 'Microsoft Entra Id',
+            'crowdstrike_falcon': 'CrowdStrike Falcon',
+            'microsoft_defender_for_endpoint': 'Microsoft Defender for Endpoint',
+            'microsoft_entra_id': 'Microsoft Entra ID',
             'microsoft_intune': 'Microsoft Intune',
             'sophos_central': 'Sophos Central',
             'qualys': 'Qualys',
