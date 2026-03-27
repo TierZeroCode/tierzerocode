@@ -7,8 +7,7 @@ logger = logging.getLogger(__name__)
 # Import Models
 from ...models import Integration, Device, SophosCentralDeviceData, DeviceComplianceSettings
 # Import Functions Scripts
-from .ReusedFunctions import *
-from apps.main.integrations.device_integrations.ReusedFunctions import complianceSettings
+from .ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
 
 ######################################## Start Get Sophos Central Access Token ########################################
 def getSophosAccessToken(client_id, client_secret):
@@ -72,52 +71,43 @@ def getSophosDevices(access_token, tenant_id):
 ######################################## End Get Sophos Central Devices ########################################
 
 ######################################## Start Update/Create Sophos Central Devices ########################################
+
+_SOPHOS_UPDATE_FIELDS = [
+    'type', 'hostname', 'os_isServer', 'os_platform', 'os_name', 'os_majorVersion',
+    'os_minorVersion', 'os_build', 'associatedPerson_name', 'associatedPerson_viaLogin',
+    'associatedPerson_id', 'tamperProtectionEnabled', 'lastSeenAt', 'parentDevice',
+]
+
+def _build_sophos_detail(device_data, hostname, parent):
+    return {
+        'id': device_data.get('id'), 'type': device_data.get('type'), 'hostname': hostname,
+        'os_isServer': device_data.get('os', {}).get('isServer'),
+        'os_platform': device_data.get('os', {}).get('platform'),
+        'os_name': device_data.get('os', {}).get('name'),
+        'os_majorVersion': device_data.get('os', {}).get('majorVersion'),
+        'os_minorVersion': device_data.get('os', {}).get('minorVersion'),
+        'os_build': device_data.get('os', {}).get('build'),
+        'associatedPerson_name': device_data.get('associatedPerson', {}).get('name'),
+        'associatedPerson_viaLogin': device_data.get('associatedPerson', {}).get('viaLogin'),
+        'associatedPerson_id': device_data.get('associatedPerson', {}).get('id'),
+        'tamperProtectionEnabled': device_data.get('tamperProtectionEnabled'),
+        'lastSeenAt': device_data.get('lastSeenAt'), 'parentDevice': parent,
+    }
+
 def updateSophosDeviceDatabase(json_data):
     integration = Integration.objects.get(integration_type="Sophos Central")
-    for device_data in json_data['items']:
-        hostname = device_data.get('hostname').lower()
-        os_platform = device_data.get('os', {}).get('name')
-        clean_data = cleanAPIData(os_platform)
-        defaults = {
-            'hostname': hostname,
-            'osPlatform': clean_data[0],
-            'endpointType': clean_data[1],
-        }
-        obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(integration)
-
-        # Check compliance: device must have ALL required integrations
-        compliance_settings = complianceSettings(clean_data[0])
-        if compliance_settings:
-            # Get all required integrations (where value is True)
-            required_integrations = [name for name, is_required in compliance_settings.items() if is_required]
-            # Get device's current integrations
-            device_integrations = set(obj.integration.values_list('integration_type', flat=True))
-            # Device is compliant if it has all required integrations
-            obj.compliant = all(integration_name in device_integrations for integration_name in required_integrations)
-        else:
-            # No compliance requirements = compliant
-            obj.compliant = True
-        obj.save()
-
-        defaults_all = {
-            "id": device_data.get('id'),
-            "type": device_data.get('type'),
-            "hostname": hostname,
-            "os_isServer": device_data.get('os', {}).get('isServer'),
-            "os_platform": device_data.get('os', {}).get('platform'),
-            "os_name": device_data.get('os', {}).get('name'),
-            "os_majorVersion": device_data.get('os', {}).get('majorVersion'),
-            "os_minorVersion": device_data.get('os', {}).get('minorVersion'),
-            "os_build": device_data.get('os', {}).get('build'),
-            "associatedPerson_name": device_data.get('associatedPerson', {}).get('name'),
-            "associatedPerson_viaLogin": device_data.get('associatedPerson', {}).get('viaLogin'),
-            "associatedPerson_id": device_data.get('associatedPerson', {}).get('id'),
-            "tamperProtectionEnabled": device_data.get('tamperProtectionEnabled'),
-            "lastSeenAt": device_data.get('lastSeenAt'),
-            "parentDevice": obj
-        }
-        SophosCentralDeviceData.objects.update_or_create(id=device_data.get('id'), defaults=defaults_all)
+    processed = []
+    for device_data in json_data.get('items', []):
+        hostname = (device_data.get('hostname') or '').lower()
+        if not hostname:
+            continue
+        clean_data = cleanAPIData(device_data.get('os', {}).get('name'))
+        processed.append({
+            'hostname': hostname, 'os_platform': clean_data[0],
+            'endpoint_type': clean_data[1], 'device_data': device_data,
+            'detail_id': device_data.get('id'),
+        })
+    bulk_sync_devices(integration, processed, SophosCentralDeviceData, _SOPHOS_UPDATE_FIELDS, _build_sophos_detail)
 ######################################## End Update/Create Sophos Central Devices ########################################
 
 ######################################## Start Sync Sophos Central ######################################## 

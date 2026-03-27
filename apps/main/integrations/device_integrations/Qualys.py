@@ -7,8 +7,7 @@ logger = logging.getLogger(__name__)
 # Import Models
 from ...models import QualysDevice, Integration, Device, DeviceComplianceSettings
 # Import Functions Scripts
-from .masterlist import *
-from .ReusedFunctions import *
+from .ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
 
 def getQualysAccessToken(client_id, client_secret, tenant_id):
     # Define the authentication endpoint URL
@@ -84,37 +83,20 @@ def getQualysDevices(s):
 def updateQualysDeviceDatabase(json_data):
     integration = Integration.objects.get(integration_type="Qualys")
     host_list = json_data.get("HOST_LIST_OUTPUT", {}).get("RESPONSE", {}).get("HOST_LIST", {}).get("HOST", [])
+    processed = []
     for host_data in host_list:
-        # device_id = host_data.get("ID")
-        hostname = host_data.get("DNS_DATA", {}).get("HOSTNAME").lower()
-        os_platform = host_data.get("OS")
-        # first_found_date = host_data.get("FIRST_FOUND_DATE")
-        # ip_address = host_data.get("IP")
-
-        clean_data = cleanAPIData(os_platform)     
-        
-        defaults = {
-            'hostname': hostname,
-            'osPlatform': clean_data[0],
-            'endpointType': clean_data[1],
-        }
-        
-        device, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        device.integration.add(integration)
-        
-        # Check compliance: device must have ALL required integrations
-        compliance_settings = complianceSettings(clean_data[0])
-        if compliance_settings:
-            # Get all required integrations (where value is True)
-            required_integrations = [name for name, is_required in compliance_settings.items() if is_required]
-            # Get device's current integrations
-            device_integrations = set(device.integration.values_list('integration_type', flat=True))
-            # Device is compliant if it has all required integrations
-            device.compliant = all(integration_name in device_integrations for integration_name in required_integrations)
-        else:
-            # No compliance requirements = compliant
-            device.compliant = True
-        device.save()
+        hostname_raw = (host_data.get("DNS_DATA") or {}).get("HOSTNAME")
+        if not hostname_raw:
+            continue
+        hostname = hostname_raw.lower()
+        clean_data = cleanAPIData(host_data.get("OS"))
+        processed.append({
+            'hostname': hostname, 'os_platform': clean_data[0],
+            'endpoint_type': clean_data[1], 'device_data': host_data,
+            'detail_id': None,  # Qualys has no vendor detail table in current sync
+        })
+    # Qualys has no vendor detail table — skip detail phases
+    bulk_sync_devices(integration, processed)
 
 def syncQualys():
     data = Integration.objects.get(integration_type = "Qualys")

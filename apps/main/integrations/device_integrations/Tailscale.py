@@ -7,8 +7,7 @@ logger = logging.getLogger(__name__)
 # Import Models
 from apps.main.models import Integration, Device, TailscaleDeviceData, DeviceComplianceSettings
 # Import Function Scripts
-from apps.main.integrations.device_integrations.ReusedFunctions import *
-from apps.main.integrations.device_integrations.ReusedFunctions import complianceSettings
+from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
 
 ######################################## Start Get Tailscale Access Token ########################################
 def getTailscaleAccessToken(client_id, client_secret):
@@ -31,61 +30,44 @@ def getTailscaleDevices(access_token, tenant_domain):
 
 ######################################## End Get CrowdStrike Falcon Devices ########################################
 
-######################################## Start Update/Create CrowdStrike Falcon Devices ########################################
+######################################## Start Update/Create Tailscale Devices ########################################
+
+_TS_UPDATE_FIELDS = [
+    'nodeId', 'hostname', 'user', 'name', 'clientVersion', 'updateAvailable', 'os',
+    'created', 'connectedToControl', 'lastSeen', 'expires', 'keyExpiryDisabled',
+    'authorized', 'isExternal', 'machineKey', 'nodeKey', 'tailnetLockKey',
+    'blocksIncomingConnections', 'tailnetLockError', 'parentDevice',
+]
+
+def _build_ts_detail(device_data, hostname, parent):
+    return {
+        'id': device_data.get('id'), 'nodeId': device_data.get('nodeId'),
+        'hostname': device_data.get('hostname'), 'user': device_data.get('user'),
+        'name': device_data.get('name'), 'clientVersion': device_data.get('clientVersion'),
+        'updateAvailable': device_data.get('updateAvailable'), 'os': device_data.get('os'),
+        'created': device_data.get('created'), 'connectedToControl': device_data.get('connectedToControl'),
+        'lastSeen': device_data.get('lastSeen'), 'expires': device_data.get('expires'),
+        'keyExpiryDisabled': device_data.get('keyExpiryDisabled'), 'authorized': device_data.get('authorized'),
+        'isExternal': device_data.get('isExternal'), 'machineKey': device_data.get('machineKey'),
+        'nodeKey': device_data.get('nodeKey'), 'tailnetLockKey': device_data.get('tailnetLockKey'),
+        'blocksIncomingConnections': device_data.get('blocksIncomingConnections'),
+        'tailnetLockError': device_data.get('tailnetLockError'), 'parentDevice': parent,
+    }
+
 def updateTailscaleDeviceDatabase(total_tailscale_results):
     integration = Integration.objects.get(integration_type="Tailscale")
+    processed = []
     for device_data in total_tailscale_results:
-        hostname = device_data.get('hostname').lower()
-        os_platform = device_data.get('os')
-
-        clean_data = cleanAPIData(os_platform)
-        defaults = {
-            'hostname': hostname,
-            'osPlatform': clean_data[0],
-            'endpointType': clean_data[1],
-        }
-
-        obj, created = Device.objects.update_or_create(hostname=hostname, defaults=defaults)
-        obj.integration.add(integration)
-
-        # Check compliance: device must have ALL required integrations
-        compliance_settings = complianceSettings(clean_data[0])
-        if compliance_settings:
-            # Get all required integrations (where value is True)
-            required_integrations = [name for name, is_required in compliance_settings.items() if is_required]
-            # Get device's current integrations
-            device_integrations = set(obj.integration.values_list('integration_type', flat=True))
-            # Device is compliant if it has all required integrations
-            obj.compliant = all(integration_name in device_integrations for integration_name in required_integrations)
-        else:
-            # No compliance requirements = compliant
-            obj.compliant = True
-        obj.save()
-
-        defaults_all = {
-            'id': device_data['id'],
-            'nodeId': device_data['nodeId'],
-            'hostname': device_data['hostname'],
-            'user': device_data['user'],
-            'name': device_data['name'],
-            'clientVersion': device_data['clientVersion'],
-            'updateAvailable': device_data['updateAvailable'],
-            'os': device_data['os'],
-            'created': device_data['created'],
-            'connectedToControl': device_data['connectedToControl'],
-            'lastSeen': device_data['lastSeen'],
-            'expires': device_data['expires'],
-            'keyExpiryDisabled': device_data['keyExpiryDisabled'],
-            'authorized': device_data['authorized'],
-            'isExternal': device_data['isExternal'],
-            'machineKey': device_data['machineKey'],
-            'nodeKey': device_data['nodeKey'],
-            'tailnetLockKey': device_data['tailnetLockKey'],
-            'blocksIncomingConnections': device_data['blocksIncomingConnections'],
-            'tailnetLockError': device_data['tailnetLockError'],
-            'parentDevice': obj
-        }
-        TailscaleDeviceData.objects.update_or_create(id=device_data['id'], defaults=defaults_all)
+        hostname = (device_data.get('hostname') or '').lower()
+        if not hostname:
+            continue
+        clean_data = cleanAPIData(device_data.get('os'))
+        processed.append({
+            'hostname': hostname, 'os_platform': clean_data[0],
+            'endpoint_type': clean_data[1], 'device_data': device_data,
+            'detail_id': device_data.get('id'),
+        })
+    bulk_sync_devices(integration, processed, TailscaleDeviceData, _TS_UPDATE_FIELDS, _build_ts_detail)
 ######################################## End Update/Create Tailscale Devices ########################################
 
 ######################################## Start Sync Tailscale ########################################
