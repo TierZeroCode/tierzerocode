@@ -710,7 +710,7 @@ def user_master_list_api(request):
     lowest_auth = request.GET.getlist('lowest_auth[]')
     personas = request.GET.getlist('personas[]')
 
-    users = UserData.objects.all()
+    users = UserData.objects.select_related('persona').all()
 
     # Apply sorting
     if order_column.isdigit() and int(order_column) < len(columns):
