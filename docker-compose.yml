@@ -1,12 +1,12 @@
 services:
-  db:
-    image: postgres:17-bookworm
+  tzc-db:
+    image: hub.awbtech.org/dhi-registry/postgres:17-alpine3.22-dev
     environment:
       - POSTGRES_DB=${TZC_DATABASE_NAME:-dockerdjango}
       - POSTGRES_USER=${TZC_DATABASE_USER:?TZC_DATABASE_USER is required}
       - POSTGRES_PASSWORD=${TZC_DATABASE_PASSWORD:?TZC_DATABASE_PASSWORD is required}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - tzc_postgres_data:/var/lib/postgresql/17/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${TZC_DATABASE_USER:-postgres}"]
@@ -14,20 +14,20 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
+  tzc-redis:
+    image: hub.awbtech.org/dhi-registry/redis:8-debian13-dev
     restart: unless-stopped
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - tzc_redis_data:/data
+    command: redis-server --appendonly yes --protected-mode no
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  web:
-    image: docker.io/andrewixl/tierzerocode:latest
+  tierzerocode:
+    image: hub.awbtech.org/tierzerocode/tierzerocode:latest-dev
     ports:
       - "${TZC_WEB_PORT:-8000}:8000"
     environment:
@@ -37,35 +37,29 @@ services:
       - DJANGO_ALLOWED_HOSTS=${TZC_DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       - USE_HTTPS=${TZC_USE_HTTPS:-True}
       # Database settings
-      - DATABASE_HOST=db
+      - DATABASE_HOST=tzc-db
       - DATABASE_NAME=${TZC_DATABASE_NAME:-dockerdjango}
       - DATABASE_USER=${TZC_DATABASE_USER:?TZC_DATABASE_USER is required}
       - DATABASE_PASSWORD=${TZC_DATABASE_PASSWORD:?TZC_DATABASE_PASSWORD is required}
       - DATABASE_PORT=${TZC_DATABASE_PORT:-5432}
       - DATABASE_ENGINE=${TZC_DATABASE_ENGINE:-postgresql_psycopg2}
       # Redis settings
-      - REDIS_HOST=redis
+      - REDIS_HOST=tzc-redis
       - REDIS_PORT=${TZC_REDIS_PORT:-6379}
       - REDIS_DB=${TZC_REDIS_DB:-0}
     depends_on:
-      db:
+      tzc-db:
         condition: service_healthy
-      redis:
+      tzc-redis:
         condition: service_healthy
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
              python -m gunicorn --bind 0.0.0.0:8000 --workers ${TZC_GUNICORN_WORKERS:-3} --timeout 300 tierzerocode.wsgi:application"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/identity/login\")'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
 
-  worker:
-    image: docker.io/andrewixl/tierzerocode:latest
+  tzc-worker:
+    image: hub.awbtech.org/tierzerocode/tierzerocode:latest-dev
     environment:
       # Django settings
       - SECRET_KEY=${TZC_SECRET_KEY:?TZC_SECRET_KEY is required}
@@ -73,22 +67,24 @@ services:
       - DJANGO_ALLOWED_HOSTS=${TZC_DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       - USE_HTTPS=${TZC_USE_HTTPS:-True}
       # Database settings
-      - DATABASE_HOST=db
+      - DATABASE_HOST=tzc-db
       - DATABASE_NAME=${TZC_DATABASE_NAME:-dockerdjango}
       - DATABASE_USER=${TZC_DATABASE_USER:?TZC_DATABASE_USER is required}
       - DATABASE_PASSWORD=${TZC_DATABASE_PASSWORD:?TZC_DATABASE_PASSWORD is required}
       - DATABASE_PORT=${TZC_DATABASE_PORT:-5432}
       - DATABASE_ENGINE=${TZC_DATABASE_ENGINE:-postgresql_psycopg2}
       # Redis settings
-      - REDIS_HOST=redis
+      - REDIS_HOST=tzc-redis
       - REDIS_PORT=${TZC_REDIS_PORT:-6379}
       - REDIS_DB=${TZC_REDIS_DB:-0}
     depends_on:
-      web:
+      tzc-db:
+        condition: service_healthy
+      tzc-redis:
         condition: service_healthy
     restart: unless-stopped
     command: python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler
 
 volumes:
-  postgres_data:
-  redis_data:
+  tzc_postgres_data:
+  tzc_redis_data:
