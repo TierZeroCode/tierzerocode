@@ -1,35 +1,10 @@
 # Import Dependencies
-import requests, time
-import jwt
 from django.utils import timezone
 # Import Models
 from apps.main.models import Integration, Device, MicrosoftEntraIDDeviceData, DeviceComplianceSettings
 # Import Function Scripts
-from apps.main.integrations.device_integrations.ReusedFunctions import *
+from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
-from apps.main.integrations.device_integrations.ReusedFunctions import complianceSettings
-
-######################################## Start Generic Function to Fetch Paginated Data ########################################
-
-def _fetch_paginated_data(url, headers, max_retries=5, retry_delay=1):
-    """Generic function to fetch paginated data with retry logic."""
-    results = []
-    while url:
-        for attempt in range(max_retries):
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                results.extend(data.get('value', []))
-                url = data.get('@odata.nextLink')
-                break
-            elif response.status_code == 429:  # Throttling error
-                retry_after = int(response.headers.get('Retry-After', retry_delay))
-                time.sleep(retry_after)
-            else:
-                raise Exception(f"Failed to fetch data: {response.status_code} - {response.text}")
-        else:
-            raise Exception("Max retries exceeded while fetching data.")
-    return results
 
 ######################################## Start Get Microsoft Entra ID Devices ########################################
 def getMicrosoftEntraIDDevices(access_token):

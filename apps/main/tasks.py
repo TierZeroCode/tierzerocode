@@ -17,7 +17,15 @@ from django.utils import timezone
 def deviceIntegrationSyncTask(user_email, ip_address, user_agent, browser, operating_system, integration, integration_clean, notification_id=None):
     """Run Device Integration Sync in a Background Thread."""
     if notification_id:
-        obj = Notification.objects.get(id=notification_id)
+        try:
+            obj = Notification.objects.get(id=notification_id)
+        except Notification.DoesNotExist:
+            obj = Notification.objects.create(
+                title=f"{integration_clean} Device Integration Sync",
+                status="In Progress",
+                created_at=timezone.now(),
+                updated_at=timezone.now(),
+            )
         obj.status = "In Progress"
         obj.updated_at = timezone.now()
         obj.save()
@@ -65,7 +73,15 @@ def deviceIntegrationSyncTask(user_email, ip_address, user_agent, browser, opera
 def microsoftEntraIDUserSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
     """Run Microsoft Entra ID user sync in a background thread."""
     if notification_id:
-        obj = Notification.objects.get(id=notification_id)
+        try:
+            obj = Notification.objects.get(id=notification_id)
+        except Notification.DoesNotExist:
+            obj = Notification.objects.create(
+                title="Microsoft Entra ID User Integration Sync",
+                status="In Progress",
+                created_at=timezone.now(),
+                updated_at=timezone.now(),
+            )
         obj.status = "In Progress"
         obj.updated_at = timezone.now()
         obj.save()

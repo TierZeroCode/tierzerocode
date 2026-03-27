@@ -1,5 +1,5 @@
 # Import Dependencies
-import msal, requests, threading, time
+import msal, requests, threading
 from django.utils import timezone
 from datetime import datetime
 from django.contrib import messages
@@ -7,7 +7,7 @@ from django.utils.timezone import make_aware
 # Import Models
 from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification
 # Import Function Scripts
-from apps.main.integrations.device_integrations.ReusedFunctions import *
+from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
 
 AUTHENTICATION_STRENGTHS = {
@@ -17,28 +17,6 @@ AUTHENTICATION_STRENGTHS = {
     "Deprecated": {'mobilePhone', 'email', 'securityQuestion'},
     "None": set()
 }
-
-def _fetch_paginated_data(url, headers, max_retries=5, retry_delay=1):
-    """Generic function to fetch paginated data with retry logic."""
-    results = []
-    
-    while url:
-        for attempt in range(max_retries):
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                results.extend(data.get('value', []))
-                url = data.get('@odata.nextLink')
-                break
-            elif response.status_code == 429:  # Throttling error
-                retry_after = int(response.headers.get('Retry-After', retry_delay))
-                time.sleep(retry_after)
-            else:
-                raise Exception(f"Failed to fetch data: {response.status_code} - {response.text}")
-        else:
-            raise Exception("Max retries exceeded while fetching data.")
-        
-    return results
 
 def getMicrosoftEntraIDUsers(access_token):
     """Fetch all enabled Microsoft Entra ID users."""
