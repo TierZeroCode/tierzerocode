@@ -16,7 +16,7 @@ class ModelVerificationMiddleware:
 
     def __call__(self, request):
         # Skip verification for non-authenticated or non-staff users
-        if not (request.user.is_authenticated and request.user.is_staff):
+        if not hasattr(request, 'user') or not request.user.is_authenticated or not request.user.is_staff:
             return self.get_response(request)
 
         # Skip verification for static files and login paths
