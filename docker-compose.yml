@@ -9,7 +9,7 @@ services:
       - tzc_postgres_data:/var/lib/postgresql/17/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${TZC_DATABASE_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${TZC_DATABASE_USER:-postgres} -d ${TZC_DATABASE_NAME:-dockerdjango}"]
       interval: 5s
       timeout: 5s
       retries: 10
