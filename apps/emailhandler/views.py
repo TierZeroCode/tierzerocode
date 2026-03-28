@@ -1,3 +1,4 @@
+import logging
 import requests
 from apps.main.models import GeneralSetting
 from django.contrib import messages
@@ -5,6 +6,8 @@ from django.shortcuts import redirect
 from apps.logger.views import createLog
 from apps.emailhandler.models import EmailIntegration
 from apps.authhandler.decorators import permission_required_with_message
+
+logger = logging.getLogger(__name__)
 
 # Sends Email via Microsoft Graph API
 def sendEmail(email, subject, body, access_token, importance='high', bcc='idam@email.com'):
@@ -35,11 +38,10 @@ def sendEmail(email, subject, body, access_token, importance='high', bcc='idam@e
     try:
         response = requests.post(url=url, headers=headers, json=body_data)
         if response.status_code == 202:
-            print('Email sent successfully')
+            logger.info("Email sent successfully to %s", email)
             return True
         else:
-            print(f'Error sending email: {response.status_code}')
-            print(response.json())
+            logger.error("Error sending email: %s - %s", response.status_code, response.text)
             return False
     except Exception as e:
         # Log error

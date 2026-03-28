@@ -357,7 +357,6 @@ def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
     UserData.objects.filter(integration=integration).exclude(upn__in=incoming_upns).delete()
 
 def syncMicrosoftEntraIDUser():
-    print("Synchronizing Microsoft Entra ID users class started")
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
     
