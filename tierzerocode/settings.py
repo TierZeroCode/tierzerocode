@@ -303,7 +303,13 @@ LOGGING = {
         'tierzerocode_audit': {
             'handlers': ['console', 'audit_file'],
             'level': 'INFO',
-            'propagate': False, # Don't send this to the main django logs
+            'propagate': False,
+        },
+        # Application loggers — ensure sync errors and info are visible in docker logs
+        'apps': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }
