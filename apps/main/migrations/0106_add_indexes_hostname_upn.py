@@ -8,6 +8,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # AlterField for Django state tracking
         migrations.AlterField(
             model_name='device',
             name='hostname',
@@ -22,5 +23,19 @@ class Migration(migrations.Migration):
             model_name='tailscaledevicedata',
             name='user',
             field=models.EmailField(max_length=254, null=True),
+        ),
+        # RunSQL to guarantee the DB changes actually happen
+        migrations.RunSQL(
+            sql=[
+                'CREATE INDEX CONCURRENTLY IF NOT EXISTS main_device_hostname_idx ON main_device (hostname);',
+                'CREATE INDEX CONCURRENTLY IF NOT EXISTS main_userdata_upn_idx ON main_userdata (upn);',
+                'ALTER TABLE main_tailscaledevicedata ALTER COLUMN "user" TYPE varchar(254);',
+            ],
+            reverse_sql=[
+                'DROP INDEX IF EXISTS main_device_hostname_idx;',
+                'DROP INDEX IF EXISTS main_userdata_upn_idx;',
+                'ALTER TABLE main_tailscaledevicedata ALTER COLUMN "user" TYPE varchar(50);',
+            ],
+            state_operations=[],
         ),
     ]
