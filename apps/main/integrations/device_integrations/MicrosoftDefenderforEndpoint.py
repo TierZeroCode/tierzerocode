@@ -57,10 +57,10 @@ def _build_defender_detail(device_data, hostname, parent):
         'lastIpAddress': _truncate_string(device_data.get('lastIpAddress'), 200),
         'lastExternalIpAddress': _truncate_string(device_data.get('lastExternalIpAddress'), 200),
         'agentVersion': _truncate_string(device_data.get('agentVersion'), 200),
-        'osBuild': device_data.get('osBuild'),
+        'osBuild': int(device_data['osBuild']) if device_data.get('osBuild') is not None else None,
         'healthStatus': _truncate_string(device_data.get('healthStatus'), 200),
         'deviceValue': _truncate_string(device_data.get('deviceValue'), 200),
-        'rbacGroupId': device_data.get('rbacGroupId'),
+        'rbacGroupId': int(device_data['rbacGroupId']) if device_data.get('rbacGroupId') is not None else None,
         'rbacGroupName': _truncate_string(device_data.get('rbacGroupName'), 200),
         'riskScore': _truncate_string(device_data.get('riskScore'), 200),
         'exposureLevel': _truncate_string(device_data.get('exposureLevel'), 200),
@@ -70,7 +70,7 @@ def _build_defender_detail(device_data, hostname, parent):
         'osArchitecture': _truncate_string(device_data.get('osArchitecture'), 200),
         'managedBy': _truncate_string(device_data.get('managedBy'), 200),
         'managedByStatus': _truncate_string(device_data.get('managedByStatus'), 200),
-        'vmMetadata': _truncate_string(vm_metadata, 200),
+        'vmMetadata': vm_metadata,
         'parentDevice': parent,
     }
 

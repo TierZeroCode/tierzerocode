@@ -370,7 +370,7 @@ class MicrosoftDefenderforEndpointDeviceData(models.Model):
     osArchitecture = models.CharField(max_length=200, null=True)
     managedBy = models.CharField(max_length=200, null=True)
     managedByStatus = models.CharField(max_length=200, null=True)
-    vmMetadata = models.CharField(max_length=200, null=True)
+    vmMetadata = models.TextField(null=True)
     parentDevice = models.ForeignKey("Device", on_delete=models.CASCADE, null=True, related_name='integrationMicrosoftDefenderForEndpoint')
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
@@ -380,7 +380,7 @@ class MicrosoftDefenderforEndpointDeviceData(models.Model):
         verbose_name_plural = "Microsoft Defender for Endpoint Devices"
 
     def __str__(self):
-        return self.computerDnsName
+        return self.computerDnsName or f'{self.__class__.__name__} {self.pk}'
 
 class QualysDevice(models.Model):
     id = models.CharField(max_length=200, primary_key=True)
