@@ -1,13 +1,10 @@
 # Import Dependencies
-import logging
 import requests, json, xmltodict
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
 # Import Models
 from ...models import QualysDevice, Integration, Device, DeviceComplianceSettings
 # Import Functions Scripts
-from .ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
+from .ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices, _sync_log
 
 def getQualysAccessToken(client_id, client_secret, tenant_id):
     # Define the authentication endpoint URL
@@ -39,10 +36,10 @@ def getQualysAccessToken(client_id, client_secret, tenant_id):
             # Print the access token (or use it for further API requests)
             return s
         else:
-            logger.error("Qualys auth failed. Status: %s", response.status_code)
+            _sync_log("Qualys", "1507", "Failure", f"Auth failed with status {response.status_code}")
             return None
     except Exception as e:
-        logger.error("Qualys auth error: %s", str(e))
+        _sync_log("Qualys", "1507", "Failure", f"Auth error: {str(e)}")
         return None
 
 def getQualysLogout(s):
@@ -59,7 +56,7 @@ def getQualysLogout(s):
     api_result = s.post(url=url, headers=headers, data=auth_payload)
 
     if api_result.status_code != 200:
-        logger.error("Qualys logout failed. Status: %s", api_result.status_code)
+        _sync_log("Qualys", "1507", "Warning", f"Logout failed with status {api_result.status_code}")
 
 def getQualysDevices(s):
     url = 'https://qualysapi.qualys.com/api/2.0/fo/asset/host/?action=list'
@@ -75,7 +72,7 @@ def getQualysDevices(s):
             xml_parse = xmltodict.parse(api_result.text)
             return xml_parse
         else:
-            logger.error("Qualys failed to fetch assets. Status: %s", api_result.status_code)
+            _sync_log("Qualys", "1507", "Failure", f"Failed to fetch assets with status {api_result.status_code}")
             return None
     finally:
         getQualysLogout(s)

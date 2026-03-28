@@ -1,13 +1,10 @@
 # Import Dependencies
-import logging
 import requests
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
 # Import Models
 from ...models import Integration, Device, SophosCentralDeviceData, DeviceComplianceSettings
 # Import Functions Scripts
-from .ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
+from .ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices, _sync_log
 
 ######################################## Start Get Sophos Central Access Token ########################################
 def getSophosAccessToken(client_id, client_secret):
@@ -23,10 +20,10 @@ def getSophosAccessToken(client_id, client_secret):
         if response.status_code == 200:
             return 'Bearer ' + response.json()['access_token']
         else:
-            logger.error("Sophos auth failed. Status: %s", response.status_code)
+            _sync_log("Sophos Central", "1507", "Failure", f"Auth failed with status {response.status_code}")
             return {'error': f'Authentication failed with status {response.status_code}'}
     except Exception as e:
-        logger.error("Sophos auth error: %s", str(e))
+        _sync_log("Sophos Central", "1507", "Failure", f"Auth error: {str(e)}")
         return {'error': str(e)}
 ######################################## End Get Sophos Central Access Token ########################################
 
@@ -57,7 +54,7 @@ def getSophosDevices(access_token, tenant_id):
     while url:
         response = requests.get(url=url, headers=headers)
         if response.status_code != 200:
-            logger.error("Sophos device fetch failed. Status: %s", response.status_code)
+            _sync_log("Sophos Central", "1507", "Failure", f"Device fetch failed with status {response.status_code}")
             break
         data = response.json()
         all_items.extend(data.get('items', []))

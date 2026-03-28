@@ -1,13 +1,10 @@
 # Import Dependencies
-import logging
 import requests
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
 # Import Models
 from apps.main.models import Integration, Device, TailscaleDeviceData, DeviceComplianceSettings
 # Import Function Scripts
-from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
+from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices, _sync_log
 
 ######################################## Start Get Tailscale Access Token ########################################
 def getTailscaleAccessToken(client_id, client_secret):
@@ -18,7 +15,7 @@ def getTailscaleAccessToken(client_id, client_secret):
         access_token = 'Bearer ' + response.json()['access_token']
         return access_token
     else:
-        logger.error("Tailscale auth failed. Status: %s", response.status_code)
+        _sync_log("Tailscale", "1507", "Failure", f"Auth failed with status {response.status_code}")
         return {'error': f'Authentication failed with status {response.status_code}'}
 ######################################## End Get Tailscale Access Token ########################################
 

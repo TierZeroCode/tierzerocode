@@ -1,13 +1,21 @@
 # Django Model Imports
-import logging
 import time
 import requests
 from functools import lru_cache
 from apps.main.models import Device, DeviceComplianceSettings
-
-logger = logging.getLogger(__name__)
+from apps.logger.views import createLog
 
 _DEVICE_UPDATE_FIELDS = ['osPlatform', 'endpointType', 'manufacturer']
+
+
+def _sync_log(integration_name, event_code, outcome, additional_data):
+    """Log sync events via createLog (logger app) — works without a request object."""
+    try:
+        createLog(None, event_code, "System Integration", "System Integration Event",
+                  "System", True, f"{integration_name} Sync", outcome,
+                  additional_data=additional_data)
+    except Exception:
+        pass  # createLog already has its own fallback
 
 
 def _fetch_paginated_data(url, headers, max_retries=5, retry_delay=1):
@@ -92,12 +100,13 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
         detail_update_fields: list of field names for bulk_update on the detail model
         build_detail_fn: callable(device_data, hostname, parent_device) -> dict of detail fields
     """
+    integration_name = integration.integration_type
+
     if not processed_devices:
-        logger.info("bulk_sync_devices: no devices to process for %s", integration.integration_type)
+        _sync_log(integration_name, "1506", "Info", "No devices to process")
         return
 
-    integration_name = integration.integration_type
-    logger.info("bulk_sync_devices [%s]: starting sync for %d devices", integration_name, len(processed_devices))
+    _sync_log(integration_name, "1506", "Info", f"Starting sync for {len(processed_devices)} devices")
 
     incoming_hostnames = {p['hostname'] for p in processed_devices}
     incoming_ids = {p['detail_id'] for p in processed_devices if p.get('detail_id')} if DetailModel else set()
@@ -105,7 +114,7 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
     # --- Phase 1: Fetch existing state in bulk ---
     existing_devices = {d.hostname: d for d in Device.objects.filter(hostname__in=incoming_hostnames)}
     existing_details = set(DetailModel.objects.filter(id__in=incoming_ids).values_list('id', flat=True)) if DetailModel and incoming_ids else set()
-    logger.info("bulk_sync_devices [%s]: found %d existing devices, %d existing details", integration_name, len(existing_devices), len(existing_details))
+    _sync_log(integration_name, "1506", "Info", f"Found {len(existing_devices)} existing devices, {len(existing_details)} existing details")
 
     # --- Phase 2: Build create/update lists for Device ---
     devices_to_create = []
@@ -126,7 +135,7 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
             ))
 
     # --- Phase 3: Bulk write Device records ---
-    logger.info("bulk_sync_devices [%s]: creating %d, updating %d Device records", integration_name, len(devices_to_create), len(devices_to_update))
+    _sync_log(integration_name, "1506", "Info", f"Creating {len(devices_to_create)}, updating {len(devices_to_update)} Device records")
     if devices_to_create:
         Device.objects.bulk_create(devices_to_create, ignore_conflicts=True)
     if devices_to_update:
@@ -143,13 +152,13 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
         for p in processed_devices:
             parent = all_devices.get(p['hostname'])
             if not parent:
-                logger.warning("bulk_sync_devices [%s]: no parent device for hostname %s", integration_name, p['hostname'])
+                _sync_log(integration_name, "1506", "Warning", f"No parent device for hostname {p['hostname']}")
                 continue
             detail_id = p.get('detail_id')
             try:
                 fields = build_detail_fn(p['device_data'], p['hostname'], parent)
             except Exception as e:
-                logger.error("bulk_sync_devices [%s]: error building detail for %s: %s", integration_name, p['hostname'], e)
+                _sync_log(integration_name, "1506", "Failure", f"Error building detail for {p['hostname']}: {e}")
                 continue
 
             if detail_id and detail_id in existing_details:
@@ -158,14 +167,14 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
             else:
                 details_to_create.append(DetailModel(**fields))
 
-        logger.info("bulk_sync_devices [%s]: creating %d, updating %d detail records", integration_name, len(details_to_create), len(details_to_update))
+        _sync_log(integration_name, "1506", "Info", f"Creating {len(details_to_create)}, updating {len(details_to_update)} detail records")
         if details_to_create:
             DetailModel.objects.bulk_create(details_to_create, ignore_conflicts=True)
         if details_to_update and detail_update_fields:
             DetailModel.objects.bulk_update(details_to_update, detail_update_fields, batch_size=500)
 
     # --- Phase 5: Bulk set M2M integration links ---
-    logger.info("bulk_sync_devices [%s]: setting M2M integration links", integration_name)
+    _sync_log(integration_name, "1506", "Info", "Setting M2M integration links")
     DeviceIntegrationThrough = Device.integration.through
     existing_links = set(
         DeviceIntegrationThrough.objects.filter(
@@ -181,7 +190,7 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
         DeviceIntegrationThrough.objects.bulk_create(new_links, ignore_conflicts=True)
 
     # --- Phase 6: Bulk compliance check ---
-    logger.info("bulk_sync_devices [%s]: running compliance check", integration_name)
+    _sync_log(integration_name, "1506", "Info", "Running compliance check")
     devices_for_compliance = Device.objects.filter(hostname__in=incoming_hostnames).prefetch_related('integration')
     compliance_updates = []
     for device in devices_for_compliance:
@@ -196,4 +205,4 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
     if compliance_updates:
         Device.objects.bulk_update(compliance_updates, ['compliant'], batch_size=500)
 
-    logger.info("bulk_sync_devices [%s]: sync complete — %d devices processed", integration_name, len(processed_devices))
+    _sync_log(integration_name, "1506", "Success", f"Sync complete — {len(processed_devices)} devices processed")

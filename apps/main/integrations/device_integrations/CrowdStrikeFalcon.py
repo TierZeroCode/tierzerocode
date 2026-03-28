@@ -1,13 +1,10 @@
 # Import Dependencies
-import logging
 import requests
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
 # Import Models
 from apps.main.models import Integration, Device, CrowdStrikeFalconDeviceData, DeviceComplianceSettings
 # Import Function Scripts
-from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices
+from apps.main.integrations.device_integrations.ReusedFunctions import cleanAPIData, complianceSettings, bulk_sync_devices, _sync_log
 
 ######################################## Start Get CrowdStrike Falcon Access Token ########################################
 def getCrowdStrikeAccessToken(client_id, client_secret, tenant_id):
@@ -18,10 +15,10 @@ def getCrowdStrikeAccessToken(client_id, client_secret, tenant_id):
         if response.status_code in (200, 201):
             return 'Bearer ' + response.json()['access_token']
         else:
-            logger.error("CrowdStrike auth failed. Status: %s", response.status_code)
+            _sync_log("CrowdStrike Falcon", "1507", "Failure", f"Auth failed with status {response.status_code}")
             return {'error': f'Authentication failed with status {response.status_code}'}
     except Exception as e:
-        logger.error("CrowdStrike auth error: %s", str(e))
+        _sync_log("CrowdStrike Falcon", "1507", "Failure", f"Auth error: {str(e)}")
         return {'error': str(e)}
 ######################################## End Get CrowdStrike Falcon Access Token ########################################
 
