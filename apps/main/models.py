@@ -14,7 +14,7 @@ class Device(models.Model):
         ("Windows Server", "Windows Server"),
         ("Other", "Other"),
     )
-    osPlatform = models.CharField(max_length=25, choices=OS_PLATFORM_CHOICES, null=True)
+    osPlatform = models.CharField(max_length=100, choices=OS_PLATFORM_CHOICES, null=True)
     ENDPOINT_TYPE_CHOICES = (
         ("Client", "Client"),
         ("Server", "Server"),
@@ -251,14 +251,14 @@ class MicrosoftIntuneDeviceData(models.Model):
     id = models.CharField(max_length=200, primary_key=True)
     userId = models.CharField(max_length=200, null=True)
     deviceName = models.CharField(max_length=200, null=True)
-    managedDeviceOwnerType = models.CharField(max_length=25, null=True)
+    managedDeviceOwnerType = models.CharField(max_length=200, null=True)
     enrolledDateTime = models.DateTimeField(null=True)
     lastSyncDateTime = models.DateTimeField(null=True)
-    operatingSystem = models.CharField(max_length=25, null=True)
-    complianceState = models.CharField(max_length=25, null=True)
-    jailBroken = models.CharField(max_length=25, null=True)
+    operatingSystem = models.CharField(max_length=200, null=True)
+    complianceState = models.CharField(max_length=200, null=True)
+    jailBroken = models.CharField(max_length=200, null=True)
     managementAgent = models.CharField(max_length=200, null=True)
-    osVersion = models.CharField(max_length=25, null=True)
+    osVersion = models.CharField(max_length=200, null=True)
     easActivated = models.BooleanField(null=True)
     easDeviceId = models.CharField(max_length=200, null=True)
     easActivationDateTime = models.DateTimeField(null=True)
