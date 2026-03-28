@@ -31,10 +31,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
             
         except Exception as e:
             logger.error(f"Microsoft Entra ID authentication error: {str(e)}")
-            
-            # Log authentication failure
-            if hasattr(request, 'session') and 'session_id' in request.session:
-                createLog(request, '1502', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"Authentication failed: {str(e)}")
+            createLog(request, '1502', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"Authentication failed: {str(e)}")
             return None
     
     def get_user(self, user_id):
@@ -74,11 +71,13 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 user._sso_redirect_url = auth_url
                 return user
             else:
-                logger.warning(f"User {user.username} not found, has password, or is inactive")
+                logger.warning(f"User {user.username} has password or is inactive — cannot use SSO")
+                createLog(request, '1502', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"User {user.username} has password or is inactive")
                 return None
-            
+
         except Exception as e:
             logger.error(f"Error handling SSO login for {user.username}: {str(e)}")
+            createLog(request, '1502', 'Claim ID', 'Authentication', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"SSO login error: {str(e)}")
             return None
             
     def _generate_sso_auth_url(self, request, user, sso_config):
@@ -328,7 +327,7 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 # Log the user in
                 login(request, user, backend='apps.authhandler.authentication_backends.MicrosoftEntraID.MicrosoftEntraIDBackend')
                 if request.user.is_authenticated:
-                    print (f"User {user.username} logged in successfully")
+                    createLog(request, '1101', 'User Authentication Handler', 'User Login Event', "Admin", True, 'Microsoft Entra ID Login', 'Success', additional_data=f"SSO - {user.username}")
                 
                 # Get redirect URL from session (validate to prevent open redirect)
                 redirect_url = request.session.pop('sso_redirect_url', '/')
@@ -351,11 +350,13 @@ class MicrosoftEntraIDBackend(BaseBackend):
                 request.session.save()
                 return redirect(redirect_url)
             else:
+                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"User {username} not found")
                 messages.error(request, f'User {username} not found. Please contact administrator.')
                 return redirect('login')
-                
+
         except Exception as e:
             logger.error(f"Error handling Azure callback: {str(e)}")
+            createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Unauthenticated", False, 'Microsoft Entra ID Login', 'Failure', additional_data=f"Callback error: {str(e)}")
             messages.error(request, 'An error occurred during authentication. Please try again.')
             return redirect('login')
 

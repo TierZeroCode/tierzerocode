@@ -1,6 +1,9 @@
 # Standard library imports
+import logging
 import re, json
 from datetime import date, datetime
+
+logger = logging.getLogger(__name__)
 
 # Third-party imports
 from django.contrib import messages
@@ -227,7 +230,7 @@ def index(request):
 		devices = Device.objects.count()
 		managed = Device.objects.filter(integrationMicrosoftEntraID__isManaged=True).count()
 	except Exception as e:
-		print(f"Error in index view: {e}")
+		logger.error("Error in index view: %s", e)
 		guests, groups, apps, devices, managed = 0, 0, 0, 0, 0
 
 	# Calculate authentication method counts for privileged users (sk1)
@@ -818,7 +821,7 @@ def user_master_list_export_api(request):
             data.append(row)
         except Exception as e:
             # Log the error and continue with other users
-            print(f"Error processing user {user_data.upn}: {str(e)}")
+            logger.error("Error processing user %s: %s", user_data.upn, str(e))
             continue
 
     return JsonResponse({
@@ -948,8 +951,8 @@ def syncDevices(request, integration):
 		updated_at=timezone.now(),
 	)
 	result = deviceIntegrationSyncTask.enqueue(user_email, ip_address, user_agent, browser, operating_system, integration, integration_clean, notification.id)
-	print(f'Task ID: {result.id}')
-	print("Redirecting to Integrations")
+	logger.info("Task enqueued: %s", result.id)
+	logger.info("Redirecting to Integrations")
 	return redirect('/integrations')
 
 @login_required
@@ -966,8 +969,8 @@ def syncUsers(request, integration):
 		print ("Syncing Microsoft Entra ID Users")
 		messages.info(request, 'Microsoft Entra ID User Integration Sync in Progress')
 		result = microsoftEntraIDUserSyncTask.enqueue(user_email, ip_address, user_agent, browser, operating_system)
-		print(f'Task ID: {result.id}')
-	print("Redirecting to Integrations")
+		logger.info("Task enqueued: %s", result.id)
+	logger.info("Redirecting to Integrations")
 	return redirect('/integrations')
 
 @login_required

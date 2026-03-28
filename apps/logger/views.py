@@ -110,5 +110,5 @@ def createLog(request, event_code, event_type, event_group, user_level, privileg
         audit_logger.info(log_message)
 
     except Exception as e:
-        # Fallback so the user experience doesn't break
-        print(f"CRITICAL: Logging failed: {e}")
+        # Fallback — use Python logging directly since createLog itself failed
+        logging.getLogger('apps.logger').error("CRITICAL: Logging failed: %s", e)

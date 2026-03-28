@@ -1,6 +1,8 @@
-from modulefinder import test
+import logging
 import msal, jwt, requests
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 from datetime import timedelta
 # from apps.main.models import GeneralSetting
 from apps.logger.views import createLog
@@ -56,7 +58,7 @@ def testMicrosoftGraphConnection(access_token, required_permissions, tenant_id=N
         has_required = any(permission in roles for permission in required_permissions)
         return {'roles': roles, 'has_required_permissions': has_required}
     except Exception as e:
-        print(f"Error decoding access token: {str(e)}")
+        logger.error("Error decoding access token: %s", str(e))
         return {'roles': [], 'has_required_permissions': False}
 
 class MicrosoftEntraIDUser:
@@ -159,7 +161,7 @@ class MicrosoftEntraIDUser:
             elif action == 'opt-out':
                 url = f'https://graph.microsoft.com/v1.0/groups/{group_id}/members/{self.id}/$ref'
                 response = requests.delete(url, headers=headers)
-            print(response)
+            logger.info("Group management response: %s", response.status_code)
             return response.status_code == 204
         except Exception as e:
             return {'error': e}
