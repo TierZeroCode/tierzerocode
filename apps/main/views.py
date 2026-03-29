@@ -512,51 +512,43 @@ def personaMetrics(request, persona_id):
 
 @login_required
 def generalSettings(request):
-	# Import the new utilities
-	from .utils import ComplianceSettingsManager, DeviceComplianceChecker
+	from .utils import ComplianceSettingsManager
 	from django.contrib.auth.models import User
 	from apps.authhandler.models import SSOIntegration
-	
-	# Get compliance settings using the new manager
+
+	# Get compliance settings (used in template for compliance forms)
 	compliance_settings = ComplianceSettingsManager.get_all_compliance_settings()
-	
-	# Get compliance summary for dashboard
-	compliance_summary = ComplianceSettingsManager.get_compliance_summary()
-	
-	# Get compliance report for insights
-	compliance_report = DeviceComplianceChecker.get_compliance_report()
 
 	# Get identity settings data (only for superusers)
 	users = None
 	integrationStatuses = []
 	if request.user.is_superuser:
-		users = User.objects.all()
-		integration_names = ['Microsoft Entra ID']
-		for integration_name in integration_names:
-			try:
-				integration = SSOIntegration.objects.get(integration_type=integration_name)
-				if integration.tenant_domain:
-					integrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, True, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at])
-				else:
-					integrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, False, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at])
-			except SSOIntegration.DoesNotExist:
-				pass
+		users = User.objects.only(
+			'id', 'first_name', 'last_name', 'email', 'is_superuser', 'is_active', 'last_login'
+		).all()
+		try:
+			integration = SSOIntegration.objects.get(integration_type='Microsoft Entra ID')
+			has_domain = bool(integration.tenant_domain)
+			integrationStatuses.append([
+				integration.integration_type, integration.image_integration_path,
+				integration.enabled, has_domain, integration.id, integration.client_id,
+				integration.tenant_id, integration.tenant_domain, integration.last_synced_at,
+			])
+		except SSOIntegration.DoesNotExist:
+			pass
 
 	context = {
 		'page': "general-settings",
 		'enabled_integrations': getEnabledIntegrations(),
 		'notifications': Notification.objects.order_by('-created_at')[:50],
-		'devicecomps': compliance_settings,  # Use the new structured data
-		'compliance_summary': compliance_summary,
-		'compliance_report': compliance_report,
-        'persona_groups': PersonaGroup.objects.all().order_by('group_name'),
-        'personas': Persona.objects.all().order_by('priority', 'persona_name'),
-		# Identity settings data (only for superusers)
+		'devicecomps': compliance_settings,
+		'persona_groups': PersonaGroup.objects.all().order_by('group_name'),
+		'personas': Persona.objects.all().order_by('priority', 'persona_name'),
 		'users': users,
 		'integrationStatuses': integrationStatuses,
 		'is_superuser': request.user.is_superuser,
 	}
-	
+
 	return render(request, 'main/general-settings.html', context)
 
 @login_required
