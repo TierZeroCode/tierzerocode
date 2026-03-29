@@ -261,7 +261,7 @@ def index(request):
 	
 	context = {
 		'page': 'dashboard',
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'count_users': count_users,
 		'count_guests': guests,
 		'count_groups': groups,
@@ -327,7 +327,7 @@ def indexDevice(request):
 		'page': 'device-dashboard',
 		'enabled_integrations': enabled_integrations,
 		'enabled_user_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'endpoint_device_counts': integration_device_counts,
 		'osPlatformLabels': os_platforms,
 		'osPlatformData': osPlatformData,
@@ -388,7 +388,7 @@ def indexUser(request):
 	context = {
 		'page': 'user-dashboard',
 		# 'enabled_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'count_duplicate_persona': count_duplicate_persona,
 		'count_unknown_persona': count_unknown_persona,
         'auth_method_labels': ['Phishing Resistant', 'Passwordless', 'MFA', 'Deprecated', 'None'],
@@ -463,7 +463,7 @@ def personaMetrics(request, persona_id):
 	context = {
 		'page': 'user-dashboard',
 		'enabled_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'persona': persona_obj,
 		'persona_name': persona_name,
 		'persona_count': users.count(),
@@ -540,7 +540,7 @@ def generalSettings(request):
 	context = {
 		'page': "general-settings",
 		'enabled_integrations': getEnabledIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'devicecomps': compliance_settings,
 		'persona_groups': PersonaGroup.objects.all().order_by('group_name'),
 		'personas': Persona.objects.all().order_by('priority', 'persona_name'),
@@ -609,7 +609,7 @@ def deviceData(request, id):
 		'page': 'device-data',
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'device': device,
 		'ints': integrations,
 		**integration_device_data,
@@ -625,7 +625,7 @@ def masterList(request):
 		'page': "master-list",
 		'enabled_integrations': list(getEnabledIntegrations()),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'os_platforms': os_platforms,
 		'endpoint_types': endpoint_types,
 	}
@@ -727,7 +727,7 @@ def userMasterList(request):
 
 	context = {
 		'page':"master-list-user",
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'auth_strengths': ['None', 'MFA', 'Passwordless', 'Phishing Resistant', 'Deprecated'],
 		'personas': Persona.objects.all().order_by('priority', 'persona_name'),
 		'user_list':user_list,
@@ -892,7 +892,7 @@ def endpointList(request, integration):
 		'page':integration,
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'integration':integration_clean.title(),
 		'endpoint_list':endpoint_list,
 	}
@@ -921,7 +921,7 @@ def integrations(request):
 			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
 	context = {
 		'page':'integrations',
-		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
 		'deviceIntegrationStatuses':deviceIntegrationStatuses,
@@ -1175,6 +1175,14 @@ def delete_notification(request, id):
     except Exception as e:
         messages.error(request, f'Error deleting notification: {str(e)}')
 
+    return redirect('index')
+
+@login_required
+@require_POST
+def clear_all_notifications(request):
+    """Delete all notifications."""
+    Notification.objects.all().delete()
+    messages.success(request, 'All notifications cleared.')
     return redirect('index')
 
 @login_required

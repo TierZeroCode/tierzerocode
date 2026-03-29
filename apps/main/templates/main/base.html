@@ -210,9 +210,14 @@
 									</a>
 								</div>
 								{% endif %}
-								<!-- <div class="dropdown-menu-footer">
-									<a href="/error500" class="text-muted">Show all notifications</a>
-								</div> -->
+								{% if notifications %}
+								<div class="dropdown-menu-footer text-center py-2">
+									<form method="post" action="{% url 'clear_all_notifications' %}" style="display:inline;" onsubmit="return confirm('Clear all notifications?');">
+										{% csrf_token %}
+										<button type="submit" class="btn btn-sm btn-outline-danger">Clear All Notifications</button>
+									</form>
+								</div>
+								{% endif %}
 							</div>
 						</li>
 						<li class="nav-item dropdown">
