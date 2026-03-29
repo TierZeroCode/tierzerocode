@@ -72,8 +72,15 @@ def updateMicrosoftEntraIDDeviceDatabase(json_data):
     integration = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="Device")
 
     # --- Phase 1: Process all API data ---
+    ownership_filter = integration.device_ownership_filter
     processed = []
     for device_data in json_data:
+        # Apply device ownership filter
+        if ownership_filter and ownership_filter != 'All':
+            device_ownership = device_data.get('deviceOwnership', '')
+            if device_ownership != ownership_filter:
+                continue
+
         hostname = (device_data.get('displayName') or '').lower()
         if not hostname:
             continue

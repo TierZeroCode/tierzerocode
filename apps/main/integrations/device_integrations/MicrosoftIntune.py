@@ -102,8 +102,15 @@ def updateMicrosoftIntuneDeviceDatabase(json_data):
     integration = Integration.objects.get(integration_type="Microsoft Intune")
 
     # --- Phase 1: Process all API data ---
+    ownership_filter = integration.device_ownership_filter
     processed = []
     for device_data in json_data:
+        # Apply device ownership filter (Intune uses lowercase: "company", "personal")
+        if ownership_filter and ownership_filter != 'All':
+            device_owner_type = (device_data.get('managedDeviceOwnerType') or '').lower()
+            if device_owner_type != ownership_filter.lower():
+                continue
+
         hostname = (device_data.get('deviceName') or '').lower()
         if not hostname:
             continue

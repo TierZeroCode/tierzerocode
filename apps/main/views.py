@@ -911,7 +911,7 @@ def integrations(request):
 		integration = device_integrations.get(integration_name)
 		if integration:
 			has_secret = bool(integration.client_secret)
-			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
+			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at, integration.device_ownership_filter or 'All'])
 
 	userIntegrationStatuses = []
 	for integration_name in user_integration_names:
@@ -967,6 +967,8 @@ def updateIntegration(request, id):
 	integration_update.client_secret = request.POST['client_secret']
 	integration_update.tenant_id = request.POST['tenant_id']
 	integration_update.tenant_domain = request.POST['tenant_domain']
+	if 'device_ownership_filter' in request.POST:
+		integration_update.device_ownership_filter = request.POST['device_ownership_filter']
 	integration_update.save()
 
 	return redirect('integrations')

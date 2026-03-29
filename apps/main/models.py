@@ -77,6 +77,12 @@ class Integration(models.Model):
     client_secret = models.CharField(max_length=200, null=True)
     tenant_id = models.CharField(max_length=200, null=True)
     tenant_domain = models.CharField(max_length=200, null=True)
+    DEVICE_OWNERSHIP_CHOICES = (
+        ("All", "All Devices"),
+        ("Company", "Corporate Devices Only"),
+        ("Personal", "Personal Devices Only"),
+    )
+    device_ownership_filter = models.CharField(max_length=20, choices=DEVICE_OWNERSHIP_CHOICES, default="All", null=True)
     last_synced_at = models.DateTimeField(null=True)
     last_connection_test_at = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
