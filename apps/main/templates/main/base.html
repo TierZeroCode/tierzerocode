@@ -165,10 +165,11 @@
 									No Notifications
 									{% endif %}
 								</div>
+								<div style="max-height: 350px; overflow-y: auto;">
 								{% if notifications %}
 								{% for notification in notifications %}
 								<div class="list-group">
-									<div class="list-group-item d-flex align-items-center">
+									<div class="list-group-item d-flex align-items-center py-2">
 										<div class="row g-0 align-items-center flex-grow-1">
 											<div class="col-2">
 												{% if notification.status == 'Success' %}
@@ -210,6 +211,7 @@
 									</a>
 								</div>
 								{% endif %}
+								</div>
 								{% if notifications %}
 								<div class="dropdown-menu-footer text-center py-2">
 									<form method="post" action="{% url 'clear_all_notifications' %}" style="display:inline;" onsubmit="return confirm('Clear all notifications?');">
