@@ -99,6 +99,16 @@
                                             <input type="text" class="form-control" name="tenant_domain" placeholder="example.com" value="{{deviceIntegrationStatus.7}}">
                                             {% endif %}
                                         </div>
+                                        {% if deviceIntegrationStatus.0 == 'Microsoft Entra ID' or deviceIntegrationStatus.0 == 'Microsoft Intune' %}
+                                        <div class="mb-3">
+                                            <label class="form-label">Device Ownership Filter</label>
+                                            <select class="form-control" name="device_ownership_filter">
+                                                <option value="All" {% if deviceIntegrationStatus.10 == 'All' %}selected{% endif %}>All Devices</option>
+                                                <option value="Company" {% if deviceIntegrationStatus.10 == 'Company' %}selected{% endif %}>Corporate Devices Only</option>
+                                                <option value="Personal" {% if deviceIntegrationStatus.10 == 'Personal' %}selected{% endif %}>Personal Devices Only</option>
+                                            </select>
+                                        </div>
+                                        {% endif %}
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
