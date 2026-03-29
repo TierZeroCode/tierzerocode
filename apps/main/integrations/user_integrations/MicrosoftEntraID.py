@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.utils.timezone import make_aware
 # Import Models
-from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification
+from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary
 # Import Function Scripts
 from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
@@ -356,6 +356,59 @@ def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
     # --- Phase 6: Bulk delete stale users ---
     UserData.objects.filter(integration=integration).exclude(upn__in=incoming_upns).delete()
 
+def syncSignInSummary(access_token):
+    """Fetch sign-in logs and compute CA+MFA summary. Requires AuditLog.Read.All permission."""
+    try:
+        # Fetch successful interactive sign-ins from the last 7 days
+        url = (
+            "https://graph.microsoft.com/v1.0/auditLogs/signIns"
+            "?$filter=status/errorCode eq 0 and signInEventTypes/any(t:t eq 'interactiveUser')"
+            "&$select=conditionalAccessStatus,authenticationRequirement"
+            "&$top=999"
+        )
+        headers = {'Authorization': access_token}
+
+        ca_mfa = 0
+        ca_no_mfa = 0
+        no_ca_mfa = 0
+        no_ca_no_mfa = 0
+        total = 0
+
+        while url:
+            response = requests.get(url, headers=headers)
+            if response.status_code != 200:
+                break
+            data = response.json()
+            for signin in data.get('value', []):
+                total += 1
+                ca_applied = signin.get('conditionalAccessStatus') == 'success'
+                mfa_required = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
+
+                if ca_applied and mfa_required:
+                    ca_mfa += 1
+                elif ca_applied and not mfa_required:
+                    ca_no_mfa += 1
+                elif not ca_applied and mfa_required:
+                    no_ca_mfa += 1
+                else:
+                    no_ca_no_mfa += 1
+
+            url = data.get('@odata.nextLink')
+
+        # Upsert the singleton summary row
+        SignInSummary.objects.update_or_create(
+            id=1,
+            defaults={
+                'ca_mfa': ca_mfa,
+                'ca_no_mfa': ca_no_mfa,
+                'no_ca_mfa': no_ca_mfa,
+                'no_ca_no_mfa': no_ca_no_mfa,
+                'total_signins': total,
+            }
+        )
+    except Exception:
+        pass  # Don't block user sync if sign-in analysis fails
+
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
@@ -374,7 +427,10 @@ def syncMicrosoftEntraIDUser():
     users = getMicrosoftEntraIDUsers(access_token)
     authentication_data = getMicrosoftEntraIDUserAuthenticationMethods(access_token)
     updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
-    
+
+    # Sync CA+MFA sign-in analysis (requires AuditLog.Read.All)
+    syncSignInSummary(access_token)
+
     data.last_synced_at = timezone.now()
     data.save()
     return True

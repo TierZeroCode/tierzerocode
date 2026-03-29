@@ -159,6 +159,30 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-12 col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Conditional Access &amp; MFA Analysis</h5>
+                                    <p class="text-muted mb-0 small">Sign-in flow through Conditional Access and MFA enforcement.</p>
+                                </div>
+                                <div class="card-body">
+                                    <div id="sankey-ca-mfa" style="height: 350px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Device Integration Coverage</h5>
+                                    <p class="text-muted mb-0 small">Device coverage by enabled integrations and compliance status.</p>
+                                </div>
+                                <div class="card-body">
+                                    <div id="sankey-device-coverage" style="height: 350px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 				</div>
 			</main>
 {% endblock %}
@@ -335,6 +359,149 @@
 		};
 
 		Plotly.newPlot('sankey-diagram-all-users', [data], layout, config);
+	});
+</script>
+<script>
+	document.addEventListener("DOMContentLoaded", function() {
+		// CA+MFA Sankey
+		var ca_mfa = {{ signin_summary.ca_mfa|default:0 }};
+		var ca_no_mfa = {{ signin_summary.ca_no_mfa|default:0 }};
+		var no_ca_mfa = {{ signin_summary.no_ca_mfa|default:0 }};
+		var no_ca_no_mfa = {{ signin_summary.no_ca_no_mfa|default:0 }};
+		var total = ca_mfa + ca_no_mfa + no_ca_mfa + no_ca_no_mfa;
+
+		if (total > 0) {
+			var data = {
+				type: "sankey",
+				orientation: "h",
+				node: {
+					pad: 35,
+					thickness: 12,
+					line: { color: "black", width: 0.5 },
+					label: ["Sign-ins", "CA Applied", "CA Not Applied", "MFA", "No MFA", "MFA", "No MFA"],
+					color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#FF6B6B", "#50C878", "#FF6B6B"],
+					x: [0, 0.5, 0.5, 1, 1, 1, 1],
+					y: [0.5, 0.25, 0.75, 0.1, 0.35, 0.65, 0.9]
+				},
+				link: {
+					source: [0, 0, 1, 1, 2, 2],
+					target: [1, 2, 3, 4, 5, 6],
+					value: [
+						ca_mfa + ca_no_mfa,        // Sign-ins -> CA Applied
+						no_ca_mfa + no_ca_no_mfa,  // Sign-ins -> CA Not Applied
+						ca_mfa,                     // CA Applied -> MFA
+						ca_no_mfa,                  // CA Applied -> No MFA
+						no_ca_mfa,                  // CA Not Applied -> MFA
+						no_ca_no_mfa                // CA Not Applied -> No MFA
+					],
+					color: [
+						"rgba(80, 200, 120, 0.4)",
+						"rgba(220, 226, 74, 0.4)",
+						"rgba(80, 200, 120, 0.4)",
+						"rgba(255, 107, 107, 0.4)",
+						"rgba(80, 200, 120, 0.4)",
+						"rgba(255, 107, 107, 0.4)"
+					]
+				}
+			};
+			var layout = {
+				title: "", font: { size: 12 },
+				paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+				margin: { l: 10, r: 10, t: 10, b: 10 }
+			};
+			Plotly.newPlot('sankey-ca-mfa', [data], layout, { responsive: true, displayModeBar: false });
+		} else {
+			document.getElementById('sankey-ca-mfa').innerHTML = '<p class="text-muted text-center mt-5">No sign-in data available. Sync Entra ID users to populate.</p>';
+		}
+	});
+</script>
+<script>
+	document.addEventListener("DOMContentLoaded", function() {
+		// Device Integration Coverage Sankey
+		var compliant = {{ device_compliance_compliant|default:0 }};
+		var noncompliant = {{ device_compliance_noncompliant|default:0 }};
+		var totalDevices = compliant + noncompliant;
+
+		{% comment %} Build integration counts from Django context {% endcomment %}
+		var integrationNames = {{ enabled_device_integrations|safe }};
+		var integrationCountsRaw = {{ device_integration_counts|safe }};
+
+		if (totalDevices > 0 && integrationNames.length > 0) {
+			// Build node labels: [Devices, ...integrations, Compliant, Non-Compliant]
+			var labels = ["Devices"].concat(integrationNames).concat(["Compliant", "Non-Compliant"]);
+			var colors = ["#4A90E2"];
+			for (var i = 0; i < integrationNames.length; i++) {
+				colors.push("#6f42c1");
+			}
+			colors.push("#50C878");
+			colors.push("#FF6B6B");
+
+			// Build integration count lookup
+			var countMap = {};
+			for (var j = 0; j < integrationCountsRaw.length; j++) {
+				countMap[integrationCountsRaw[j].integration__integration_type_short] = integrationCountsRaw[j].count;
+			}
+
+			// Build links: Devices -> each integration, then each integration -> Compliant/Non-Compliant
+			var source = [];
+			var target = [];
+			var value = [];
+			var linkColors = [];
+
+			var compIdx = integrationNames.length + 1;
+			var noncompIdx = integrationNames.length + 2;
+
+			for (var k = 0; k < integrationNames.length; k++) {
+				var cnt = countMap[integrationNames[k]] || 0;
+				if (cnt > 0) {
+					source.push(0);
+					target.push(k + 1);
+					value.push(cnt);
+					linkColors.push("rgba(111, 66, 193, 0.3)");
+				}
+			}
+
+			// Devices -> Compliant / Non-Compliant
+			if (compliant > 0) {
+				source.push(0);
+				target.push(compIdx);
+				value.push(compliant);
+				linkColors.push("rgba(80, 200, 120, 0.4)");
+			}
+			if (noncompliant > 0) {
+				source.push(0);
+				target.push(noncompIdx);
+				value.push(noncompliant);
+				linkColors.push("rgba(255, 107, 107, 0.4)");
+			}
+
+			var data = {
+				type: "sankey",
+				orientation: "h",
+				node: {
+					pad: 25,
+					thickness: 12,
+					line: { color: "black", width: 0.5 },
+					label: labels,
+					color: colors
+				},
+				link: {
+					source: source,
+					target: target,
+					value: value,
+					color: linkColors
+				}
+			};
+
+			var layout = {
+				title: "", font: { size: 12 },
+				paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+				margin: { l: 10, r: 10, t: 10, b: 10 }
+			};
+			Plotly.newPlot('sankey-device-coverage', [data], layout, { responsive: true, displayModeBar: false });
+		} else {
+			document.getElementById('sankey-device-coverage').innerHTML = '<p class="text-muted text-center mt-5">No device data available.</p>';
+		}
 	});
 </script>
 {% endblock %}
