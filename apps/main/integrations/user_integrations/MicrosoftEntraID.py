@@ -358,11 +358,13 @@ def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
 
 def syncSignInSummary(access_token):
     """Fetch sign-in logs and compute CA+MFA summary. Requires AuditLog.Read.All permission."""
+    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
+
     try:
-        # Fetch successful interactive sign-ins from the last 7 days
+        # Fetch successful sign-ins — v1.0 endpoint with simple filter
         url = (
             "https://graph.microsoft.com/v1.0/auditLogs/signIns"
-            "?$filter=status/errorCode eq 0 and signInEventTypes/any(t:t eq 'interactiveUser')"
+            "?$filter=status/errorCode eq 0"
             "&$select=conditionalAccessStatus,authenticationRequirement"
             "&$top=999"
         )
@@ -377,6 +379,8 @@ def syncSignInSummary(access_token):
         while url:
             response = requests.get(url, headers=headers)
             if response.status_code != 200:
+                _sync_log("Microsoft Entra ID", "1507", "Failure",
+                          f"Sign-in logs fetch failed: {response.status_code} - {response.text[:500]}")
                 break
             data = response.json()
             for signin in data.get('value', []):
@@ -395,19 +399,24 @@ def syncSignInSummary(access_token):
 
             url = data.get('@odata.nextLink')
 
-        # Upsert the singleton summary row
-        SignInSummary.objects.update_or_create(
-            id=1,
-            defaults={
-                'ca_mfa': ca_mfa,
-                'ca_no_mfa': ca_no_mfa,
-                'no_ca_mfa': no_ca_mfa,
-                'no_ca_no_mfa': no_ca_no_mfa,
-                'total_signins': total,
-            }
-        )
-    except Exception:
-        pass  # Don't block user sync if sign-in analysis fails
+        if total > 0:
+            SignInSummary.objects.update_or_create(
+                id=1,
+                defaults={
+                    'ca_mfa': ca_mfa,
+                    'ca_no_mfa': ca_no_mfa,
+                    'no_ca_mfa': no_ca_mfa,
+                    'no_ca_no_mfa': no_ca_no_mfa,
+                    'total_signins': total,
+                }
+            )
+            _sync_log("Microsoft Entra ID", "1506", "Success",
+                      f"Sign-in summary: {total} sign-ins (CA+MFA={ca_mfa}, CA-only={ca_no_mfa}, MFA-only={no_ca_mfa}, Neither={no_ca_no_mfa})")
+        else:
+            _sync_log("Microsoft Entra ID", "1506", "Warning", "No sign-in records returned from Graph API")
+
+    except Exception as e:
+        _sync_log("Microsoft Entra ID", "1507", "Failure", f"Sign-in summary sync error: {str(e)}")
 
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
