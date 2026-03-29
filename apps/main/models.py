@@ -499,6 +499,22 @@ class UserData(models.Model):
     def __str__(self):
         return self.upn
 
+class SignInSummary(models.Model):
+    """Stores CA+MFA sign-in analysis from Microsoft Entra ID sign-in logs. Updated per sync."""
+    ca_mfa = models.IntegerField(default=0)          # CA applied + MFA enforced
+    ca_no_mfa = models.IntegerField(default=0)        # CA applied + single factor
+    no_ca_mfa = models.IntegerField(default=0)        # No CA + MFA present
+    no_ca_no_mfa = models.IntegerField(default=0)     # No CA + no MFA
+    total_signins = models.IntegerField(default=0)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Sign-In Summary"
+        verbose_name_plural = "Sign-In Summaries"
+
+    def __str__(self):
+        return f"Sign-In Summary ({self.synced_at})"
+
 class Notification(models.Model):
     title = models.CharField(max_length=200, null=True)
     status = models.TextField(null=True)

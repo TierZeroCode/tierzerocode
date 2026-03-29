@@ -22,7 +22,7 @@ from .integrations.user_integrations.MicrosoftEntraID import (
     getMicrosoftEntraIDGuests, getMicrosoftEntraIDGroups,
     getMicrosoftEntraIDApps, getMicrosoftEntraTenantDetails,
 )
-from .models import Device, DeviceComplianceSettings, Integration, Notification, UserData, PersonaGroup, Persona
+from .models import Device, DeviceComplianceSettings, Integration, Notification, SignInSummary, UserData, PersonaGroup, Persona
 from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosoftGraphConnection
 
 ############################################################################################
@@ -290,6 +290,19 @@ def index(request):
 		'tenant_id': tenant_id,
 		'tenant_name': tenant_name,
 		'tenant_domain': tenant_domain,
+
+		# CA+MFA sign-in analysis (from last sync)
+		'signin_summary': SignInSummary.objects.filter(id=1).first(),
+
+		# Integration coverage for device compliance Sankey
+		'device_compliance_compliant': Device.objects.filter(compliant=True).count(),
+		'device_compliance_noncompliant': Device.objects.filter(compliant=False).count(),
+		'enabled_device_integrations': list(Integration.objects.filter(enabled=True, integration_context="Device").values_list('integration_type_short', flat=True)),
+		'device_integration_counts': list(
+			Device.objects.filter(integration__enabled=True, integration__integration_context="Device")
+			.values('integration__integration_type_short')
+			.annotate(count=Count('id'))
+		),
 	}
 	return render(request, 'main/index.html', context)
 
