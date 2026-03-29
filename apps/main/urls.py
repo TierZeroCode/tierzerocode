@@ -44,7 +44,8 @@ urlpatterns = [
     # Notification Management
     # ============================================================================
     path('delete-notification/<int:id>', views.delete_notification, name='delete_notification'),
-    
+    path('clear-all-notifications', views.clear_all_notifications, name='clear_all_notifications'),
+
     # ============================================================================
     # Persona Group Management
     # ============================================================================
