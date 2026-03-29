@@ -60,6 +60,9 @@ urlpatterns = [
     # ============================================================================
     # API Endpoints
     # ============================================================================
+    # Device Master List API
+    path('api/device-master-list', views.device_master_list_api, name='device_master_list_api'),
+
     # User Master List APIs
     path('api/user-master-list', views.user_master_list_api, name='user_master_list_api'),
     path('api/user-master-list-export', views.user_master_list_export_api, name='user_master_list_export_api'),

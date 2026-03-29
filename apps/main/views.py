@@ -628,44 +628,101 @@ def deviceData(request, id):
 
 @login_required
 def masterList(request):
-	enabled_integrations = list(getEnabledIntegrations())
-	endpoint_list = []
+	"""Render the master list shell — data loaded via AJAX from device_master_list_api."""
+	context = {
+		'page': "master-list",
+		'enabled_integrations': list(getEnabledIntegrations()),
+		'enabled_user_integrations': getEnabledUserIntegrations(),
+		'notifications': Notification.objects.order_by('-created_at')[:50],
+		'os_platforms': os_platforms,
+		'endpoint_types': endpoint_types,
+	}
+	return render(request, 'main/master-list.html', context)
 
-	# Prefetch device integrations only (matches getEnabledIntegrations); .only('id') since we only need membership
-	endpoints = Device.objects.prefetch_related(Prefetch('integration', queryset=Integration.objects.filter(enabled=True, integration_context="Device").only('id'))).all()
+@login_required
+def device_master_list_api(request):
+	"""DataTables server-side API for device master list."""
+	draw = int(request.GET.get('draw', 1))
+	start = int(request.GET.get('start', 0))
+	length = int(request.GET.get('length', 25))
+	search_value = request.GET.get('search[value]', '')
 
-	# Load all compliance settings once to avoid N DB lookups (one per endpoint)
+	# Filters
+	os_platform_filter = request.GET.getlist('os_platform[]')
+	endpoint_type_filter = request.GET.getlist('endpoint_type[]')
+	compliance_filter = request.GET.get('compliance', '')
+
+	# Sorting
+	order_column = request.GET.get('order[0][column]', '0')
+	order_dir = request.GET.get('order[0][dir]', 'asc')
+	sort_columns = ['hostname', 'compliant', 'osPlatform', 'endpointType']
+	if order_column.isdigit() and int(order_column) < len(sort_columns):
+		sort_field = sort_columns[int(order_column)]
+		if order_dir == 'desc':
+			sort_field = f'-{sort_field}'
+	else:
+		sort_field = 'hostname'
+
+	# Base query with prefetch
+	devices = Device.objects.prefetch_related(
+		Prefetch('integration', queryset=Integration.objects.filter(enabled=True, integration_context="Device").only('id', 'integration_type'))
+	).order_by(sort_field)
+
+	# Apply filters
+	if os_platform_filter:
+		devices = devices.filter(osPlatform__in=os_platform_filter)
+	if endpoint_type_filter:
+		devices = devices.filter(endpointType__in=endpoint_type_filter)
+	if compliance_filter:
+		if compliance_filter == 'True':
+			devices = devices.filter(compliant=True)
+		elif compliance_filter == 'False':
+			devices = devices.filter(compliant=False)
+	if search_value:
+		devices = devices.filter(hostname__icontains=search_value)
+
+	total = Device.objects.count()
+	filtered = devices.count()
+
+	# Paginate
+	paginator = Paginator(devices, length)
+	page = paginator.get_page((start // length) + 1)
+
+	# Load compliance settings + enabled integrations once
 	compliance_by_platform = {
 		s.os_platform: _compliance_settings_to_dict(s)
 		for s in DeviceComplianceSettings.objects.all()
 	}
+	enabled_integrations = list(getEnabledIntegrations())
 
-	for endpoint in endpoints:
-		endpoint_data = [endpoint]
-		compliance_settings = compliance_by_platform.get(endpoint.osPlatform, {})
+	# Build response
+	data = []
+	for device in page.object_list:
+		compliance_settings_dict = compliance_by_platform.get(device.osPlatform, {})
+		integration_ids = {i.id for i in device.integration.all()}
 
-		# Use prefetched relation: one set of IDs per endpoint, O(1) lookups
-		endpoint_integration_ids = {i.id for i in endpoint.integration.all()}
+		row = [
+			f'<a href="/device/{device.id}">{device.hostname}</a>',
+			'&#9989;' if device.compliant else '&#10060;',
+			device.osPlatform or '',
+			device.endpointType or '',
+		]
 
 		for integration in enabled_integrations:
-			compliance_setting = compliance_settings.get(integration.integration_type)
-			if compliance_setting is False or compliance_setting is None:
-				endpoint_data.append(None)
+			cs = compliance_settings_dict.get(integration.integration_type)
+			if cs is False or cs is None:
+				row.append('&#x29B8;')
 			else:
-				endpoint_data.append(integration.id in endpoint_integration_ids)
+				row.append('&#9989;' if integration.id in integration_ids else '&#10060;')
 
-		endpoint_list.append(endpoint_data)
+		data.append(row)
 
-	context = {
-		'page':"master-list",
-		'enabled_integrations': enabled_integrations,
-		'enabled_user_integrations': getEnabledUserIntegrations(),
-		'notifications': Notification.objects.order_by('-created_at')[:50],
-		'endpoint_list':endpoint_list,
-		'os_platforms': os_platforms,
-		'endpoint_types': endpoint_types,
-	}
-	return render( request, 'main/master-list.html', context)
+	return JsonResponse({
+		'draw': draw,
+		'recordsTotal': total,
+		'recordsFiltered': filtered,
+		'data': data,
+	})
 
 ############################################################################################
 
