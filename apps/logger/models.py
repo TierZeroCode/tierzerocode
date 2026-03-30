@@ -13,7 +13,7 @@ class Log(models.Model):
     privileged = models.BooleanField(default=True)
     action = models.CharField(max_length=100)
     outcome = models.CharField(max_length=20)
-    additional_data = models.CharField(max_length=250)
+    additional_data = models.TextField(default='', blank=True)
     user_id = models.CharField(max_length=50, null=True, blank=True)
     ip_address = models.CharField(max_length=50, null=True, blank=True)
     user_agent = models.CharField(max_length=250, null=True, blank=True)
