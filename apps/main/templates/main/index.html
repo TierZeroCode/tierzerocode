@@ -159,6 +159,94 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Device Summary Section -->
+                    <div class="row">
+                        <!-- OS Breakdown -->
+                        <div class="col-12 col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Device Summary</h5>
+                                    <p class="text-muted mb-0 small">Devices by operating system.</p>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm mb-0">
+                                        <tbody>
+                                            <tr><td><i class="align-middle me-2" data-feather="monitor"></i>Windows</td><td class="text-end fw-bold">{{ device_os_counts.Windows|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="monitor"></i>Windows Server</td><td class="text-end fw-bold">{{ device_os_counts.Windows_Server|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="monitor"></i>MacOS</td><td class="text-end fw-bold">{{ device_os_counts.MacOS|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="smartphone"></i>iOS/iPadOS</td><td class="text-end fw-bold">{{ device_os_counts.iOS_iPadOS|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="smartphone"></i>Android</td><td class="text-end fw-bold">{{ device_os_counts.Android|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="server"></i>Ubuntu</td><td class="text-end fw-bold">{{ device_os_counts.Ubuntu|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="server"></i>RHEL</td><td class="text-end fw-bold">{{ device_os_counts.Red_Hat_Enterprise_Linux|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="server"></i>CentOS</td><td class="text-end fw-bold">{{ device_os_counts.CentOS|default:0 }}</td></tr>
+                                            <tr><td><i class="align-middle me-2" data-feather="help-circle"></i>Other</td><td class="text-end fw-bold">{{ device_os_counts.Other|default:0 }}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Endpoint Type Breakdown -->
+                        <div class="col-12 col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Endpoint Types</h5>
+                                    <p class="text-muted mb-0 small">Desktops, mobiles, and servers.</p>
+                                </div>
+                                <div class="card-body text-center">
+                                    {% if device_total > 0 %}
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <h2 class="mb-0">{% widthratio device_desktop_count device_total 100 %}%</h2>
+                                            <p class="text-muted mb-0">Desktops</p>
+                                            <h4 class="text-primary">{{ device_desktop_count }}</h4>
+                                        </div>
+                                        <div class="col-4">
+                                            <h2 class="mb-0">{% widthratio device_mobile_count device_total 100 %}%</h2>
+                                            <p class="text-muted mb-0">Mobiles</p>
+                                            <h4 class="text-primary">{{ device_mobile_count }}</h4>
+                                        </div>
+                                        <div class="col-4">
+                                            <h2 class="mb-0">{% widthratio device_server_count device_total 100 %}%</h2>
+                                            <p class="text-muted mb-0">Servers</p>
+                                            <h4 class="text-primary">{{ device_server_count }}</h4>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mt-3">No devices synced.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Compliance -->
+                        <div class="col-12 col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Device Compliance</h5>
+                                    <p class="text-muted mb-0 small">Overall compliance posture.</p>
+                                </div>
+                                <div class="card-body text-center">
+                                    {% if device_total > 0 %}
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <h1 class="text-success mb-0">{% widthratio device_compliance_compliant device_total 100 %}%</h1>
+                                            <p class="text-muted mb-0">Compliant</p>
+                                            <h4 class="text-success">{{ device_compliance_compliant }}</h4>
+                                        </div>
+                                        <div class="col-6">
+                                            <h1 class="text-danger mb-0">{% widthratio device_compliance_noncompliant device_total 100 %}%</h1>
+                                            <p class="text-muted mb-0">Non-compliant</p>
+                                            <h4 class="text-danger">{{ device_compliance_noncompliant }}</h4>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mt-3">No devices synced.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-12 col-lg-6">
                             <div class="card">
