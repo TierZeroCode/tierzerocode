@@ -205,4 +205,35 @@ def bulk_sync_devices(integration, processed_devices, DetailModel=None, detail_u
     if compliance_updates:
         Device.objects.bulk_update(compliance_updates, ['compliant'], batch_size=500)
 
+    # --- Phase 7: Remove stale integration links and orphaned devices ---
+    _sync_log(integration_name, "1506", "Info", "Cleaning up stale devices")
+
+    # Find devices linked to this integration that were NOT in this sync
+    stale_links = DeviceIntegrationThrough.objects.filter(
+        integration=integration
+    ).exclude(
+        device__hostname__in=incoming_hostnames
+    )
+    stale_device_ids = set(stale_links.values_list('device_id', flat=True))
+    stale_count = stale_links.count()
+
+    if stale_count > 0:
+        # Remove the M2M links for stale devices
+        stale_links.delete()
+        _sync_log(integration_name, "1506", "Info", f"Removed {stale_count} stale integration links")
+
+        # Delete devices that now have zero integrations
+        from django.db.models import Count
+        orphaned = Device.objects.filter(
+            id__in=stale_device_ids
+        ).annotate(
+            integration_count=Count('integration')
+        ).filter(
+            integration_count=0
+        )
+        orphaned_count = orphaned.count()
+        if orphaned_count > 0:
+            orphaned.delete()
+            _sync_log(integration_name, "1506", "Info", f"Deleted {orphaned_count} orphaned devices (no integrations remaining)")
+
     _sync_log(integration_name, "1506", "Success", f"Sync complete — {len(processed_devices)} devices processed")
