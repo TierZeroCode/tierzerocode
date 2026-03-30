@@ -294,6 +294,7 @@ def index(request):
 		# CA+MFA sign-in analysis (from last sync)
 		'signin_summary': SignInSummary.objects.filter(id=1).first(),
 
+		# CA+MFA sign-in analysis (from last sync)
 		# Integration coverage for device compliance Sankey
 		'device_compliance_compliant': Device.objects.filter(compliant=True).count(),
 		'device_compliance_noncompliant': Device.objects.filter(compliant=False).count(),
@@ -303,6 +304,16 @@ def index(request):
 			.values('integration__integration_type_short')
 			.annotate(count=Count('id'))
 		),
+
+		# Device summary for OS breakdown, endpoint type, compliance percentages
+		'device_os_counts': {
+			(item['osPlatform'] or 'Other').replace(' ', '_').replace('/', '_'): item['count']
+			for item in Device.objects.values('osPlatform').annotate(count=Count('id'))
+		},
+		'device_total': Device.objects.count(),
+		'device_desktop_count': Device.objects.filter(endpointType='Client').count(),
+		'device_mobile_count': Device.objects.filter(endpointType='Mobile').count(),
+		'device_server_count': Device.objects.filter(endpointType='Server').count(),
 	}
 	return render(request, 'main/index.html', context)
 
