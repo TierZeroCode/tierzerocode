@@ -361,9 +361,9 @@ def syncSignInSummary(access_token):
     from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
 
     try:
-        # Fetch successful sign-ins — v1.0 endpoint with simple filter
+        # Fetch successful sign-ins — beta endpoint (authenticationRequirement not available on v1.0)
         url = (
-            "https://graph.microsoft.com/v1.0/auditLogs/signIns"
+            "https://graph.microsoft.com/beta/auditLogs/signIns"
             "?$filter=status/errorCode eq 0"
             "&$select=conditionalAccessStatus,authenticationRequirement"
             "&$top=999"
