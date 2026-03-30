@@ -15,8 +15,6 @@ class SSOIntegrationResource(resources.ModelResource):
             "integration_type_short",
             "image_navbar_path",
             "image_integration_path",
-            "client_id",
-            "client_secret",
             "tenant_id",
             "tenant_domain",
             "last_synced_at",
