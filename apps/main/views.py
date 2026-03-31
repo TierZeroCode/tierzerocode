@@ -397,6 +397,8 @@ def indexUser(request):
 	# Count duplicate and unknown personas
 	count_duplicate_persona = UserData.objects.filter(persona__persona_name='DUPLICATE').count() or 0
 	count_unknown_persona = UserData.objects.filter(persona__persona_name='Unknown').count() or 0
+	persona_duplicate = Persona.objects.filter(persona_name='DUPLICATE').first()
+	persona_unknown = Persona.objects.filter(persona_name='Unknown').first()
  
 	context = {
 		'page': 'user-dashboard',
@@ -404,6 +406,8 @@ def indexUser(request):
 		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'count_duplicate_persona': count_duplicate_persona,
 		'count_unknown_persona': count_unknown_persona,
+		'persona_duplicate': persona_duplicate,
+		'persona_unknown': persona_unknown,
         'auth_method_labels': ['Phishing Resistant', 'Passwordless', 'MFA', 'Deprecated', 'None'],
         'auth_method_data': [
             auth_strength_counts['count_phishing_resistant'],
