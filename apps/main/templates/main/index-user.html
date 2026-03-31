@@ -14,7 +14,7 @@
 							<div class="w-100">
 								<div class="row">
 									<div class="col-sm-2">
-										<a href="/users/master-list/"><div class="card">
+										<a href="/users/master-list"><div class="card">
 											<div class="card-body">
 												<div class="row">
 													<div class="col mt-0">
@@ -51,8 +51,9 @@
 									</div>
 									{% endif %}
 									{% endfor %}
+									{% if persona_duplicate %}
 									<div class="col-sm-2">
-										<a href="/user-dashboard/duplicate-persona"><div class="card">
+										<a href="/user-dashboard/{{ persona_duplicate.id }}"><div class="card">
 											<div class="card-body">
 												<div class="row">
 													<div class="col mt-0">
@@ -68,8 +69,10 @@
 											</div>
 										</div></a>
 									</div>
+									{% endif %}
+									{% if persona_unknown %}
 									<div class="col-sm-2">
-										<a href="/user-dashboard/unknown-persona"><div class="card">
+										<a href="/user-dashboard/{{ persona_unknown.id }}"><div class="card">
 											<div class="card-body">
 												<div class="row">
 													<div class="col mt-0">
@@ -85,6 +88,7 @@
 											</div>
 										</div></a>
 									</div>
+									{% endif %}
 								</div>
 							</div>
 						</div>
