@@ -167,18 +167,18 @@
                                 if (response.data && response.data.length > 0) {
                                     // Create workbook and worksheet
                                     var wb = XLSX.utils.book_new();
-                                    var headers = ['UPN', 'Persona', 'Created At', 'Last Sign-on', 'Passkey', 'MS Auth Passkey', 'WHfB', 'Phone Sign-in', 'Push', 'OTP', 'TAP', 'Phone', 'Email', 'Sec. Qs'];
+                                    var headers = ['UPN', 'Persona', 'Created At', 'Last Sign-on', 'Highest Auth Strength', 'Lowest Auth Strength', 'Passkey', 'MS Auth Passkey', 'WHfB', 'Phone Sign-in', 'Push', 'OTP', 'TAP', 'Phone', 'Email', 'Sec. Qs'];
                                     var ws = XLSX.utils.aoa_to_sheet([headers]);
-                                    
+
                                     // Add data rows
                                     XLSX.utils.sheet_add_aoa(ws, response.data, {origin: 'A2'});
-                                    
+
                                     // Set column widths
                                     ws['!cols'] = [
                                         { width: 30 }, { width: 18 }, { width: 18 }, { width: 20 },
-                                        { width: 12 }, { width: 15 }, { width: 12 }, { width: 15 },
-                                        { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 },
-                                        { width: 12 }, { width: 12 }
+                                        { width: 22 }, { width: 22 }, { width: 12 }, { width: 15 },
+                                        { width: 12 }, { width: 15 }, { width: 12 }, { width: 12 },
+                                        { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }
                                     ];
                                     
                                     // Add worksheet to workbook
@@ -247,9 +247,9 @@
                                             {
                                                 table: {
                                                     headerRows: 1,
-                                                    widths: ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'],
+                                                    widths: ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'],
                                                     body: [
-                                                        ['UPN', 'Persona', 'Created At', 'Last Sign-on', 'Passkey', 'MS Auth', 'WHfB', 'Phone', 'Push', 'OTP', 'TAP', 'Phone', 'Email', 'Sec. Qs']
+                                                        ['UPN', 'Persona', 'Created At', 'Last Sign-on', 'Highest Auth', 'Lowest Auth', 'Passkey', 'MS Auth', 'WHfB', 'Phone', 'Push', 'OTP', 'TAP', 'Phone', 'Email', 'Sec. Qs']
                                                     ].concat(response.data)
                                                 }
                                             }
@@ -323,6 +323,8 @@
                                                         <th>Persona</th>
                                                         <th>Created At</th>
                                                         <th>Last Sign-on</th>
+                                                        <th>Highest Auth</th>
+                                                        <th>Lowest Auth</th>
                                                         <th>Passkey</th>
                                                         <th>MS Auth</th>
                                                         <th>WHfB</th>
@@ -336,7 +338,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>`;
-                                    
+
                                     response.data.forEach(function(row) {
                                         tableHtml += '<tr>';
                                         row.forEach(function(cell) {
