@@ -202,7 +202,32 @@ def updateMicrosoftIntuneDeviceDatabase(json_data):
     if new_links:
         DeviceIntegrationThrough.objects.bulk_create(new_links, ignore_conflicts=True)
 
-    # --- Phase 7: Bulk compliance check ---
+    # --- Phase 7: Remove stale integration links and orphaned devices ---
+    stale_links = DeviceIntegrationThrough.objects.filter(
+        integration=integration
+    ).exclude(
+        device__hostname__in=incoming_hostnames
+    )
+    stale_device_ids = set(stale_links.values_list('device_id', flat=True))
+    stale_count = stale_links.count()
+
+    if stale_count > 0:
+        stale_links.delete()
+
+        from django.db.models import Count
+        orphaned = Device.objects.filter(
+            id__in=stale_device_ids
+        ).annotate(
+            integration_count=Count('integration')
+        ).filter(
+            integration_count=0
+        )
+        orphaned.delete()
+
+    # Remove Intune detail records for devices no longer in this sync
+    MicrosoftIntuneDeviceData.objects.exclude(id__in=incoming_ids).delete()
+
+    # --- Phase 8: Bulk compliance check ---
     devices_for_compliance = Device.objects.filter(hostname__in=incoming_hostnames).prefetch_related('integration')
     compliance_updates = []
     for device in devices_for_compliance:
