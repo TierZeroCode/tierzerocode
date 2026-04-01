@@ -1065,6 +1065,9 @@ def testConnection(request, id):
 		required_permissions = []
 		scope = []
 	access_token = getMicrosoftGraphAccessToken(integration.client_id, integration.client_secret, integration.tenant_id, scope)
+	if isinstance(access_token, dict) and 'error' in access_token:
+		messages.error(request, f'{integration.integration_type} Connection Test Failed: {access_token["error"]}')
+		return redirect('/integrations')
 	connection_test = testMicrosoftGraphConnection(access_token, required_permissions, tenant_id=integration.tenant_id)
 	if connection_test['has_required_permissions']:
 		messages.success(request, f'{integration.integration_type} Connection Test Passed')
