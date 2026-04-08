@@ -1024,6 +1024,12 @@ def updateIntegration(request, id):
 def error500(request):
 	return render( request, 'main/pages-500.html')
 
+def custom_404(request, exception):
+	return render(request, 'main/pages-404.html', status=404)
+
+def custom_403(request, exception):
+	return render(request, 'main/pages-403.html', status=403)
+
 ############################################################################################
 
 from apps.main.tasks import deviceIntegrationSyncTask, microsoftEntraIDUserSyncTask
