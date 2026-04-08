@@ -1,88 +1,91 @@
 {% extends 'main/base.html' %}
 {% load static %}
-{% block content %}
-<main class="content">
-    <div class="container-fluid p-0">
-        <div class="mb-3">
-            <h1 class="h3 d-inline align-middle">Master List of User Authentication</h1>
-        </div>
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <!-- Filter Dropdowns -->
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="highest-auth-strength-filter" class="form-label fw-bold">Filter by Highest Authentication Strength:</label>
-                                <select id="highest-auth-strength-filter" class="form-control" multiple="multiple">
-                                    {% for auth_strength in auth_strengths %}
-                                    <option value="{{ auth_strength }}">{{ auth_strength }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="lowest-auth-strength-filter" class="form-label fw-bold">Filter by Lowest Authentication Strength:</label>
-                                <select id="lowest-auth-strength-filter" class="form-control" multiple="multiple">
-                                    {% for auth_strength in auth_strengths %}
-                                    <option value="{{ auth_strength }}">{{ auth_strength }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="persona-filter" class="form-label fw-bold">Filter by Persona:</label>
-                                <select id="persona-filter" class="form-control" multiple="multiple">
-                                    {% for persona in personas %}
-                                    <option value="{{ persona.persona_name }}">{{ persona.persona_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <!-- Data Table -->
-                        <div class="table-responsive">
-                            <table id="datatables-responsive" class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>UPN</th>
-                                        <th>Persona</th>
-                                        <th>Created At</th>
-                                        <th>Last Sign-on</th>
-                                        <th>Highest Authentication Strength</th>
-                                        <th>Lowest Authentication Strength</th>
-                                        <th>Passkey</th>
-                                        <th>MS Auth Passkey</th>
-                                        <th>WHfB</th>
-                                        <th>Phone Sign-in</th>
-                                        <th>Push</th>
-                                        <th>OTP</th>
-                                        <th>TAP</th>
-                                        <th>Phone</th>
-                                        <th>Email</th>
-                                        <th>Sec. Qs</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- DataTables will populate this via AJAX -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+<link href="{% static 'main/css/datatables-tailwind.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">User Master List</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">All users across enabled identity integrations</p>
+</div>
+
+<!-- Filter Panel -->
+<div class="tz-card mb-6">
+    <div class="tz-card-body">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Highest Auth Strength filter -->
+            <div>
+                <label for="highest-auth-strength-filter" class="tz-form-label">Highest Authentication Strength</label>
+                <select id="highest-auth-strength-filter" class="tz-form-select" multiple="multiple">
+                    {% for auth_strength in auth_strengths %}
+                    <option value="{{ auth_strength }}">{{ auth_strength }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Lowest Auth Strength filter -->
+            <div>
+                <label for="lowest-auth-strength-filter" class="tz-form-label">Lowest Authentication Strength</label>
+                <select id="lowest-auth-strength-filter" class="tz-form-select" multiple="multiple">
+                    {% for auth_strength in auth_strengths %}
+                    <option value="{{ auth_strength }}">{{ auth_strength }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Persona filter -->
+            <div>
+                <label for="persona-filter" class="tz-form-label">Persona</label>
+                <select id="persona-filter" class="tz-form-select" multiple="multiple">
+                    {% for persona in personas %}
+                    <option value="{{ persona.persona_name }}">{{ persona.persona_name }}</option>
+                    {% endfor %}
+                </select>
             </div>
         </div>
     </div>
-</main>
+</div>
+
+<!-- Data Table -->
+<div class="tz-card">
+    <div class="tz-card-body overflow-x-auto">
+        <table id="datatables-responsive" class="w-full">
+            <thead>
+                <tr>
+                    <th>UPN</th>
+                    <th>Persona</th>
+                    <th>Created At</th>
+                    <th>Last Sign-on</th>
+                    <th>Highest Authentication Strength</th>
+                    <th>Lowest Authentication Strength</th>
+                    <th>Passkey</th>
+                    <th>MS Auth Passkey</th>
+                    <th>WHfB</th>
+                    <th>Phone Sign-in</th>
+                    <th>Push</th>
+                    <th>OTP</th>
+                    <th>TAP</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Sec. Qs</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- DataTables will populate this via AJAX -->
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <!-- External Libraries -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.full.min.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
@@ -90,34 +93,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<style>
-    .select2-container--default .select2-selection--multiple {
-        border: 1px solid #ced4da;
-        border-radius: 0.375rem;
-        min-height: 38px;
-    }
-    
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: #007bff;
-        border: 1px solid #0056b3;
-        border-radius: 0.25rem;
-        color: white;
-        padding: 2px 8px;
-        margin: 2px;
-    }
-    
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-        color: white;
-        margin-right: 5px;
-    }
-    
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-    }
-</style>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -157,7 +132,7 @@
                             export: true,
                             length: -1 // Request all data
                         };
-                        
+
                         $.ajax({
                             url: "{% url 'user_master_list_export_api' %}",
                             method: 'GET',
@@ -180,10 +155,10 @@
                                         { width: 12 }, { width: 15 }, { width: 12 }, { width: 12 },
                                         { width: 12 }, { width: 12 }, { width: 12 }, { width: 12 }
                                     ];
-                                    
+
                                     // Add worksheet to workbook
                                     XLSX.utils.book_append_sheet(wb, ws, 'User Master List');
-                                    
+
                                     // Save file
                                     var timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
                                     XLSX.writeFile(wb, `User_Master_List_${timestamp}.xlsx`);
@@ -215,7 +190,7 @@
                             export: true,
                             length: -1 // Request all data
                         };
-                        
+
                         $.ajax({
                             url: "{% url 'user_master_list_export_api' %}",
                             method: 'GET',
@@ -255,7 +230,7 @@
                                             }
                                         ]
                                     };
-                                    
+
                                     var timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
                                     pdfMake.createPdf(docDefinition).download(`User_Master_List_${timestamp}.pdf`);
                                 } else {
@@ -285,7 +260,7 @@
                             export: true,
                             length: -1 // Request all data
                         };
-                        
+
                         $.ajax({
                             url: "{% url 'user_master_list_export_api' %}",
                             method: 'GET',
@@ -296,7 +271,7 @@
                                     // Create print window
                                     var printWindow = window.open('', '_blank');
                                     var timestamp = new Date().toLocaleString();
-                                    
+
                                     var tableHtml = `
                                         <html>
                                         <head>
@@ -346,16 +321,16 @@
                                         });
                                         tableHtml += '</tr>';
                                     });
-                                    
+
                                     tableHtml += `
                                                 </tbody>
                                             </table>
                                         </body>
                                         </html>`;
-                                    
+
                                     printWindow.document.write(tableHtml);
                                     printWindow.document.close();
-                                    
+
                                     setTimeout(function() {
                                         printWindow.print();
                                     }, 500);

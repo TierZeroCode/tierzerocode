@@ -1,0 +1,172 @@
+/* DataTables Tailwind CSS Overrides */
+
+/* Wrapper */
+.dataTables_wrapper {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+}
+
+/* Search input */
+.dataTables_filter input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.dataTables_filter input:focus {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 1px #3B82F6;
+}
+
+/* Length selector */
+.dataTables_length select {
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    outline: none;
+    background-color: white;
+}
+
+/* Table */
+table.dataTable {
+    border-collapse: collapse !important;
+    width: 100% !important;
+}
+table.dataTable thead th {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 2px solid #e2e8f0;
+    background: transparent;
+}
+table.dataTable tbody td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+table.dataTable tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Pagination */
+.dataTables_paginate {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+.dataTables_paginate .paginate_button {
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #334155;
+    transition: all 0.15s;
+}
+.dataTables_paginate .paginate_button:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+.dataTables_paginate .paginate_button.current {
+    background: #3B82F6;
+    color: white;
+    border-color: #3B82F6;
+}
+.dataTables_paginate .paginate_button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Info text */
+.dataTables_info {
+    font-size: 0.8125rem;
+    color: #64748b;
+    padding-top: 1rem;
+}
+
+/* Processing indicator */
+.dataTables_processing {
+    background: rgba(255,255,255,0.9) !important;
+    border: none !important;
+    font-size: 0.875rem;
+    color: #64748b;
+    padding: 1rem !important;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+/* Export buttons */
+.dt-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.dt-buttons .dt-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background: white;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.dt-buttons .dt-button:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .dark .dataTables_filter input,
+    .dark .dataTables_length select {
+        background-color: #1e293b;
+        border-color: #334155;
+        color: #e2e8f0;
+    }
+    .dark table.dataTable thead th {
+        color: #94a3b8;
+        border-bottom-color: #334155;
+    }
+    .dark table.dataTable tbody td {
+        color: #e2e8f0;
+        border-bottom-color: #1e293b;
+    }
+    .dark table.dataTable tbody tr:hover {
+        background-color: #1e293b;
+    }
+    .dark .dataTables_paginate .paginate_button {
+        background: #1e293b;
+        border-color: #334155;
+        color: #e2e8f0;
+    }
+    .dark .dataTables_paginate .paginate_button:hover {
+        background: #334155;
+    }
+    .dark .dataTables_paginate .paginate_button.current {
+        background: #3B82F6;
+        color: white;
+        border-color: #3B82F6;
+    }
+    .dark .dataTables_info {
+        color: #94a3b8;
+    }
+    .dark .dt-buttons .dt-button {
+        background: #1e293b;
+        border-color: #334155;
+        color: #e2e8f0;
+    }
+    .dark .dt-buttons .dt-button:hover {
+        background: #334155;
+    }
+}

@@ -1,56 +1,51 @@
 {% extends 'main/base.html' %}
 {% load static %}
-  {% block content %}
-			<main class="content">
-				<div class="container-fluid p-0">
 
-					<div class="mb-3">
-						<h1 class="h3 d-inline align-middle">{{integration}} List of Endpoints</h1>
-					</div>
+{% block extra_css %}
+<link href="{% static 'main/css/datatables-tailwind.css' %}" rel="stylesheet">
+{% endblock %}
 
-					<div class="row">
-						<div class="col-12">
-							<div class="card">
-								<div class="card-body">
-									<table id="datatables-reponsive" class="table table-striped" style="width:100%">
-										<thead>
-											<tr>
-												<th>Hostname</th>
-												<th>OS Platform</th>
-												<th>Endpoint Type</th>
-												<th>Created At</th>
-											</tr>
-										</thead>
-										<tbody>
-											{% for endpoint in endpoint_list %}
-											<tr>
-												{% for data in endpoint %}
-													<td>{{data}}</td>
-												{% endfor %}
-											</tr>
-											{% endfor %}
-										</tbody>
-									</table>
-								</div>
-							</div>
-						</div>
-					</div>
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{{ integration }} Endpoints</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Devices synced from {{ integration }}</p>
+</div>
 
-				</div>
-			</main>
-			{% endblock %}
+<!-- Data Table -->
+<div class="tz-card">
+    <div class="tz-card-body overflow-x-auto">
+        <table id="datatables-reponsive" class="w-full">
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>OS Platform</th>
+                    <th>Endpoint Type</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for endpoint in endpoint_list %}
+                <tr>
+                    {% for data in endpoint %}
+                        <td>{{data}}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
 
-			{% block extra_js %}
-			<script src="{% static 'main/js/datatables.js' %}"></script>
+{% block extra_js %}
+<script src="{% static 'main/js/datatables.js' %}"></script>
 
-			<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					// Datatables Responsive
-					$("#datatables-reponsive").DataTable({
-						responsive: true
-					});
-				});
-			</script>
-			{% endblock %}		
-</body>
-</html>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Datatables Responsive
+        $("#datatables-reponsive").DataTable({
+            responsive: true
+        });
+    });
+</script>
+{% endblock %}
