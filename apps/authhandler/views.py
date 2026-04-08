@@ -23,7 +23,10 @@ def loginUser(request):
                 return redirect(user._sso_redirect_url)
             else:
                 messages.error(request, 'Invalid Credentials')
-                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (' + str(user) + ')')
+                try:
+                    createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (' + str(user) + ')')
+                except Exception:
+                    pass
                 return redirect('login')
         else:
             user = authenticate(request, username=username, password=password)
@@ -32,15 +35,24 @@ def loginUser(request):
                 request.session['admin_upn'] = username
                 request.session['active'] = user.is_active
                 request.session['user_id'] = user.id
-                createLog(request, '1101', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Success', additional_data="Local - " + request.session['admin_upn'])
+                try:
+                    createLog(request, '1101', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Success', additional_data="Local - " + request.session['admin_upn'])
+                except Exception:
+                    pass
                 return redirect('admin-dashboard')
             else:
                 messages.error(request, 'Invalid Credentials')
-                createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (authenticate returned None)')
+                try:
+                    createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (authenticate returned None)')
+                except Exception:
+                    pass
                 return redirect('login')
     except Exception as e:
         messages.error(request, 'Invalid Credentials')
-        createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (' + str(e) + ')')
+        try:
+            createLog(request, '1102', 'User Authentication Handler', 'User Login Event', "Admin", True, 'User Login', 'Failure', additional_data='Invalid Credentials (' + str(e) + ')')
+        except Exception:
+            pass
         return redirect('login')
 
 def azure_callback(request):
