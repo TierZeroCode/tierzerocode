@@ -37,6 +37,20 @@ user_integration_names_short = ['Entra ID']
 
 VALID_DEVICE_INTEGRATION_SLUGS = {'microsoft-entra-id', 'microsoft-intune', 'microsoft-defender-for-endpoint', 'crowdstrike-falcon', 'tailscale', 'cloudflare-zero-trust', 'qualys', 'sophos-central'}
 VALID_USER_INTEGRATION_SLUGS = {'microsoft-entra-id'}
+
+# Maps URL slugs to the exact integration_type strings stored in the database.
+# Using .replace("-", " ").title() is insufficient because .title() lowercases
+# interior capitals (e.g. "ID" → "Id", "CrowdStrike" → "Crowdstrike").
+SLUG_TO_INTEGRATION_TYPE = {
+	'cloudflare-zero-trust': 'Cloudflare Zero Trust',
+	'crowdstrike-falcon': 'CrowdStrike Falcon',
+	'microsoft-defender-for-endpoint': 'Microsoft Defender for Endpoint',
+	'microsoft-entra-id': 'Microsoft Entra ID',
+	'microsoft-intune': 'Microsoft Intune',
+	'sophos-central': 'Sophos Central',
+	'qualys': 'Qualys',
+	'tailscale': 'Tailscale',
+}
 os_platforms = ['Android', 'iOS/iPadOS', 'MacOS', 'Ubuntu', 'Windows', 'Windows Server', 'Other']
 endpoint_types = ['Client', 'Mobile', 'Server', 'Other']
 
@@ -909,8 +923,11 @@ def user_master_list_export_api(request):
 
 @login_required
 def endpointList(request, integration):
-	integration_clean = integration.replace("-", " ")
-	endpoints = Device.objects.filter(integration__integration_type=integration_clean)
+	if integration not in VALID_DEVICE_INTEGRATION_SLUGS:
+		return HttpResponseBadRequest("Invalid integration")
+
+	integration_type = SLUG_TO_INTEGRATION_TYPE[integration]
+	endpoints = Device.objects.filter(integration__integration_type=integration_type)
 
 	endpoint_list = []
 	for endpoint in endpoints:
@@ -921,7 +938,7 @@ def endpointList(request, integration):
 		'enabled_integrations': getEnabledIntegrations(),
 		'enabled_user_integrations': getEnabledUserIntegrations(),
 		'notifications': Notification.objects.order_by('-created_at')[:10],
-		'integration':integration_clean.title(),
+		'integration':integration_type,
 		'endpoint_list':endpoint_list,
 	}
 	return render(request, 'main/endpoint-list.html', context)
@@ -1020,7 +1037,7 @@ def syncDevices(request, integration):
 	user_agent = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
 	browser = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
 	operating_system = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
-	integration_clean = integration.replace("-", " ").title()	
+	integration_clean = SLUG_TO_INTEGRATION_TYPE[integration]
 	print (f'Syncing {integration_clean} Devices')
 	messages.info(request, f'{integration_clean} Device Integration Sync in Progress')
 	notification = Notification.objects.create(
