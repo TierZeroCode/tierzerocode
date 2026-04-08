@@ -1,462 +1,361 @@
 {% extends 'main/base.html' %}
 {% load static %}
-  {% block content %}
-			<main class="content">
-				<div class="container-fluid p-0">
 
-					<div class="row mb-2 mb-xl-3">
-						<div class="col-auto d-none d-sm-block">
-							<h3><strong>{{ persona_name }}s Analytics</strong> Dashboard</h3>
-						</div>
-					</div>
-					<div class="row">
-						<div class="col-xl-12 col-xxl-12 d-flex">
-							<div class="w-100">
-								<div class="row">
-									<div class="col-sm-2">
-										<div class="card">
-											<div class="card-body">
-												<div class="row">
-													<div class="col mt-0">
-														<h5 class="card-title">{{ persona_name }}</h5>
-													</div>
-													<div class="col-auto">
-														<div class="stat text-primary">
-															<i class="align-middle" data-feather="list"></i>
-														</div>
-													</div>
-												</div>
-												<h1 class="mt-1 mb-3">{{ persona_count }} Users</h1>
-											</div>
-										</div>
-									</div>
-									<div class="col-sm-2">
-										<div class="card">
-											<div class="card-body">
-												<div class="row">
-													<div class="col mt-0">
-														<h5 class="card-title">MFA Enrollment</h5>
-													</div>
-													<div class="col-auto">
-														<div class="stat text-primary">
-															<i class="align-middle" data-feather="list"></i>
-														</div>
-													</div>
-												</div>
-												<h1 class="mt-1 mb-3">{{ percent_mfa }}%</h1>
-												<div class="mb-0">
-													<!-- <span class="badge badge-success-light"> <i class="mdi mdi-arrow-bottom-right"></i> 5.25% </span> -->
-													<span class="text-muted">{{ count_mfa }} / {{ persona_count }}</span>
-												</div>
-											</div>
-										</div>
-									</div>
-									<div class="col-sm-2">
-										<div class="card">
-											<div class="card-body">
-												<div class="row">
-													<div class="col mt-0">
-														<h5 class="card-title">Phishing Resistant</h5>
-													</div>
-													<div class="col-auto">
-														<div class="stat text-primary">
-															<i class="align-middle" data-feather="list"></i>
-														</div>
-													</div>
-												</div>
-												<h1 class="mt-1 mb-3">{{ percent_phishing_resistant }}%</h1>
-												<div class="mb-0">
-													<!-- <span class="badge badge-success-light"> <i class="mdi mdi-arrow-bottom-right"></i> 5.25% </span> -->
-													<span class="text-muted">{{ count_phishing_resistant }} / {{ persona_count }}</span>
-												</div>
-											</div>
-										</div>
-									</div>
-									<div class="col-sm-2">
-										<div class="card">
-											<div class="card-body">
-												<div class="row">
-													<div class="col mt-0">
-														<h5 class="card-title">Passwordless</h5>
-													</div>
-													<div class="col-auto">
-														<div class="stat text-primary">
-															<i class="align-middle" data-feather="list"></i>
-														</div>
-													</div>
-												</div>
-												<h1 class="mt-1 mb-3">{{ percent_passwordless }}%</h1>
-												<div class="mb-0">
-													<!-- <span class="badge badge-success-light"> <i class="mdi mdi-arrow-bottom-right"></i> 5.25% </span> -->
-													<span class="text-muted">{{ count_passwordless }} / {{ persona_count }}</span>
-												</div>
-											</div>
-										</div>
-									</div>
-									<div class="col-sm-2">
-										<div class="card">
-											<div class="card-body">
-												<div class="row">
-													<div class="col mt-0">
-														<h5 class="card-title">Phishing Resistant Enforced</h5>
-													</div>
-													<div class="col-auto">
-														<div class="stat text-primary">
-															<i class="align-middle" data-feather="list"></i>
-														</div>
-													</div>
-												</div>
-												<h1 class="mt-1 mb-3">0.00%</h1>
-												<div class="mb-0">
-													<!-- <span class="badge badge-success-light"> <i class="mdi mdi-arrow-bottom-right"></i> 5.25% </span> -->
-													<span class="text-muted">0 / {{ persona_count }}</span>
-												</div>
-											</div>
-										</div>
-									</div>
-									<div class="col-sm-2">
-										<div class="card">
-											<div class="card-body">
-												<div class="row">
-													<div class="col mt-0">
-														<h5 class="card-title">Passwordless Enforced</h5>
-													</div>
-													<div class="col-auto">
-														<div class="stat text-primary">
-															<i class="align-middle" data-feather="list"></i>
-														</div>
-													</div>
-												</div>
-												<h1 class="mt-1 mb-3">0.00%</h1>
-												<div class="mb-0">
-													<!-- <span class="badge badge-success-light"> <i class="mdi mdi-arrow-bottom-right"></i> 5.25% </span> -->
-													<span class="text-muted">0 / {{ persona_count }}</span>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="row">
-						<div class="col-12 col-md-6 col-xxl-3 d-flex order-1 order-xxl-3">
-							<div class="card flex-fill w-100">
-								<div class="card-header">
-									<h5 class="card-title mb-0">MFA Method Adoption</h5>
-								</div>
-								<div class="card-body d-flex">
-									<div class="align-self-center w-100">
-										<div class="py-3">
-											<div class="chart chart-xs">
-												<canvas id="adoption-auth-pie"></canvas>
-											</div>
-										</div>
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-6">{{ persona_name }}s Dashboard</h1>
 
-										<table class="table mb-0">
-											<tbody>
-												<tr>
-													<td><i class="fas fa-circle text-primary fa-fw"></i> Windows Hello for Business</td>
-													<td class="text-end">{{auth_method_adoption_data.0}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-secondary fa-fw"></i> Passkey Device</td>
-													<td class="text-end">{{auth_method_adoption_data.1}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-success fa-fw"></i> Passkey Authenticator</td>
-													<td class="text-end">{{auth_method_adoption_data.2}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-danger fa-fw"></i> MS Authenticator Passwordless</td>
-													<td class="text-end">{{auth_method_adoption_data.3}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-warning fa-fw"></i> MS Authenticator Push</td>
-													<td class="text-end">{{auth_method_adoption_data.4}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-info fa-fw"></i> Software OTP</td>
-													<td class="text-end">{{auth_method_adoption_data.5}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-light fa-fw"></i> Mobile Phone</td>
-													<td class="text-end">{{auth_method_adoption_data.6}}</td>
-												</tr>
-											</tbody>
-										</table>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div class="col-12 col-md-6 col-xxl-3 d-flex order-1 order-xxl-3">
-							<div class="card flex-fill w-100">
-								<div class="card-header">
-									<h5 class="card-title mb-0">Highest Auth Method Adoption</h5>
-								</div>
-								<div class="card-body d-flex">
-									<div class="align-self-center w-100">
-										<div class="py-3">
-											<div class="chart chart-xs">
-												<canvas id="highest-auth-pie"></canvas>
-											</div>
-										</div>
+<!-- Persona stat cards -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
 
-										<table class="table mb-0">
-											<tbody>
-												<tr>
-													<td><i class="fas fa-circle text-primary fa-fw"></i> Phishing Resistant</td>
-													<td class="text-end">{{auth_method_data.0}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-secondary fa-fw"></i> Passwordless</td>
-													<td class="text-end">{{auth_method_data.1}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-success fa-fw"></i> MFA</td>
-													<td class="text-end">{{auth_method_data.2}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-danger fa-fw"></i> Deprecated</td>
-													<td class="text-end">{{auth_method_data.3}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-warning fa-fw"></i> None</td>
-													<td class="text-end">{{auth_method_data.4}}</td>
-												</tr>
-											</tbody>
-										</table>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div class="col-12 col-md-6 col-xxl-3 d-flex order-1 order-xxl-3">
-							<div class="card flex-fill w-100">
-								<div class="card-header">
-									<h5 class="card-title mb-0">Lowest Auth Methods</h5>
-								</div>
-								<div class="card-body d-flex">
-									<div class="align-self-center w-100">
-										<div class="py-3">
-											<div class="chart chart-xs">
-												<canvas id="lowest-auth-pie"></canvas>
-											</div>
-										</div>
+  <div class="tz-stat-card">
+    <span class="tz-section-label">{{ persona_name }}</span>
+    <span class="tz-stat-value text-2xl">{{ persona_count }}</span>
+    <span class="tz-stat-label">Users</span>
+  </div>
 
-										<table class="table mb-0">
-											<tbody>
-												<tr>
-													<td><i class="fas fa-circle text-primary fa-fw"></i> {{auth_method_low_labels.0}}</td>
-													<td class="text-end">{{auth_method_low_data.0}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-secondary fa-fw"></i> {{auth_method_low_labels.1}}</td>
-													<td class="text-end">{{auth_method_low_data.1}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-success fa-fw"></i> {{auth_method_low_labels.2}}</td>
-													<td class="text-end">{{auth_method_low_data.2}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-danger fa-fw"></i> {{auth_method_low_labels.3}}</td>
-													<td class="text-end">{{auth_method_low_data.3}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-warning fa-fw"></i> {{auth_method_low_labels.4}}</td>
-													<td class="text-end">{{auth_method_low_data.4}}</td>
-												</tr>
-											</tbody>
-										</table>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div class="col-12 col-md-6 col-xxl-3 d-flex order-1 order-xxl-3">
-							<div class="card flex-fill w-100">
-								<div class="card-header">
-									<h5 class="card-title mb-0">Passwordless Capable Users</h5>
-								</div>
-								<div class="card-body d-flex">
-									<div class="align-self-center w-100">
-										<div class="py-3">
-											<div class="chart chart-xs">
-												<canvas id="full-passwordless-capable-pie"></canvas>
-											</div>
-										</div>
+  <div class="tz-stat-card">
+    <span class="tz-section-label">MFA Enrollment</span>
+    <span class="tz-stat-value text-2xl">{{ percent_mfa }}%</span>
+    <span class="tz-stat-label">{{ count_mfa }} / {{ persona_count }}</span>
+  </div>
 
-										<table class="table mb-0">
-											<tbody>
-												<tr>
-													<td><i class="fas fa-circle text-success fa-fw"></i> Passwordless Capable</td>
-													<td class="text-end">{{count_passwordless_capable_data.0}}</td>
-												</tr>
-												<tr>
-													<td><i class="fas fa-circle text-danger fa-fw"></i> Non-Passwordless Capable</td>
-													<td class="text-end">{{count_passwordless_capable_data.1}}</td>
-												</tr>
-											</tbody>
-										</table>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+  <div class="tz-stat-card">
+    <span class="tz-section-label">Phishing Resistant</span>
+    <span class="tz-stat-value text-2xl">{{ percent_phishing_resistant }}%</span>
+    <span class="tz-stat-label">{{ count_phishing_resistant }} / {{ persona_count }}</span>
+  </div>
 
-				</div>
-			</main>
-			{% endblock %}
-			{% block extra_js %}
-	
-			<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					// Pie chart
-					new Chart(document.getElementById("adoption-auth-pie"), {
-						type: "pie",
-						data: {
-							labels: {{ auth_method_adoption_labels|safe }},
-							datasets: [{ 
-								data: {{ auth_method_adoption_data|safe }},
-								backgroundColor: [
-									window.theme.primary,
-									window.theme.secondary,
-									window.theme.success,
-									window.theme.danger,
-									window.theme.warning,
-									window.theme.info,
-									window.theme.light
-								],
-								borderWidth: 5,
-								borderColor: window.theme.white
-							}]
-						},
-						options: {
-							responsive: !window.MSInputMethodContext,
-							maintainAspectRatio: false,
-							legend: {
-								display: false
-							},
-							cutoutPercentage: 70
-						}
-					});
-				});
-			</script>
-			<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					// Pie chart
-					new Chart(document.getElementById("highest-auth-pie"), {
-						type: "pie",
-						data: {
-							labels: {{ auth_method_labels|safe }},
-							datasets: [{ 
-								data: {{ auth_method_data|safe }},
-								backgroundColor: [
-									window.theme.primary,
-									window.theme.secondary,
-									window.theme.success,
-									window.theme.danger,
-									window.theme.warning
-								],
-								borderWidth: 5,
-								borderColor: window.theme.white
-							}]
-						},
-						options: {
-							responsive: !window.MSInputMethodContext,
-							maintainAspectRatio: false,
-							legend: {
-								display: false
-							},
-							cutoutPercentage: 70
-						}
-					});
-				});
-			</script>
-			<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					// Pie chart
-					new Chart(document.getElementById("full-passwordless-pie"), {
-						type: "pie",
-						data: {
-							labels: {{ count_passwordless_labels|safe }},
-							datasets: [{ 
-								data: {{ count_passwordless_data|safe }},
-								backgroundColor: [
-									window.theme.success,
-									window.theme.danger
-								],
-								borderWidth: 5,
-								borderColor: window.theme.white
-							}]
-						},
-						options: {
-							responsive: !window.MSInputMethodContext,
-							maintainAspectRatio: false,
-							legend: {
-								display: false
-							},
-							cutoutPercentage: 70
-						}
-					});
-				});
-			</script>
-			<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					// Pie chart
-					new Chart(document.getElementById("full-passwordless-capable-pie"), {
-						type: "pie",
-						data: {
-							labels: {{ count_passwordless_capable_labels|safe }},
-							datasets: [{ 
-								data: {{ count_passwordless_capable_data|safe }},
-								backgroundColor: [
-									window.theme.success,
-									window.theme.danger
-								],
-								borderWidth: 5,
-								borderColor: window.theme.white
-							}]
-						},
-						options: {
-							responsive: !window.MSInputMethodContext,
-							maintainAspectRatio: false,
-							legend: {
-								display: false
-							},
-							cutoutPercentage: 70
-						}
-					});
-				});
-			</script>
-			<script>
-				document.addEventListener("DOMContentLoaded", function() {
-					// Pie chart
-					new Chart(document.getElementById("lowest-auth-pie"), {
-						type: "pie",
-						data: {
-							labels: {{ auth_method_low_labels|safe }},
-							datasets: [{ 
-								data: {{ auth_method_low_data|safe }},
-								backgroundColor: [
-									window.theme.primary,
-									window.theme.secondary,
-									window.theme.success,
-									window.theme.danger,
-									window.theme.warning
-								],
-								borderWidth: 5,
-								borderColor: window.theme.white
-							}]
-						},
-						options: {
-							responsive: !window.MSInputMethodContext,
-							maintainAspectRatio: false,
-							legend: {
-								display: false
-							},
-							cutoutPercentage: 70
-						}
-					});
-				});
-			</script>
+  <div class="tz-stat-card">
+    <span class="tz-section-label">Passwordless</span>
+    <span class="tz-stat-value text-2xl">{{ percent_passwordless }}%</span>
+    <span class="tz-stat-label">{{ count_passwordless }} / {{ persona_count }}</span>
+  </div>
 
+  <div class="tz-stat-card">
+    <span class="tz-section-label">Phishing Resistant Enforced</span>
+    <span class="tz-stat-value text-2xl">
+      <span class="tz-badge tz-badge-neutral text-sm font-medium">Coming Soon</span>
+    </span>
+    <span class="tz-stat-label">0 / {{ persona_count }}</span>
+  </div>
+
+  <div class="tz-stat-card">
+    <span class="tz-section-label">Passwordless Enforced</span>
+    <span class="tz-stat-value text-2xl">
+      <span class="tz-badge tz-badge-neutral text-sm font-medium">Coming Soon</span>
+    </span>
+    <span class="tz-stat-label">0 / {{ persona_count }}</span>
+  </div>
+
+</div>
+
+<!-- Chart cards -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  <!-- MFA Method Adoption -->
+  <div class="tz-card">
+    <div class="tz-card-header">
+      <h3 class="text-base font-semibold text-slate-900 dark:text-white">MFA Method Adoption</h3>
+    </div>
+    <div class="tz-card-body">
+      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+        <canvas id="adoption-auth-pie"></canvas>
+      </div>
+      <div class="mt-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#3B82F6;"></span>Windows Hello for Business
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.0 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>Passkey Device
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.1 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#F59E0B;"></span>Passkey Authenticator
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.2 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>MS Authenticator Passwordless
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.3 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#8B5CF6;"></span>MS Authenticator Push
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.4 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#06B6D4;"></span>Software OTP
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.5 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#64748B;"></span>Mobile Phone
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_adoption_data.6 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Highest Auth Method -->
+  <div class="tz-card">
+    <div class="tz-card-header">
+      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Highest Auth Method Adoption</h3>
+    </div>
+    <div class="tz-card-body">
+      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+        <canvas id="highest-auth-pie"></canvas>
+      </div>
+      <div class="mt-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#3B82F6;"></span>Phishing Resistant
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_data.0 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>Passwordless
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_data.1 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#F59E0B;"></span>MFA
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_data.2 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>Deprecated
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_data.3 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#8B5CF6;"></span>None
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_data.4 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lowest Auth Methods -->
+  <div class="tz-card">
+    <div class="tz-card-header">
+      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Lowest Auth Methods</h3>
+    </div>
+    <div class="tz-card-body">
+      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+        <canvas id="lowest-auth-pie"></canvas>
+      </div>
+      <div class="mt-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#3B82F6;"></span>{{ auth_method_low_labels.0 }}
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_low_data.0 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>{{ auth_method_low_labels.1 }}
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_low_data.1 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#F59E0B;"></span>{{ auth_method_low_labels.2 }}
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_low_data.2 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>{{ auth_method_low_labels.3 }}
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_low_data.3 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#8B5CF6;"></span>{{ auth_method_low_labels.4 }}
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ auth_method_low_data.4 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passwordless Capable -->
+  <div class="tz-card">
+    <div class="tz-card-header">
+      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Passwordless Capable Users</h3>
+    </div>
+    <div class="tz-card-body">
+      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+        <canvas id="full-passwordless-capable-pie"></canvas>
+      </div>
+      <div class="mt-4">
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>Passwordless Capable
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ count_passwordless_capable_data.0 }}</td>
+            </tr>
+            <tr class="flex justify-between py-1.5">
+              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>Non-Passwordless Capable
+              </td>
+              <td class="font-medium text-slate-900 dark:text-slate-100">{{ count_passwordless_capable_data.1 }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'main/js/chart-config.js' %}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    new Chart(document.getElementById("adoption-auth-pie"), {
+      type: "pie",
+      data: {
+        labels: {{ auth_method_adoption_labels|safe }},
+        datasets: [{
+          data: {{ auth_method_adoption_data|safe }},
+          backgroundColor: [
+            '#3B82F6',
+            '#10B981',
+            '#F59E0B',
+            '#EF4444',
+            '#8B5CF6',
+            '#06B6D4',
+            '#64748B',
+          ],
+          borderWidth: 3,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  });
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    new Chart(document.getElementById("highest-auth-pie"), {
+      type: "pie",
+      data: {
+        labels: {{ auth_method_labels|safe }},
+        datasets: [{
+          data: {{ auth_method_data|safe }},
+          backgroundColor: [
+            '#3B82F6',
+            '#10B981',
+            '#F59E0B',
+            '#EF4444',
+            '#8B5CF6',
+          ],
+          borderWidth: 3,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  });
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    new Chart(document.getElementById("full-passwordless-capable-pie"), {
+      type: "pie",
+      data: {
+        labels: {{ count_passwordless_capable_labels|safe }},
+        datasets: [{
+          data: {{ count_passwordless_capable_data|safe }},
+          backgroundColor: [
+            '#10B981',
+            '#EF4444',
+          ],
+          borderWidth: 3,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  });
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    new Chart(document.getElementById("lowest-auth-pie"), {
+      type: "pie",
+      data: {
+        labels: {{ auth_method_low_labels|safe }},
+        datasets: [{
+          data: {{ auth_method_low_data|safe }},
+          backgroundColor: [
+            '#3B82F6',
+            '#10B981',
+            '#F59E0B',
+            '#EF4444',
+            '#8B5CF6',
+          ],
+          borderWidth: 3,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  });
+</script>
 {% endblock %}
