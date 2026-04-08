@@ -19,7 +19,9 @@
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
 	<link href="{% static 'main/css/light.css' %}" rel="stylesheet">
+	<link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
 
+	{% block extra_css %}{% endblock %}
 </head>
 
 <body data-theme="default" data-layout="fluid" data-sidebar-position="left" data-sidebar-layout="default">
