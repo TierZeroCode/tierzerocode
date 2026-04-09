@@ -24,6 +24,8 @@ class AuthenticationMiddleware:
         # --- 2. DEFINE EXEMPT PATHS ---
         setup_paths = [
             '/identity/unclaimed',
+            '/identity/login',
+            '/accounts/',
             '/static/',
         ]
         # Only exempt accountcreation during initial setup (no users exist)
