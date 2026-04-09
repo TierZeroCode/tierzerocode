@@ -42,6 +42,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Copy application code
 COPY --chown=appuser:appuser . .
 
+# Download Tailwind CSS standalone CLI
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    && chmod +x tailwindcss-linux-x64 \
+    && mv tailwindcss-linux-x64 tailwindcss
+
+# Build Tailwind CSS
+RUN ./tailwindcss -i apps/main/static/main/css/tailwind-input.css -o apps/main/static/main/css/tailwind-output.css --minify
+
 # Create static and log directories with correct permissions
 RUN mkdir -p /app/static && \
     chown -R appuser:appuser /app/static && \

@@ -130,3 +130,8 @@ dmypy.json
 
 # Settings Files
 django-api.js
+
+# Tailwind CSS
+tailwindcss
+tailwindcss.exe
+apps/main/static/main/css/tailwind-output.css

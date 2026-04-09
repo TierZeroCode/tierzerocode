@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+/* C.O.D.E Design System */
+@theme {
+  --color-code-blue-50: #eff6ff;
+  --color-code-blue-100: #dbeafe;
+  --color-code-blue-500: #3B82F6;
+  --color-code-blue-600: #2563EB;
+  --color-code-blue-700: #1D4ED8;
+  --color-code-blue-900: #1E3A5F;
+
+  --color-code-green-50: #ecfdf5;
+  --color-code-green-500: #10B981;
+  --color-code-green-600: #059669;
+  --color-code-green-700: #047857;
+
+  --color-code-red-50: #fef2f2;
+  --color-code-red-500: #EF4444;
+  --color-code-red-600: #DC2626;
+  --color-code-red-700: #B91C1C;
+
+  --color-code-amber-50: #fffbeb;
+  --color-code-amber-500: #F59E0B;
+  --color-code-amber-600: #D97706;
+  --color-code-amber-700: #B45309;
+
+  --color-code-purple-500: #8B5CF6;
+  --color-code-purple-600: #7C3AED;
+
+  --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Reusable Component Classes */
+@layer components {
+  .tz-card {
+    @apply bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700;
+  }
+
+  .tz-card-header {
+    @apply px-6 py-4 border-b border-slate-200 dark:border-slate-700;
+  }
+
+  .tz-card-body {
+    @apply p-6;
+  }
+
+  .tz-stat-card {
+    @apply bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col;
+  }
+
+  .tz-stat-value {
+    @apply text-3xl font-bold tabular-nums text-slate-900 dark:text-slate-100;
+  }
+
+  .tz-stat-label {
+    @apply text-sm font-medium text-slate-500 dark:text-slate-400 mt-1;
+  }
+
+  .tz-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .tz-badge-success {
+    @apply bg-code-green-50 text-code-green-600 dark:bg-code-green-500/10 dark:text-code-green-500;
+  }
+
+  .tz-badge-danger {
+    @apply bg-code-red-50 text-code-red-600 dark:bg-code-red-500/10 dark:text-code-red-500;
+  }
+
+  .tz-badge-warning {
+    @apply bg-code-amber-50 text-code-amber-600 dark:bg-code-amber-500/10 dark:text-code-amber-500;
+  }
+
+  .tz-badge-info {
+    @apply bg-code-blue-50 text-code-blue-600 dark:bg-code-blue-500/10 dark:text-code-blue-500;
+  }
+
+  .tz-badge-neutral {
+    @apply bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300;
+  }
+
+  .tz-btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .tz-btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-code-blue-600 text-white hover:bg-code-blue-700 focus-visible:ring-code-blue-500;
+  }
+
+  .tz-btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 focus-visible:ring-slate-500;
+  }
+
+  .tz-btn-danger {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-code-red-600 text-white hover:bg-code-red-700 focus-visible:ring-code-red-500;
+  }
+
+  .tz-sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-200 transition-colors;
+  }
+
+  .tz-sidebar-item-active {
+    @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg bg-code-blue-50 dark:bg-code-blue-500/10 text-code-blue-600 dark:text-code-blue-500;
+  }
+
+  .tz-form-label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1;
+  }
+
+  .tz-form-input {
+    @apply block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-code-blue-500 focus:ring-1 focus:ring-code-blue-500 focus:outline-none;
+  }
+
+  .tz-form-select {
+    @apply block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-code-blue-500 focus:ring-1 focus:ring-code-blue-500 focus:outline-none;
+  }
+
+  .tz-empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .tz-empty-state-icon {
+    @apply w-16 h-16 text-slate-300 dark:text-slate-600 mb-4;
+  }
+
+  .tz-empty-state-title {
+    @apply text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2;
+  }
+
+  .tz-empty-state-description {
+    @apply text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md;
+  }
+
+  .tz-section-label {
+    @apply text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500;
+  }
+
+  .tz-modal-backdrop {
+    @apply fixed inset-0 bg-black/50 z-40;
+  }
+
+  .tz-modal {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  }
+
+  .tz-modal-content {
+    @apply bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto;
+  }
+
+  .tz-modal-header {
+    @apply flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700;
+  }
+
+  .tz-modal-body {
+    @apply px-6 py-4;
+  }
+
+  .tz-modal-footer {
+    @apply flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700;
+  }
+}
