@@ -83,9 +83,9 @@
             </div>
 
             <!-- Configure Integration Modal -->
-            <div class="modal fade" id="{{ deviceIntegrationStatus.0|slugify }}_modal_device" tabindex="-1" role="dialog" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered" role="document">
-                    <div class="modal-content bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+            <div class="tz-modal hidden fixed inset-0 z-50 items-center justify-center" id="{{ deviceIntegrationStatus.0|slugify }}_modal_device" role="dialog" aria-modal="true">
+                <div class="tz-modal-backdrop absolute inset-0 bg-black/50" onclick="this.parentElement.classList.add('hidden'); this.parentElement.classList.remove('flex');"></div>
+                <div class="tz-modal-content relative z-10 w-full max-w-lg mx-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
                         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                             <h5 class="text-base font-semibold text-slate-900 dark:text-white">Configure {{ deviceIntegrationStatus.0 }}</h5>
                             <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
@@ -151,7 +151,6 @@
                                 <button type="submit" class="tz-btn-primary">Save Changes</button>
                             </div>
                         </form>
-                    </div>
                 </div>
             </div>
             <!-- End Configure Integration Modal -->
@@ -228,9 +227,9 @@
             </div>
 
             <!-- Configure Integration Modal -->
-            <div class="modal fade" id="{{ userIntegrationStatus.0|slugify }}_modal_user" tabindex="-1" role="dialog" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered" role="document">
-                    <div class="modal-content bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+            <div class="tz-modal hidden fixed inset-0 z-50 items-center justify-center" id="{{ userIntegrationStatus.0|slugify }}_modal_user" role="dialog" aria-modal="true">
+                <div class="tz-modal-backdrop absolute inset-0 bg-black/50" onclick="this.parentElement.classList.add('hidden'); this.parentElement.classList.remove('flex');"></div>
+                <div class="tz-modal-content relative z-10 w-full max-w-lg mx-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
                         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                             <h5 class="text-base font-semibold text-slate-900 dark:text-white">Configure {{ userIntegrationStatus.0 }}</h5>
                             <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
@@ -262,7 +261,6 @@
                                 <button type="submit" class="tz-btn-primary">Save Changes</button>
                             </div>
                         </form>
-                    </div>
                 </div>
             </div>
             <!-- End Configure Integration Modal -->
