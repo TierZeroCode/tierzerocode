@@ -6,31 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Server Setup | C.O.D.E</title>
     <link rel="shortcut icon" href="{% static 'login_app/img/icon-48x48.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Epilogue:wght@600;700;800&display=swap" rel="stylesheet">
     <link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative">
-    <!-- Gradient background -->
-    <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900"></div>
+<body class="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans antialiased">
 
-    <div class="relative w-full max-w-md">
-        <!-- Logo -->
-        <div class="text-center mb-8">
-            <img src="{% static 'login_app/img/TierZeroCODE.png' %}" alt="Tier Zero C.O.D.E" class="h-12 mx-auto mb-4" onerror="this.style.display='none'">
-            <p class="text-slate-400 text-sm">Correlation of Distributed Endpoints</p>
+    <div class="w-full max-w-sm">
+        <div class="text-center mb-6">
+            <img src="{% static 'login_app/img/TierZeroCODE.png' %}" alt="Tier Zero C.O.D.E" class="h-8 mx-auto mb-3" onerror="this.style.display='none'">
+            <p class="text-xs text-slate-500">Correlation of Distributed Endpoints</p>
         </div>
 
-        <!-- Card -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-8">
-            <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-1">Create Administrator Account</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Set up the first administrator for your C.O.D.E instance</p>
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 p-6">
+            <h2 class="font-display text-base font-bold text-slate-900 dark:text-slate-100 mb-0.5">Create Administrator Account</h2>
+            <p class="text-xs text-slate-500 mb-5">Set up the first administrator for your C.O.D.E instance</p>
 
-            <!-- Messages -->
             {% if messages %}
             {% for message in messages %}
-            <div class="mb-4 px-4 py-3 rounded-lg text-sm
-                {% if message.tags == 'error' or message.tags == 'danger' %}bg-red-50 text-red-700 border border-red-200
-                {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+            <div class="mb-4 px-3 py-2 text-xs border
+                {% if message.tags == 'error' or message.tags == 'danger' %}bg-code-red-50 text-code-red-700 border-code-red-200 dark:bg-code-red-500/10 dark:text-code-red-400 dark:border-code-red-500/20
+                {% else %}bg-code-blue-50 text-code-blue-700 border-code-blue-200 dark:bg-code-blue-500/10 dark:text-code-blue-400 dark:border-code-blue-500/20{% endif %}">
                 {{ message }}
             </div>
             {% endfor %}
@@ -38,49 +35,34 @@
 
             <form action="/identity/accountcreation" method="post">
                 {% csrf_token %}
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="firstName">First Name</label>
-                    <input type="text" name="firstName" id="firstName"
-                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter your first name" required>
+                <div class="mb-3">
+                    <label class="tz-form-label" for="firstName">First Name</label>
+                    <input type="text" name="firstName" id="firstName" class="tz-form-input" placeholder="Enter your first name" required>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="lastName">Last Name</label>
-                    <input type="text" name="lastName" id="lastName"
-                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter your last name" required>
+                <div class="mb-3">
+                    <label class="tz-form-label" for="lastName">Last Name</label>
+                    <input type="text" name="lastName" id="lastName" class="tz-form-input" placeholder="Enter your last name" required>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="email">Email address</label>
-                    <input type="email" name="email" id="email"
-                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="you@company.com" required>
+                <div class="mb-3">
+                    <label class="tz-form-label" for="email">Email address</label>
+                    <input type="email" name="email" id="email" class="tz-form-input" placeholder="you@company.com" required>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="password">Password</label>
-                    <input type="password" name="password" id="password"
-                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Create a password" required>
+                <div class="mb-3">
+                    <label class="tz-form-label" for="password">Password</label>
+                    <input type="password" name="password" id="password" class="tz-form-input" placeholder="Create a password" required>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="c_password">Confirm Password</label>
-                    <input type="password" name="c_password" id="c_password"
-                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Confirm your password" required>
+                <div class="mb-5">
+                    <label class="tz-form-label" for="c_password">Confirm Password</label>
+                    <input type="password" name="c_password" id="c_password" class="tz-form-input" placeholder="Confirm your password" required>
                 </div>
-                <!-- Hidden checkbox to indicate initial setup (SSO user flag) -->
                 <input type="checkbox" name="initial-setup" value="initial-setup" checked hidden>
-                <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-150">
+                <button type="submit" class="w-full bg-code-blue-600 hover:bg-code-blue-700 text-white font-medium py-2 px-4 rounded text-sm transition-colors">
                     Create Account
                 </button>
             </form>
         </div>
 
-        <!-- Footer -->
-        <p class="text-center text-slate-500 text-xs mt-8">
-            &copy; {% now "Y" %} Tier Zero Code LLC
-        </p>
+        <p class="text-center text-slate-600 text-[11px] mt-6">&copy; {% now "Y" %} Tier Zero Code LLC</p>
     </div>
 </body>
 </html>

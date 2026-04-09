@@ -2,9 +2,8 @@
 {% load static %}
 
 {% block content %}
-<main class="flex-1 overflow-y-auto p-6">
 
-    <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-6">Settings</h1>
+    <h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100 mb-5">Settings</h1>
 
     <div class="flex gap-6">
         <!-- Left sidebar nav -->
@@ -32,7 +31,7 @@
             <div id="panel-profile" class="tab-panel">
                 <div class="tz-card">
                     <div class="tz-card-header">
-                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Account Information</h2>
+                        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Account Information</h2>
                     </div>
                     <div class="tz-card-body">
                         <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -62,7 +61,7 @@
             <div id="panel-users" class="tab-panel hidden">
                 <div class="tz-card">
                     <div class="tz-card-header flex items-center justify-between">
-                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">User Management</h2>
+                        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">User Management</h2>
                         <button type="button" class="tz-btn-primary text-sm"
                                 data-bs-toggle="modal" data-bs-target="#createUserModal"
                                 data-bs-backdrop="static" data-bs-keyboard="false">
@@ -143,9 +142,9 @@
                 <!-- Create User Modal -->
                 <div class="tz-modal hidden fixed inset-0 z-50 items-center justify-center" id="createUserModal" role="dialog" aria-modal="true">
                     <div class="tz-modal-backdrop absolute inset-0 bg-black/50" onclick="this.parentElement.classList.add('hidden'); this.parentElement.classList.remove('flex');"></div>
-                    <div class="tz-modal-content relative z-10 w-full max-w-md mx-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+                    <div class="tz-modal-content relative z-10 w-full max-w-md mx-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50">
                             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                                <h5 class="text-base font-semibold text-slate-900 dark:text-white">Create New User</h5>
+                                <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Create New User</h5>
                                 <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
@@ -185,18 +184,18 @@
             <div id="panel-sso" class="tab-panel hidden">
                 <div class="tz-card">
                     <div class="tz-card-header">
-                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">SSO Integrations</h2>
+                        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">SSO Integrations</h2>
                     </div>
                     <div class="tz-card-body">
                         {% if integrationStatuses %}
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {% for integrationStatus in integrationStatuses %}
-                            <div class="tz-card hover:shadow-md transition-shadow">
+                            <div class="tz-card transition-colors">
                                 <div class="tz-card-body">
                                     <div class="flex items-center gap-4 mb-4">
                                         <img src="{% static integrationStatus.1 %}" alt="{{ integrationStatus.0 }}" class="w-10 h-10 object-contain">
                                         <div class="flex-1 min-w-0">
-                                            <h3 class="font-semibold text-slate-900 dark:text-white text-sm truncate">{{ integrationStatus.0 }}</h3>
+                                            <h3 class="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">{{ integrationStatus.0 }}</h3>
                                             {% if integrationStatus.2 and integrationStatus.3 %}
                                             <span class="inline-flex items-center gap-1.5 text-xs">
                                                 <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
@@ -236,9 +235,9 @@
                             <!-- Configure SSO Modal -->
                             <div class="tz-modal hidden fixed inset-0 z-50 items-center justify-center" id="{{ integrationStatus.0|slugify }}_modal" role="dialog" aria-modal="true">
                                 <div class="tz-modal-backdrop absolute inset-0 bg-black/50" onclick="this.parentElement.classList.add('hidden'); this.parentElement.classList.remove('flex');"></div>
-                                <div class="tz-modal-content relative z-10 w-full max-w-lg mx-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+                                <div class="tz-modal-content relative z-10 w-full max-w-lg mx-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50">
                                         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                                            <h5 class="text-base font-semibold text-slate-900 dark:text-white">Configure {{ integrationStatus.0 }}</h5>
+                                            <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Configure {{ integrationStatus.0 }}</h5>
                                             <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                                             </button>
@@ -290,7 +289,7 @@
             <div id="panel-compliance" class="tab-panel hidden">
                 <div class="tz-card">
                     <div class="tz-card-header flex items-center justify-between flex-wrap gap-3">
-                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Compliance Policies</h2>
+                        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Compliance Policies</h2>
                         <div class="flex items-center gap-2 flex-wrap">
                             <button type="button" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="selectAllIntegrations()">Select All</button>
                             <button type="button" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="deselectAllIntegrations()">Deselect All</button>
@@ -351,7 +350,7 @@
             <div id="panel-notifications" class="tab-panel hidden">
                 <div class="tz-card">
                     <div class="tz-card-header">
-                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Notifications</h2>
+                        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Notifications</h2>
                     </div>
                     <div class="tz-card-body">
                         <div class="tz-empty-state">
@@ -372,7 +371,7 @@
                     <!-- Add Persona Form -->
                     <div class="tz-card">
                         <div class="tz-card-header">
-                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Add New Persona</h2>
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Add New Persona</h2>
                         </div>
                         <div class="tz-card-body">
                             <form method="POST" action="/add-persona" id="add-persona-form">
@@ -398,7 +397,7 @@
                     <!-- Personas List -->
                     <div class="tz-card">
                         <div class="tz-card-header">
-                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Existing Personas</h2>
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Existing Personas</h2>
                         </div>
                         <div class="tz-card-body">
                             {% if personas %}
@@ -446,7 +445,7 @@
                     <!-- Add Persona Group Form -->
                     <div class="tz-card">
                         <div class="tz-card-header">
-                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Add New Persona Group</h2>
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Add New Persona Group</h2>
                         </div>
                         <div class="tz-card-body">
                             {% if personas %}
@@ -486,7 +485,7 @@
                     <!-- Persona Groups List -->
                     <div class="tz-card">
                         <div class="tz-card-header">
-                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Existing Persona Groups</h2>
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Existing Persona Groups</h2>
                         </div>
                         <div class="tz-card-body">
                             {% if persona_groups %}
@@ -535,7 +534,6 @@
         </div>{# end content area #}
     </div>{# end flex gap-6 #}
 
-</main>
 {% endblock %}
 
 {% block extra_js %}
@@ -732,7 +730,7 @@ function showNotification(message, type) {
     const classes = colorMap[type] || colorMap['info'];
 
     const notification = document.createElement('div');
-    notification.className = 'fixed top-5 right-5 z-50 min-w-72 rounded-lg border px-4 py-3 text-sm font-medium shadow-lg ' + classes;
+    notification.className = 'fixed top-5 right-5 z-50 min-w-72 border px-4 py-3 text-sm font-medium ' + classes;
     notification.textContent = message;
 
     document.body.appendChild(notification);

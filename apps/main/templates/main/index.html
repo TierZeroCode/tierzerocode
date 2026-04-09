@@ -2,213 +2,87 @@
 {% load static %}
 
 {% block content %}
-<!-- Page Header -->
-<div class="mb-6">
-  <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-  {% if tenant_name or primary_domain %}
-  <details class="mt-2">
-    <summary class="text-sm text-slate-500 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 select-none">
-      {{ tenant_name }}{% if tenant_name and tenant_domain %} &middot; {% endif %}{{ tenant_domain }}
-    </summary>
-    {% if tenant_id %}
-    <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">Tenant ID: {{ tenant_id }}</div>
-    {% endif %}
-  </details>
+<!-- Header -->
+<div class="mb-5">
+  <h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+  {% if tenant_name or tenant_domain %}
+  <p class="text-xs text-slate-400 mt-0.5">{{ tenant_name }}{% if tenant_name and tenant_domain %} &middot; {% endif %}{{ tenant_domain }}{% if tenant_id %} &middot; <span class="text-slate-300 dark:text-slate-600">{{ tenant_id }}</span>{% endif %}</p>
   {% endif %}
 </div>
 
-<!-- Executive Summary Cards -->
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-  <!-- Users -->
-  <a href="/users/master-list" class="tz-stat-card hover:shadow-md transition-shadow">
-    <div class="flex items-center justify-between mb-2">
-      <span class="tz-section-label">Users</span>
-      <svg class="w-5 h-5 text-code-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-      </svg>
-    </div>
-    <span class="tz-stat-value">{{ count_users|default:"0" }}</span>
-    <span class="tz-stat-label">Total users</span>
+<!-- Executive Metrics Strip -->
+<div class="tz-metrics flex-wrap mb-6">
+  <a href="/users/master-list" class="tz-metric hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+    <span class="tz-metric-value">{{ count_users|default:"0" }}</span>
+    <span class="tz-metric-label">Users</span>
   </a>
-
-  <!-- Guests -->
-  <div class="tz-stat-card">
-    <div class="flex items-center justify-between mb-2">
-      <span class="tz-section-label">Guests</span>
-      <svg class="w-5 h-5 text-code-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-      </svg>
-    </div>
-    <span class="tz-stat-value">{{ count_guests|default:"0" }}</span>
-    <span class="tz-stat-label">Guest accounts</span>
+  <div class="tz-metric">
+    <span class="tz-metric-value">{{ count_guests|default:"0" }}</span>
+    <span class="tz-metric-label">Guests</span>
   </div>
-
-  <!-- Groups -->
-  <a href="/user-dashboard/groups" class="tz-stat-card hover:shadow-md transition-shadow">
-    <div class="flex items-center justify-between mb-2">
-      <span class="tz-section-label">Groups</span>
-      <svg class="w-5 h-5 text-code-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-      </svg>
-    </div>
-    <span class="tz-stat-value">{{ count_groups|default:"0" }}</span>
-    <span class="tz-stat-label">Security groups</span>
+  <a href="/user-dashboard/groups" class="tz-metric hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+    <span class="tz-metric-value">{{ count_groups|default:"0" }}</span>
+    <span class="tz-metric-label">Groups</span>
   </a>
-
-  <!-- Apps -->
-  <div class="tz-stat-card">
-    <div class="flex items-center justify-between mb-2">
-      <span class="tz-section-label">Apps</span>
-      <svg class="w-5 h-5 text-code-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-      </svg>
-    </div>
-    <span class="tz-stat-value">{{ count_apps|default:"0" }}</span>
-    <span class="tz-stat-label">Registered apps</span>
+  <div class="tz-metric">
+    <span class="tz-metric-value">{{ count_apps|default:"0" }}</span>
+    <span class="tz-metric-label">Apps</span>
   </div>
-
-  <!-- Devices -->
-  <a href="/endpoints/master-list" class="tz-stat-card hover:shadow-md transition-shadow">
-    <div class="flex items-center justify-between mb-2">
-      <span class="tz-section-label">Devices</span>
-      <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0H3" />
-      </svg>
-    </div>
-    <span class="tz-stat-value">{{ count_devices|default:"0" }}</span>
-    <span class="tz-stat-label">Total devices</span>
+  <a href="/endpoints/master-list" class="tz-metric hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+    <span class="tz-metric-value">{{ count_devices|default:"0" }}</span>
+    <span class="tz-metric-label">Devices</span>
   </a>
-
-  <!-- Managed -->
-  <div class="tz-stat-card">
-    <div class="flex items-center justify-between mb-2">
-      <span class="tz-section-label">Managed</span>
-      <svg class="w-5 h-5 text-code-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-      </svg>
-    </div>
-    <span class="tz-stat-value">{{ count_managed|default:"0" }}</span>
-    <span class="tz-stat-label">MDM managed</span>
+  <div class="tz-metric">
+    <span class="tz-metric-value">{{ count_managed|default:"0" }}</span>
+    <span class="tz-metric-label">MDM Managed</span>
   </div>
 </div>
 
 <!-- Authentication Sankey Charts -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <!-- Privileged Users Sankey -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Authentication Methods &mdash; Privileged Users</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Strongest authentication method registered by privileged users.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Auth Methods &mdash; Privileged Users</h3>
+      <p class="text-[11px] text-slate-400 mt-0.5">Strongest method registered by privileged users</p>
     </div>
     <div class="tz-card-body">
-      <div id="sankey-diagram-privileged-users" style="height: 350px;"></div>
+      <div id="sankey-diagram-privileged-users" style="height: 320px;"></div>
     </div>
   </div>
-
-  <!-- All Users Sankey -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Authentication Methods &mdash; All Users</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Strongest authentication method registered by all users.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Auth Methods &mdash; All Users</h3>
+      <p class="text-[11px] text-slate-400 mt-0.5">Strongest method registered by all users</p>
     </div>
     <div class="tz-card-body">
-      <div id="sankey-diagram-all-users" style="height: 350px;"></div>
+      <div id="sankey-diagram-all-users" style="height: 320px;"></div>
     </div>
   </div>
 </div>
 
-<!-- Device Summary Section -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-  <!-- Devices by Platform -->
+<!-- Device Summary -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+  <!-- Platform Breakdown -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Devices by Platform</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Devices by operating system.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Devices by Platform</h3>
     </div>
     <div class="tz-card-body p-0">
       <table class="w-full text-sm">
-        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-          <tr class="px-6 py-3 flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0H3" />
-              </svg>
-              Windows
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.Windows|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" />
-              </svg>
-              Windows Server
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.Windows_Server|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0H3" />
-              </svg>
-              macOS
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.MacOS|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 8.25h3" />
-              </svg>
-              iOS / iPadOS
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.iOS_iPadOS|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 8.25h3" />
-              </svg>
-              Android
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.Android|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" />
-              </svg>
-              Ubuntu
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.Ubuntu|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" />
-              </svg>
-              RHEL
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.Red_Hat_Enterprise_Linux|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" />
-              </svg>
-              CentOS
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.CentOS|default:0 }}</td>
-          </tr>
-          <tr class="flex items-center justify-between">
-            <td class="flex items-center gap-2 px-6 py-2.5 text-slate-700 dark:text-slate-300">
-              <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-              </svg>
-              Other
-            </td>
-            <td class="px-6 py-2.5 font-semibold text-slate-900 dark:text-slate-100 text-right">{{ device_os_counts.Other|default:0 }}</td>
-          </tr>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+          {% with os_items="Windows,Windows_Server,MacOS,iOS_iPadOS,Android,Ubuntu,Red_Hat_Enterprise_Linux,CentOS,Other" %}
+          {% for os_key in os_items|make_list %}
+          {% endfor %}
+          {% endwith %}
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">Windows</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.Windows|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">Windows Server</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.Windows_Server|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">macOS</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.MacOS|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">iOS / iPadOS</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.iOS_iPadOS|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">Android</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.Android|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">Ubuntu</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.Ubuntu|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">RHEL</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.Red_Hat_Enterprise_Linux|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">CentOS</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.CentOS|default:0 }}</td></tr>
+          <tr><td class="px-5 py-2 text-slate-600 dark:text-slate-300">Other</td><td class="px-5 py-2 font-semibold text-slate-900 dark:text-slate-100 text-right tabular-nums">{{ device_os_counts.Other|default:0 }}</td></tr>
         </tbody>
       </table>
     </div>
@@ -217,445 +91,94 @@
   <!-- Endpoint Types -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Endpoint Types</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Desktops, mobiles, and servers.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Endpoint Types</h3>
     </div>
     <div class="tz-card-body">
       {% if device_total > 0 %}
-      <div class="space-y-5">
-        <!-- Desktops -->
+      <div class="space-y-4">
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Desktops</span>
-            <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {{ device_desktop_count }}
-              <span class="text-xs text-slate-400 font-normal ml-1">({% widthratio device_desktop_count device_total 100 %}%)</span>
-            </span>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-600 dark:text-slate-300">Desktops</span>
+            <span class="text-xs font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ device_desktop_count }} <span class="text-slate-400 font-normal">({% widthratio device_desktop_count device_total 100 %}%)</span></span>
           </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
-            <div class="bg-code-blue-500 h-2 rounded-full" style="width: {% widthratio device_desktop_count device_total 100 %}%"></div>
-          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5"><div class="bg-code-blue-500 h-1.5" style="width: {% widthratio device_desktop_count device_total 100 %}%"></div></div>
         </div>
-        <!-- Mobiles -->
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Mobiles</span>
-            <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {{ device_mobile_count }}
-              <span class="text-xs text-slate-400 font-normal ml-1">({% widthratio device_mobile_count device_total 100 %}%)</span>
-            </span>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-600 dark:text-slate-300">Mobiles</span>
+            <span class="text-xs font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ device_mobile_count }} <span class="text-slate-400 font-normal">({% widthratio device_mobile_count device_total 100 %}%)</span></span>
           </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
-            <div class="bg-code-purple-500 h-2 rounded-full" style="width: {% widthratio device_mobile_count device_total 100 %}%"></div>
-          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5"><div class="bg-code-purple-500 h-1.5" style="width: {% widthratio device_mobile_count device_total 100 %}%"></div></div>
         </div>
-        <!-- Servers -->
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Servers</span>
-            <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {{ device_server_count }}
-              <span class="text-xs text-slate-400 font-normal ml-1">({% widthratio device_server_count device_total 100 %}%)</span>
-            </span>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-600 dark:text-slate-300">Servers</span>
+            <span class="text-xs font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ device_server_count }} <span class="text-slate-400 font-normal">({% widthratio device_server_count device_total 100 %}%)</span></span>
           </div>
-          <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
-            <div class="bg-code-amber-500 h-2 rounded-full" style="width: {% widthratio device_server_count device_total 100 %}%"></div>
-          </div>
+          <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5"><div class="bg-code-amber-500 h-1.5" style="width: {% widthratio device_server_count device_total 100 %}%"></div></div>
         </div>
       </div>
       {% else %}
-      <div class="flex items-center justify-center h-32 text-sm text-slate-400 dark:text-slate-500">No devices synced.</div>
+      <p class="text-xs text-slate-400 py-8 text-center">No devices synced</p>
       {% endif %}
     </div>
   </div>
 
-  <!-- Compliance Status -->
+  <!-- Compliance -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Compliance Status</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Overall compliance posture.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Compliance</h3>
     </div>
     <div class="tz-card-body">
       {% if device_total > 0 %}
       <div class="grid grid-cols-2 gap-4">
-        <div class="flex flex-col items-center justify-center py-4 rounded-lg bg-code-green-50 dark:bg-code-green-500/10">
-          <span class="text-3xl font-bold tabular-nums text-code-green-600 dark:text-code-green-400">{% widthratio device_compliance_compliant device_total 100 %}%</span>
-          <span class="text-xs text-slate-500 dark:text-slate-400 mt-1">Compliant</span>
-          <span class="text-sm font-semibold text-code-green-600 dark:text-code-green-400 mt-1">{{ device_compliance_compliant }}</span>
+        <div class="text-center py-3 border border-code-green-200 dark:border-code-green-500/20 bg-code-green-50/50 dark:bg-code-green-500/5">
+          <span class="block text-2xl font-semibold tabular-nums text-code-green-700 dark:text-code-green-400">{% widthratio device_compliance_compliant device_total 100 %}%</span>
+          <span class="block text-[11px] text-slate-500 mt-0.5">Compliant</span>
+          <span class="block text-xs font-semibold tabular-nums text-code-green-600 dark:text-code-green-400 mt-1">{{ device_compliance_compliant }}</span>
         </div>
-        <div class="flex flex-col items-center justify-center py-4 rounded-lg bg-code-red-50 dark:bg-code-red-500/10">
-          <span class="text-3xl font-bold tabular-nums text-code-red-600 dark:text-code-red-400">{% widthratio device_compliance_noncompliant device_total 100 %}%</span>
-          <span class="text-xs text-slate-500 dark:text-slate-400 mt-1">Non-compliant</span>
-          <span class="text-sm font-semibold text-code-red-600 dark:text-code-red-400 mt-1">{{ device_compliance_noncompliant }}</span>
+        <div class="text-center py-3 border border-code-red-200 dark:border-code-red-500/20 bg-code-red-50/50 dark:bg-code-red-500/5">
+          <span class="block text-2xl font-semibold tabular-nums text-code-red-700 dark:text-code-red-400">{% widthratio device_compliance_noncompliant device_total 100 %}%</span>
+          <span class="block text-[11px] text-slate-500 mt-0.5">Non-compliant</span>
+          <span class="block text-xs font-semibold tabular-nums text-code-red-600 dark:text-code-red-400 mt-1">{{ device_compliance_noncompliant }}</span>
         </div>
       </div>
       {% else %}
-      <div class="flex items-center justify-center h-32 text-sm text-slate-400 dark:text-slate-500">No devices synced.</div>
+      <div class="tz-empty-state py-8">
+        <svg class="tz-empty-state-icon w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+        <h3 class="text-xs font-medium text-slate-600 dark:text-slate-400">No devices synced yet</h3>
+        <a href="/integrations" class="text-[11px] text-code-blue-600 hover:text-code-blue-700 mt-1">Configure integrations &rarr;</a>
+      </div>
       {% endif %}
     </div>
   </div>
 </div>
 
 <!-- CA+MFA and Device Coverage Sankeys -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <!-- CA + MFA Analysis -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Conditional Access &amp; MFA Analysis</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Sign-in flow through Conditional Access and MFA enforcement.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Conditional Access &amp; MFA</h3>
+      <p class="text-[11px] text-slate-400 mt-0.5">Sign-in flow through CA and MFA enforcement</p>
     </div>
     <div class="tz-card-body">
-      <div id="sankey-ca-mfa" style="height: 350px;"></div>
+      <div id="sankey-ca-mfa" style="height: 320px;"></div>
     </div>
   </div>
-
-  <!-- Device Integration Coverage -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Device Integration Coverage</h3>
-      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Device coverage by enabled integrations and compliance status.</p>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Device Integration Coverage</h3>
+      <p class="text-[11px] text-slate-400 mt-0.5">Coverage by enabled integrations and compliance status</p>
     </div>
     <div class="tz-card-body">
-      <div id="sankey-device-coverage" style="height: 350px;"></div>
+      <div id="sankey-device-coverage" style="height: 320px;"></div>
     </div>
   </div>
 </div>
-
-<!-- Empty State (when no devices synced) -->
-{% if device_total == 0 %}
-<div class="tz-card mb-6">
-  <div class="tz-card-body">
-    <div class="tz-empty-state">
-      <svg class="tz-empty-state-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0H3" />
-      </svg>
-      <h3 class="tz-empty-state-title">No devices synced yet</h3>
-      <p class="tz-empty-state-description">Connect your security integrations to start monitoring your endpoint fleet.</p>
-      <a href="/integrations" class="tz-btn-primary">Configure Integrations</a>
-    </div>
-  </div>
-</div>
-{% endif %}
 
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<script>
-	document.addEventListener("DOMContentLoaded", function() {
-		// Get the sk1 counts from the backend
-		var sk1_count_privileged_users = {{ sk1_count_privileged_users|default:0 }};
-		var sk1_count_privileged_phishing_resistant_users = {{ sk1_count_privileged_phishing_resistant_users|default:0 }};
-		var sk1_count_privileged_passkey_users = {{ sk1_count_privileged_passkey_users|default:0 }};
-		var sk1_count_privileged_whfb_users = {{ sk1_count_privileged_whfb_users|default:0 }};
-		var sk1_count_privileged_phishable_users = {{ sk1_count_privileged_phishable_users|default:0 }};
-		var sk1_count_privileged_phone_users = {{ sk1_count_privileged_phone_users|default:0 }};
-		var sk1_count_privileged_authenticator_users = {{ sk1_count_privileged_authenticator_users|default:0 }};
-		var sk1_count_privileged_single_factor_users = {{ sk1_count_privileged_single_factor_users|default:0 }};
-
-		// Define the nodes for the Sankey diagram
-		// Node indices: Users=0, Phish Resistant=1, Phishable=2, Passkey=3, WHfB=4, Phone=5, Authenticator=6, Single Factor=7
-		var data = {
-			type: "sankey",
-			orientation: "h",
-			node: {
-				pad: 35,
-				thickness: 12,
-				line: {
-					color: "black",
-					width: 0.5
-				},
-				label: ["Users", "Phish Resistant", "Phishable", "Passkey", "WHfB", "Phone", "Authenticator", "Single Factor"],
-				color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#50C878", "#dce24a", "#dce24a", "#FF6B6B"],
-				// Position nodes: x=0 (Users), x=0.5 (intermediate), x=1 (final nodes)
-				// y positions: 0=top, 1=bottom
-				x: [0, 0.5, 0.5, 1, 1, 1, 1, 1],
-				y: [0.5, 0.25, 0.5, 0.1, 0.25, 0.5, 0.75, 0.95]
-			},
-			link: {
-				// Flows:
-				// Users -> Phish Resistant (0 -> 1)
-				// Phish Resistant -> Passkey (1 -> 3)
-				// Phish Resistant -> WHfB (1 -> 4)
-				// Users -> Phishable (0 -> 2)
-				// Phishable -> Phone (2 -> 5)
-				// Phishable -> Authenticator (2 -> 6)
-				// Users -> Single Factor (0 -> 7)
-				source: [0, 1, 1, 0, 2, 2, 0],
-				target: [1, 3, 4, 2, 5, 6, 7],
-				value: [
-					sk1_count_privileged_phishing_resistant_users,  // Users -> Phish Resistant
-					sk1_count_privileged_passkey_users,            // Phish Resistant -> Passkey
-					sk1_count_privileged_whfb_users,               // Phish Resistant -> WHfB
-					sk1_count_privileged_phishable_users,          // Users -> Phishable
-					sk1_count_privileged_phone_users,              // Phishable -> Phone
-					sk1_count_privileged_authenticator_users,      // Phishable -> Authenticator
-					sk1_count_privileged_single_factor_users       // Users -> Single Factor
-				],
-				color: [
-					"rgba(80, 200, 120, 0.4)",  // Users -> Phish Resistant
-					"rgba(80, 200, 120, 0.4)",  // Phish Resistant -> Passkey
-					"rgba(80, 200, 120, 0.4)",  // Phish Resistant -> WHfB
-					"rgba(220, 226, 74, 0.4)",  // Users -> Phishable
-					"rgba(220, 226, 74, 0.4)",  // Phishable -> Phone
-					"rgba(220, 226, 74, 0.4)",  // Phishable -> Authenticator
-					"rgba(255, 107, 107, 0.4)"   // Users -> Single Factor
-				]
-			}
-		};
-
-		var layout = {
-			title: "",
-			font: {
-				family: 'Inter',
-				size: 12
-			},
-			paper_bgcolor: "rgba(0,0,0,0)",
-			plot_bgcolor: "rgba(0,0,0,0)",
-			margin: {
-				l: 10,
-				r: 10,
-				t: 10,
-				b: 10
-			}
-		};
-
-		var config = {
-			responsive: true,
-			displayModeBar: false
-		};
-
-		Plotly.newPlot('sankey-diagram-privileged-users', [data], layout, config);
-	});
-</script>
-<script>
-	document.addEventListener("DOMContentLoaded", function() {
-		// Get the sk2 counts from the backend
-		var sk2_count_users = {{ sk2_count_users|default:0 }};
-		var sk2_count_single_factor_users = {{ sk2_count_single_factor_users|default:0 }};
-		var sk2_count_phone_users = {{ sk2_count_phone_users|default:0 }};
-		var sk2_count_authenticator_users = {{ sk2_count_authenticator_users|default:0 }};
-		var sk2_count_phishable_users = {{ sk2_count_phishable_users|default:0 }};
-		var sk2_count_passkey_users = {{ sk2_count_passkey_users|default:0 }};
-		var sk2_count_whfb_users = {{ sk2_count_whfb_users|default:0 }};
-		var sk2_count_phishing_resistant_users = {{ sk2_count_phishing_resistant_users|default:0 }};
-
-		// Define the nodes for the Sankey diagram
-		// Node indices: Users=0, Phish Resistant=1, Phishable=2, Passkey=3, WHfB=4, Phone=5, Authenticator=6, Single Factor=7
-		var data = {
-			type: "sankey",
-			orientation: "h",
-			node: {
-				pad: 50,
-				thickness: 12,
-				line: {
-					color: "black",
-					width: 0.5
-				},
-				label: ["Users", "Phish Resistant", "Phishable", "Passkey", "WHfB", "Phone", "Authenticator", "Single Factor"],
-				color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#50C878", "#dce24a", "#dce24a", "#FF6B6B"],
-				// Position nodes: x=0 (Users), x=0.5 (intermediate), x=1 (final nodes)
-				// y positions: 0=top, 1=bottom
-				x: [0, 0.5, 0.5, 1, 1, 1, 1, 1],
-				y: [0.5, 0.25, 0.5, 0.1, 0.25, 0.5, 0.75, 0.95]
-			},
-			link: {
-				// Flows:
-				// Users -> Phish Resistant (0 -> 1)
-				// Phish Resistant -> Passkey (1 -> 3)
-				// Phish Resistant -> WHfB (1 -> 4)
-				// Users -> Phishable (0 -> 2)
-				// Phishable -> Phone (2 -> 5)
-				// Phishable -> Authenticator (2 -> 6)
-				// Users -> Single Factor (0 -> 7)
-				source: [0, 1, 1, 0, 2, 2, 0],
-				target: [1, 3, 4, 2, 5, 6, 7],
-				value: [
-					sk2_count_phishing_resistant_users,  // Users -> Phish Resistant
-					sk2_count_passkey_users,            // Phish Resistant -> Passkey
-					sk2_count_whfb_users,               // Phish Resistant -> WHfB
-					sk2_count_phishable_users,          // Users -> Phishable
-					sk2_count_phone_users,              // Phishable -> Phone
-					sk2_count_authenticator_users,      // Phishable -> Authenticator
-					sk2_count_single_factor_users       // Users -> Single Factor
-				],
-				color: [
-					"rgba(80, 200, 120, 0.4)",  // Users -> Phish Resistant
-					"rgba(80, 200, 120, 0.4)",  // Phish Resistant -> Passkey
-					"rgba(80, 200, 120, 0.4)",  // Phish Resistant -> WHfB
-					"rgba(220, 226, 74, 0.4)",  // Users -> Phishable
-					"rgba(220, 226, 74, 0.4)",  // Phishable -> Phone
-					"rgba(220, 226, 74, 0.4)",  // Phishable -> Authenticator
-					"rgba(255, 107, 107, 0.4)"   // Users -> Single Factor
-				]
-			}
-		};
-
-		var layout = {
-			title: "",
-			font: {
-				family: 'Inter',
-				size: 12
-			},
-			paper_bgcolor: "rgba(0,0,0,0)",
-			plot_bgcolor: "rgba(0,0,0,0)",
-			margin: {
-				l: 10,
-				r: 10,
-				t: 10,
-				b: 10
-			}
-		};
-
-		var config = {
-			responsive: true,
-			displayModeBar: false
-		};
-
-		Plotly.newPlot('sankey-diagram-all-users', [data], layout, config);
-	});
-</script>
-<script>
-	document.addEventListener("DOMContentLoaded", function() {
-		// CA+MFA Sankey
-		var ca_mfa = {{ signin_summary.ca_mfa|default:0 }};
-		var ca_no_mfa = {{ signin_summary.ca_no_mfa|default:0 }};
-		var no_ca_mfa = {{ signin_summary.no_ca_mfa|default:0 }};
-		var no_ca_no_mfa = {{ signin_summary.no_ca_no_mfa|default:0 }};
-		var total = ca_mfa + ca_no_mfa + no_ca_mfa + no_ca_no_mfa;
-
-		if (total > 0) {
-			var data = {
-				type: "sankey",
-				orientation: "h",
-				node: {
-					pad: 35,
-					thickness: 12,
-					line: { color: "black", width: 0.5 },
-					label: ["Sign-ins", "CA Applied", "CA Not Applied", "MFA", "No MFA", "MFA", "No MFA"],
-					color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#FF6B6B", "#50C878", "#FF6B6B"],
-					x: [0, 0.5, 0.5, 1, 1, 1, 1],
-					y: [0.5, 0.25, 0.75, 0.1, 0.35, 0.65, 0.9]
-				},
-				link: {
-					source: [0, 0, 1, 1, 2, 2],
-					target: [1, 2, 3, 4, 5, 6],
-					value: [
-						ca_mfa + ca_no_mfa,        // Sign-ins -> CA Applied
-						no_ca_mfa + no_ca_no_mfa,  // Sign-ins -> CA Not Applied
-						ca_mfa,                     // CA Applied -> MFA
-						ca_no_mfa,                  // CA Applied -> No MFA
-						no_ca_mfa,                  // CA Not Applied -> MFA
-						no_ca_no_mfa                // CA Not Applied -> No MFA
-					],
-					color: [
-						"rgba(80, 200, 120, 0.4)",
-						"rgba(220, 226, 74, 0.4)",
-						"rgba(80, 200, 120, 0.4)",
-						"rgba(255, 107, 107, 0.4)",
-						"rgba(80, 200, 120, 0.4)",
-						"rgba(255, 107, 107, 0.4)"
-					]
-				}
-			};
-			var layout = {
-				title: "", font: { family: 'Inter', size: 12 },
-				paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
-				margin: { l: 10, r: 10, t: 10, b: 10 }
-			};
-			Plotly.newPlot('sankey-ca-mfa', [data], layout, { responsive: true, displayModeBar: false });
-		} else {
-			document.getElementById('sankey-ca-mfa').innerHTML = '<p class="text-sm text-slate-400 text-center mt-5">No sign-in data available. Sync Entra ID users to populate.</p>';
-		}
-	});
-</script>
-<script>
-	document.addEventListener("DOMContentLoaded", function() {
-		// Device Integration Coverage Sankey
-		var compliant = {{ device_compliance_compliant|default:0 }};
-		var noncompliant = {{ device_compliance_noncompliant|default:0 }};
-		var totalDevices = compliant + noncompliant;
-
-		{% comment %} Build integration counts from Django context {% endcomment %}
-		var integrationNames = {{ enabled_device_integrations|safe }};
-		var integrationCountsRaw = {{ device_integration_counts|safe }};
-
-		if (totalDevices > 0 && integrationNames.length > 0) {
-			// Build node labels: [Devices, ...integrations, Compliant, Non-Compliant]
-			var labels = ["Devices"].concat(integrationNames).concat(["Compliant", "Non-Compliant"]);
-			var colors = ["#4A90E2"];
-			for (var i = 0; i < integrationNames.length; i++) {
-				colors.push("#6f42c1");
-			}
-			colors.push("#50C878");
-			colors.push("#FF6B6B");
-
-			// Build integration count lookup
-			var countMap = {};
-			for (var j = 0; j < integrationCountsRaw.length; j++) {
-				countMap[integrationCountsRaw[j].integration__integration_type_short] = integrationCountsRaw[j].count;
-			}
-
-			// Build links: Devices -> each integration, then each integration -> Compliant/Non-Compliant
-			var source = [];
-			var target = [];
-			var value = [];
-			var linkColors = [];
-
-			var compIdx = integrationNames.length + 1;
-			var noncompIdx = integrationNames.length + 2;
-
-			for (var k = 0; k < integrationNames.length; k++) {
-				var cnt = countMap[integrationNames[k]] || 0;
-				if (cnt > 0) {
-					source.push(0);
-					target.push(k + 1);
-					value.push(cnt);
-					linkColors.push("rgba(111, 66, 193, 0.3)");
-				}
-			}
-
-			// Devices -> Compliant / Non-Compliant
-			if (compliant > 0) {
-				source.push(0);
-				target.push(compIdx);
-				value.push(compliant);
-				linkColors.push("rgba(80, 200, 120, 0.4)");
-			}
-			if (noncompliant > 0) {
-				source.push(0);
-				target.push(noncompIdx);
-				value.push(noncompliant);
-				linkColors.push("rgba(255, 107, 107, 0.4)");
-			}
-
-			var data = {
-				type: "sankey",
-				orientation: "h",
-				node: {
-					pad: 25,
-					thickness: 12,
-					line: { color: "black", width: 0.5 },
-					label: labels,
-					color: colors
-				},
-				link: {
-					source: source,
-					target: target,
-					value: value,
-					color: linkColors
-				}
-			};
-
-			var layout = {
-				title: "", font: { family: 'Inter', size: 12 },
-				paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
-				margin: { l: 10, r: 10, t: 10, b: 10 }
-			};
-			Plotly.newPlot('sankey-device-coverage', [data], layout, { responsive: true, displayModeBar: false });
-		} else {
-			document.getElementById('sankey-device-coverage').innerHTML = '<p class="text-sm text-slate-400 text-center mt-5">No device data available.</p>';
-		}
-	});
-</script>
+{{ sankey_js|safe }}
 {% endblock %}
