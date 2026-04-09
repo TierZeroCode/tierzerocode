@@ -158,7 +158,7 @@
             {% endif %}
           </button>
 
-          <div id="notifications-dropdown" class="hidden absolute right-0 top-full mt-1 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 overflow-hidden z-50">
+          <div id="notifications-dropdown" class="hidden absolute right-0 top-full mt-1 w-96 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 overflow-hidden z-50">
             <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-slate-700/50">
               <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 {% if notifications %}{{ notifications|length }} Notification{{ notifications|length|pluralize }}{% else %}Notifications{% endif %}
@@ -181,7 +181,7 @@
                     {% elif notification.status == 'In Progress' %}tz-dot-info
                     {% else %}tz-dot-neutral{% endif %}"></span>
                   <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{{ notification.title }}</p>
+                    <p class="text-xs font-medium text-slate-800 dark:text-slate-200">{{ notification.title }}</p>
                     <p class="text-[11px] text-slate-400 dark:text-slate-500">{{ notification.updated_at }}</p>
                   </div>
                   <form method="post" action="/delete-notification/{{ notification.id }}" class="shrink-0">
