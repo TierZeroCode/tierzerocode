@@ -1,206 +1,117 @@
 {% extends 'main/base.html' %}
 {% load static %}
 {% block content %}
-<main class="flex-1 overflow-y-auto p-6">
 
-    <!-- Breadcrumb + Header -->
-    <div class="mb-6">
-        <a href="/endpoints/master-list" class="text-sm text-code-blue-600 hover:text-code-blue-700 mb-2 inline-flex items-center gap-1">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            Back to Master List
-        </a>
-        <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{{ device.hostname }}</h1>
-            {% if device.compliant %}
-            <span class="tz-badge tz-badge-success">Compliant</span>
-            {% else %}
-            <span class="tz-badge tz-badge-danger">Non-Compliant</span>
-            {% endif %}
-        </div>
+<!-- Breadcrumb + Header -->
+<div class="mb-5">
+    <a href="/endpoints/master-list" class="text-xs text-code-blue-600 hover:text-code-blue-700 inline-flex items-center gap-1 mb-1">
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Master List
+    </a>
+    <div class="flex items-center gap-2">
+        <h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100">{{ device.hostname }}</h1>
+        {% if device.compliant %}
+        <span class="tz-badge tz-badge-success">Compliant</span>
+        {% else %}
+        <span class="tz-badge tz-badge-danger">Non-Compliant</span>
+        {% endif %}
     </div>
+</div>
 
-    <!-- C.O.D.E Details Card -->
-    <div class="tz-card mb-6">
-        <div class="tz-card-header">
-            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Device Details</h2>
-        </div>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-4">
-                <div>
-                    <dt class="tz-section-label mb-1">Hostname</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.hostname }}</dd>
-                </div>
-                <div>
-                    <dt class="tz-section-label mb-1">TZC ID</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.id }}</dd>
-                </div>
-                <div>
-                    <dt class="tz-section-label mb-1">OS Platform</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.osPlatform|default:"-" }}</dd>
-                </div>
-                <div>
-                    <dt class="tz-section-label mb-1">Endpoint Type</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.endpointType|default:"-" }}</dd>
-                </div>
-                <div>
-                    <dt class="tz-section-label mb-1">Manufacturer</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.manufacturer|default:"-" }}</dd>
-                </div>
-                <div>
-                    <dt class="tz-section-label mb-1">Created</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.created_at }}</dd>
-                </div>
-                <div>
-                    <dt class="tz-section-label mb-1">Updated</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white font-medium">{{ device.updated_at }}</dd>
-                </div>
-            </dl>
-        </div>
+<!-- Device Details -->
+<div class="tz-card mb-5">
+    <div class="tz-card-header">
+        <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Device Details</h2>
     </div>
+    <div class="tz-card-body">
+        <dl class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-3">
+            <div><dt class="tz-section-label mb-0.5">Hostname</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.hostname }}</dd></div>
+            <div><dt class="tz-section-label mb-0.5">TZC ID</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.id }}</dd></div>
+            <div><dt class="tz-section-label mb-0.5">OS Platform</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.osPlatform|default:"-" }}</dd></div>
+            <div><dt class="tz-section-label mb-0.5">Endpoint Type</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.endpointType|default:"-" }}</dd></div>
+            <div><dt class="tz-section-label mb-0.5">Manufacturer</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.manufacturer|default:"-" }}</dd></div>
+            <div><dt class="tz-section-label mb-0.5">Created</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.created_at }}</dd></div>
+            <div><dt class="tz-section-label mb-0.5">Updated</dt><dd class="text-sm text-slate-900 dark:text-slate-100 font-medium">{{ device.updated_at }}</dd></div>
+        </dl>
+    </div>
+</div>
 
-    <!-- Integration Detail Cards -->
-    {% for inty in ints %}
+<!-- Integration Details -->
+{% for inty in ints %}
 
-    {% if 'CrowdStrike Falcon' in inty.integration_type %}
-    {% if crowdstrike_device %}
-    <details class="tz-card mb-4" open>
-        <summary class="tz-card-header cursor-pointer flex items-center gap-3 list-none">
-            <img src="{% static 'main/img/integration_images/webp/crowdstrike_falcon_logo.webp' %}" class="w-6 h-6 object-contain" alt="CrowdStrike">
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">CrowdStrike Falcon</h3>
-            <svg class="w-4 h-4 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                {% for key, value in crowdstrike_device.items %}
-                {% if value != None %}
-                <div>
-                    <dt class="text-xs text-slate-500">{{ key.title }}</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white">{{ value|default:"-" }}</dd>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </dl>
-        </div>
-    </details>
-    {% endif %}
+{% if 'CrowdStrike Falcon' in inty.integration_type %}
+{% if crowdstrike_device %}
+<details class="tz-card mb-3" open>
+    <summary class="tz-card-header cursor-pointer flex items-center gap-2.5 list-none">
+        <img src="{% static 'main/img/integration_images/webp/crowdstrike_falcon_logo.webp' %}" class="w-5 h-5 object-contain" alt="CrowdStrike">
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">CrowdStrike Falcon</h3>
+        <svg class="w-3.5 h-3.5 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <div class="tz-card-body"><dl class="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2">{% for key, value in crowdstrike_device.items %}{% if value != None %}<div><dt class="text-[11px] text-slate-500">{{ key.title }}</dt><dd class="text-sm text-slate-900 dark:text-slate-100">{{ value|default:"-" }}</dd></div>{% endif %}{% endfor %}</dl></div>
+</details>
+{% endif %}
 
-    {% elif 'Microsoft Defender for Endpoint' in inty.integration_type %}
-    {% if defender_device %}
-    <details class="tz-card mb-4" open>
-        <summary class="tz-card-header cursor-pointer flex items-center gap-3 list-none">
-            <img src="{% static 'main/img/integration_images/webp/microsoft_defender_for_endpoint_logo.webp' %}" class="w-6 h-6 object-contain" alt="Defender">
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Microsoft Defender for Endpoint</h3>
-            <svg class="w-4 h-4 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                {% for key, value in defender_device.items %}
-                {% if value != None %}
-                <div>
-                    <dt class="text-xs text-slate-500">{{ key.title }}</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white">{{ value|default:"-" }}</dd>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </dl>
-        </div>
-    </details>
-    {% endif %}
+{% elif 'Microsoft Defender for Endpoint' in inty.integration_type %}
+{% if defender_device %}
+<details class="tz-card mb-3" open>
+    <summary class="tz-card-header cursor-pointer flex items-center gap-2.5 list-none">
+        <img src="{% static 'main/img/integration_images/webp/microsoft_defender_for_endpoint_logo.webp' %}" class="w-5 h-5 object-contain" alt="Defender">
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Microsoft Defender for Endpoint</h3>
+        <svg class="w-3.5 h-3.5 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <div class="tz-card-body"><dl class="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2">{% for key, value in defender_device.items %}{% if value != None %}<div><dt class="text-[11px] text-slate-500">{{ key.title }}</dt><dd class="text-sm text-slate-900 dark:text-slate-100">{{ value|default:"-" }}</dd></div>{% endif %}{% endfor %}</dl></div>
+</details>
+{% endif %}
 
-    {% elif 'Microsoft Entra ID' in inty.integration_type %}
-    {% if entra_device %}
-    <details class="tz-card mb-4" open>
-        <summary class="tz-card-header cursor-pointer flex items-center gap-3 list-none">
-            <img src="{% static 'main/img/integration_images/webp/microsoft_entra_id_logo.webp' %}" class="w-6 h-6 object-contain" alt="Entra ID">
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Microsoft Entra ID</h3>
-            <svg class="w-4 h-4 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                {% for key, value in entra_device.items %}
-                {% if value != None %}
-                <div>
-                    <dt class="text-xs text-slate-500">{{ key.title }}</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white">{{ value|default:"-" }}</dd>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </dl>
-        </div>
-    </details>
-    {% endif %}
+{% elif 'Microsoft Entra ID' in inty.integration_type %}
+{% if entra_device %}
+<details class="tz-card mb-3" open>
+    <summary class="tz-card-header cursor-pointer flex items-center gap-2.5 list-none">
+        <img src="{% static 'main/img/integration_images/webp/microsoft_entra_id_logo.webp' %}" class="w-5 h-5 object-contain" alt="Entra ID">
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Microsoft Entra ID</h3>
+        <svg class="w-3.5 h-3.5 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <div class="tz-card-body"><dl class="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2">{% for key, value in entra_device.items %}{% if value != None %}<div><dt class="text-[11px] text-slate-500">{{ key.title }}</dt><dd class="text-sm text-slate-900 dark:text-slate-100">{{ value|default:"-" }}</dd></div>{% endif %}{% endfor %}</dl></div>
+</details>
+{% endif %}
 
-    {% elif 'Microsoft Intune' in inty.integration_type %}
-    {% if intune_device %}
-    <details class="tz-card mb-4" open>
-        <summary class="tz-card-header cursor-pointer flex items-center gap-3 list-none">
-            <img src="{% static 'main/img/integration_images/webp/microsoft_intune_logo.webp' %}" class="w-6 h-6 object-contain" alt="Intune">
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Microsoft Intune</h3>
-            <svg class="w-4 h-4 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                {% for key, value in intune_device.items %}
-                {% if value != None %}
-                <div>
-                    <dt class="text-xs text-slate-500">{{ key.title }}</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white">{{ value|default:"-" }}</dd>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </dl>
-        </div>
-    </details>
-    {% endif %}
+{% elif 'Microsoft Intune' in inty.integration_type %}
+{% if intune_device %}
+<details class="tz-card mb-3" open>
+    <summary class="tz-card-header cursor-pointer flex items-center gap-2.5 list-none">
+        <img src="{% static 'main/img/integration_images/webp/microsoft_intune_logo.webp' %}" class="w-5 h-5 object-contain" alt="Intune">
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Microsoft Intune</h3>
+        <svg class="w-3.5 h-3.5 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <div class="tz-card-body"><dl class="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2">{% for key, value in intune_device.items %}{% if value != None %}<div><dt class="text-[11px] text-slate-500">{{ key.title }}</dt><dd class="text-sm text-slate-900 dark:text-slate-100">{{ value|default:"-" }}</dd></div>{% endif %}{% endfor %}</dl></div>
+</details>
+{% endif %}
 
-    {% elif 'Sophos Central' in inty.integration_type %}
-    {% if sophos_device %}
-    <details class="tz-card mb-4" open>
-        <summary class="tz-card-header cursor-pointer flex items-center gap-3 list-none">
-            <img src="{% static 'main/img/integration_images/webp/sophos_central_logo.webp' %}" class="w-6 h-6 object-contain" alt="Sophos">
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Sophos Central</h3>
-            <svg class="w-4 h-4 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                {% for key, value in sophos_device.items %}
-                {% if value != None %}
-                <div>
-                    <dt class="text-xs text-slate-500">{{ key.title }}</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white">{{ value|default:"-" }}</dd>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </dl>
-        </div>
-    </details>
-    {% endif %}
+{% elif 'Sophos Central' in inty.integration_type %}
+{% if sophos_device %}
+<details class="tz-card mb-3" open>
+    <summary class="tz-card-header cursor-pointer flex items-center gap-2.5 list-none">
+        <img src="{% static 'main/img/integration_images/webp/sophos_central_logo.webp' %}" class="w-5 h-5 object-contain" alt="Sophos">
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Sophos Central</h3>
+        <svg class="w-3.5 h-3.5 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <div class="tz-card-body"><dl class="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2">{% for key, value in sophos_device.items %}{% if value != None %}<div><dt class="text-[11px] text-slate-500">{{ key.title }}</dt><dd class="text-sm text-slate-900 dark:text-slate-100">{{ value|default:"-" }}</dd></div>{% endif %}{% endfor %}</dl></div>
+</details>
+{% endif %}
 
-    {% elif 'Tailscale' in inty.integration_type %}
-    {% if tailscale_device %}
-    <details class="tz-card mb-4" open>
-        <summary class="tz-card-header cursor-pointer flex items-center gap-3 list-none">
-            <img src="{% static 'main/img/integration_images/webp/tailscale_logo.webp' %}" class="w-6 h-6 object-contain" alt="Tailscale">
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Tailscale</h3>
-            <svg class="w-4 h-4 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-        </summary>
-        <div class="tz-card-body">
-            <dl class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
-                {% for key, value in tailscale_device.items %}
-                {% if value != None %}
-                <div>
-                    <dt class="text-xs text-slate-500">{{ key.title }}</dt>
-                    <dd class="text-sm text-slate-900 dark:text-white">{{ value|default:"-" }}</dd>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </dl>
-        </div>
-    </details>
-    {% endif %}
+{% elif 'Tailscale' in inty.integration_type %}
+{% if tailscale_device %}
+<details class="tz-card mb-3" open>
+    <summary class="tz-card-header cursor-pointer flex items-center gap-2.5 list-none">
+        <img src="{% static 'main/img/integration_images/webp/tailscale_logo.webp' %}" class="w-5 h-5 object-contain" alt="Tailscale">
+        <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Tailscale</h3>
+        <svg class="w-3.5 h-3.5 text-slate-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </summary>
+    <div class="tz-card-body"><dl class="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2">{% for key, value in tailscale_device.items %}{% if value != None %}<div><dt class="text-[11px] text-slate-500">{{ key.title }}</dt><dd class="text-sm text-slate-900 dark:text-slate-100">{{ value|default:"-" }}</dd></div>{% endif %}{% endfor %}</dl></div>
+</details>
+{% endif %}
 
-    {% endif %}
-    {% endfor %}
+{% endif %}
+{% endfor %}
 
-</main>
 {% endblock %}

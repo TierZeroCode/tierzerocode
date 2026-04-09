@@ -2,23 +2,17 @@
 {% load static %}
 
 {% block content %}
-<h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-6">Endpoint Dashboard</h1>
+<h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100 mb-5">Endpoint Analytics</h1>
 
 <!-- Integration stat cards -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
   {% for endpoint_device_count in endpoint_device_counts %}
   <div class="tz-stat-card">
-    <div class="flex items-center justify-between mb-3">
-      <span class="tz-section-label">{{ endpoint_device_count.0 }}</span>
-      <div class="flex-shrink-0">
-        {% if endpoint_device_count.0 == 'Master List Endpoints' %}
-        <svg class="w-6 h-6 text-code-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-        </svg>
-        {% else %}
-        <img src="{% static endpoint_device_count.2 %}" class="w-6 h-6 object-contain" alt="{{ endpoint_device_count.0 }}">
-        {% endif %}
-      </div>
+    <div class="flex items-center justify-between mb-2">
+      <span class="tz-section-label truncate">{{ endpoint_device_count.0 }}</span>
+      {% if endpoint_device_count.0 != 'Master List Endpoints' %}
+      <img src="{% static endpoint_device_count.2 %}" class="w-5 h-5 object-contain shrink-0" alt="{{ endpoint_device_count.0 }}">
+      {% endif %}
     </div>
     <span class="tz-stat-value">{{ endpoint_device_count.1 }}</span>
     <span class="tz-stat-label">Devices</span>
@@ -26,65 +20,26 @@
   {% endfor %}
 </div>
 
-<!-- Chart cards -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
   <!-- OS Platforms -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">OS Platforms</h3>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">OS Platforms</h3>
     </div>
     <div class="tz-card-body">
-      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+      <div class="mx-auto" style="max-width: 220px; height: 200px;">
         <canvas id="dashboard-os-platform-pie"></canvas>
       </div>
-      <div class="mt-4">
-        <table class="w-full text-sm">
-          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#3B82F6;"></span>Android
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.0 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>iOS/iPadOS
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.1 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#F59E0B;"></span>MacOS
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.2 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>Ubuntu Server
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.3 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#8B5CF6;"></span>Windows
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.4 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#06B6D4;"></span>Windows Server
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.5 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#64748B;"></span>Other
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ osPlatformData.6 }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#4B7BE5;"></span>Android</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.0 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#2EB67D;"></span>iOS/iPadOS</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.1 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#D49B18;"></span>macOS</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.2 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#E0503A;"></span>Ubuntu Server</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.3 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#8B5CF6;"></span>Windows</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.4 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#0EA5E9;"></span>Win Server</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.5 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#6B7A8D;"></span>Other</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ osPlatformData.6 }}</span></div>
       </div>
     </div>
   </div>
@@ -92,71 +47,33 @@
   <!-- Endpoint Type -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Endpoint Type</h3>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Endpoint Type</h3>
     </div>
     <div class="tz-card-body">
-      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+      <div class="mx-auto" style="max-width: 220px; height: 200px;">
         <canvas id="dashboard-endpoint-type-pie"></canvas>
       </div>
-      <div class="mt-4">
-        <table class="w-full text-sm">
-          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#3B82F6;"></span>Client
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ endpointTypeData.0 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>Mobile
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ endpointTypeData.1 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#F59E0B;"></span>Server
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ endpointTypeData.2 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>Other
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ endpointTypeData.3 }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#4B7BE5;"></span>Client</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ endpointTypeData.0 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#2EB67D;"></span>Mobile</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ endpointTypeData.1 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#D49B18;"></span>Server</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ endpointTypeData.2 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#E0503A;"></span>Other</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ endpointTypeData.3 }}</span></div>
       </div>
     </div>
   </div>
 
-  <!-- Tier Zero Endpoints -->
+  <!-- Tier Zero -->
   <div class="tz-card">
     <div class="tz-card-header">
-      <h3 class="text-base font-semibold text-slate-900 dark:text-white">Tier Zero Endpoints</h3>
+      <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Tier Zero Endpoints</h3>
     </div>
     <div class="tz-card-body">
-      <div class="mx-auto" style="max-width: 300px; height: 240px;">
+      <div class="mx-auto" style="max-width: 220px; height: 200px;">
         <canvas id="dashboard-tier-zero-pie"></canvas>
       </div>
-      <div class="mt-4">
-        <table class="w-full text-sm">
-          <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#10B981;"></span>{{ compliantLabels.0 }}
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ compliantData.0 }}</td>
-            </tr>
-            <tr class="flex justify-between py-1.5">
-              <td class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#EF4444;"></span>{{ compliantLabels.1 }}
-              </td>
-              <td class="font-medium text-slate-900 dark:text-slate-100">{{ compliantData.1 }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#2EB67D;"></span>{{ compliantLabels.0 }}</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ compliantData.0 }}</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span class="tz-dot" style="background:#E0503A;"></span>{{ compliantLabels.1 }}</span><span class="font-medium tabular-nums text-slate-900 dark:text-slate-100">{{ compliantData.1 }}</span></div>
       </div>
     </div>
   </div>
@@ -168,86 +85,21 @@
 <script src="{% static 'main/js/chart-config.js' %}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
+    var borderColor = tzChartBorderColor();
     new Chart(document.getElementById("dashboard-os-platform-pie"), {
-      type: "pie",
-      data: {
-        labels: {{ osPlatformLabels|safe }},
-        datasets: [{
-          data: {{ osPlatformData|safe }},
-          backgroundColor: [
-            '#3B82F6',
-            '#10B981',
-            '#F59E0B',
-            '#EF4444',
-            '#8B5CF6',
-            '#06B6D4',
-            '#64748B',
-          ],
-          borderWidth: 3,
-          borderColor: '#ffffff'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        }
-      }
+      type: "doughnut",
+      data: { labels: {{ osPlatformLabels|safe }}, datasets: [{ data: {{ osPlatformData|safe }}, backgroundColor: TZChartPalette, borderWidth: 2, borderColor: borderColor }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { display: false } } }
     });
-  });
-</script>
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
     new Chart(document.getElementById("dashboard-endpoint-type-pie"), {
-      type: "pie",
-      data: {
-        labels: {{ endpointTypeLabels|safe }},
-        datasets: [{
-          data: {{ endpointTypeData|safe }},
-          backgroundColor: [
-            '#3B82F6',
-            '#10B981',
-            '#F59E0B',
-            '#EF4444',
-          ],
-          borderWidth: 3,
-          borderColor: '#ffffff'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        }
-      }
+      type: "doughnut",
+      data: { labels: {{ endpointTypeLabels|safe }}, datasets: [{ data: {{ endpointTypeData|safe }}, backgroundColor: TZChartPalette, borderWidth: 2, borderColor: borderColor }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { display: false } } }
     });
-  });
-</script>
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
     new Chart(document.getElementById("dashboard-tier-zero-pie"), {
-      type: "pie",
-      data: {
-        labels: {{ compliantLabels|safe }},
-        datasets: [{
-          data: {{ compliantData|safe }},
-          backgroundColor: [
-            '#10B981',
-            '#EF4444',
-          ],
-          borderWidth: 3,
-          borderColor: '#ffffff'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        }
-      }
+      type: "doughnut",
+      data: { labels: {{ compliantLabels|safe }}, datasets: [{ data: {{ compliantData|safe }}, backgroundColor: ['#2EB67D', '#E0503A'], borderWidth: 2, borderColor: borderColor }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { display: false } } }
     });
   });
 </script>
