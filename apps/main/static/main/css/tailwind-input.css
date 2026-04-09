@@ -71,15 +71,6 @@
   --color-code-purple-500: oklch(0.580 0.200 295);
   --color-code-purple-600: oklch(0.500 0.215 295);
 
-  /* ── Spacing scale (4pt base) ── */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
-  --spacing-2xl: 32px;
-  --spacing-3xl: 48px;
-  --spacing-4xl: 64px;
 }
 
 /* ═══════════════════════════════════════════════
