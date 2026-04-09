@@ -19,8 +19,8 @@ class ModelVerificationMiddleware:
         if not hasattr(request, 'user') or not request.user.is_authenticated or not request.user.is_staff:
             return self.get_response(request)
 
-        # Skip verification for static files and login paths
-        skip_paths = ['/static/', '/identity/']
+        # Skip verification for static files, login paths, and allauth paths
+        skip_paths = ['/static/', '/identity/', '/accounts/']
         if any(request.path.startswith(path) for path in skip_paths):
             return self.get_response(request)
 

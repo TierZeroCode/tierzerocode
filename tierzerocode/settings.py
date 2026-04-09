@@ -45,6 +45,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.microsoft',
     'import_export',
     # 'django_tasks', # Django tasks
     'django_rq', # Django RQ
@@ -58,6 +63,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'apps.authhandler.middleware.AuthenticationMiddleware', # Custom middleware to verify the required models exist and redirects to setup if needed
     'apps.main.middleware.ModelVerificationMiddleware', # Custom middleware to verify the required models exist and redirects to setup if needed
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -150,8 +156,8 @@ STATIC_URL = 'static/'
 ##################################################################################################################
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',                    # Default backend
-    'apps.authhandler.authentication_backends.MicrosoftEntraID.MicrosoftEntraIDBackend',  # Microsoft Entra ID backend
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 if os.environ.get("DJANGO_DEV"):
@@ -192,6 +198,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 os.makedirs(STATIC_ROOT, exist_ok=True)
 
 LOGIN_URL = '/identity/login'
+
+SITE_ID = 1
 
 from django.contrib.messages import constants as messages
 MESSAGE_TAGS = {
@@ -313,3 +321,28 @@ LOGGING = {
         },
     },
 }
+
+# ============================================================================
+# django-allauth Configuration
+# ============================================================================
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_SIGNUP_ENABLED = False
+ACCOUNT_ADAPTER = 'apps.authhandler.adapters.AccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'apps.authhandler.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_PROVIDERS = {
+    'microsoft': {
+        'SCOPE': ['openid', 'profile', 'email'],
+        'AUTH_PARAMS': {
+            'prompt': 'select_account',
+        },
+    },
+}
+LOGIN_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/identity/login'

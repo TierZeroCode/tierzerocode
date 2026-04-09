@@ -32,19 +32,13 @@
             {% endif %}
 
             <!-- SSO Login -->
-            <form id="sso-form" method="post" action="{% url 'login-user' %}" {% if not enabledSSOIntegrations %}style="display:none;"{% endif %}>
-                {% csrf_token %}
+            <div id="sso-form" {% if not enabledSSOIntegrations %}style="display:none;"{% endif %}>
                 <h2 style="font-family:'Epilogue',sans-serif;font-size:1rem;font-weight:700;color:#1a1d2b;margin:0 0 1.25rem;">Sign in with SSO</h2>
-                <div style="margin-bottom:1rem;">
-                    <label for="sso-email" style="display:block;font-size:0.75rem;font-weight:500;color:#4a5568;margin-bottom:0.25rem;">Email address</label>
-                    <input type="email" name="email" id="sso-email" placeholder="you@company.com" required
-                        style="display:block;width:100%;box-sizing:border-box;padding:0.5rem 0.75rem;font-size:0.875rem;border:1px solid #c0c8d4;border-radius:0.25rem;outline:none;color:#1a1d2b;background:#fff;">
-                </div>
-                <button type="submit" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.5rem;background:#3b6fd9;color:#fff;font-weight:500;padding:0.625rem 1rem;border-radius:0.25rem;font-size:0.875rem;border:none;cursor:pointer;">
+                <a href="/accounts/microsoft/login/?process=login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.5rem;background:#3b6fd9;color:#fff;font-weight:500;padding:0.625rem 1rem;border-radius:0.25rem;font-size:0.875rem;text-decoration:none;cursor:pointer;">
                     <img src="{% static 'login_app/img/microsoft.webp' %}" style="height:1rem;width:1rem;" alt="" onerror="this.style.display='none'">
                     Sign in with Entra ID
-                </button>
-            </form>
+                </a>
+            </div>
 
             <!-- Local Login -->
             <form id="local-form" method="post" action="{% url 'login-user' %}" {% if enabledSSOIntegrations %}style="display:none;"{% endif %}>
