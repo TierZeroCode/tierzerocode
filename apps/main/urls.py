@@ -39,7 +39,9 @@ urlpatterns = [
     # ============================================================================
     path('identity/general-settings', views.generalSettings, name='general-settings'),
     path('update_compliance/<int:id>', views.update_compliance, name='update_compliance'),
-    
+    path('backup/create', views.create_backup, name='create_backup'),
+    path('backup/restore', views.restore_backup, name='restore_backup'),
+
     # ============================================================================
     # Notification Management
     # ============================================================================
