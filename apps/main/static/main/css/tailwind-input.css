@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Scan all app templates for utility classes */
+@source "../../../../login_app/templates/**/*.html";
+
 /* Dark mode: use .dark class on <html>, not prefers-color-scheme */
 @custom-variant dark (&:where(.dark, .dark *));
 
