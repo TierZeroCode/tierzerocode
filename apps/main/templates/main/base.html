@@ -17,7 +17,6 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <link href="{% static 'main/css/light.css' %}" rel="stylesheet">
   <link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
 
   {% block extra_css %}{% endblock %}
@@ -312,13 +311,48 @@
   </div>
   <!-- ===================== END TOAST CONTAINER ===================== -->
 
-  <script src="{% static 'main/js/app.js' %}"></script>
-
   {% block extra_js %}{% endblock %}
 
   <script>
-    // ---- Feather icons (child templates still use data-feather) ----
-    if (typeof feather !== 'undefined') { feather.replace(); }
+    // ---- Vanilla JS modal handler (replaces Bootstrap modal JS) ----
+    document.addEventListener('click', function(e) {
+        var trigger = e.target.closest('[data-bs-toggle="modal"]');
+        if (trigger) {
+            e.preventDefault();
+            var targetId = trigger.getAttribute('data-bs-target');
+            var modal = document.querySelector(targetId);
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        // Close modal on dismiss button
+        var dismiss = e.target.closest('[data-bs-dismiss="modal"]');
+        if (dismiss) {
+            var modal = dismiss.closest('.tz-modal, .modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // Close on backdrop click
+        if (e.target.classList.contains('tz-modal') || e.target.classList.contains('tz-modal-backdrop')) {
+            e.target.classList.add('hidden');
+            e.target.classList.remove('flex');
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.tz-modal:not(.hidden), .modal:not(.hidden)').forEach(function(modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            });
+        }
+    });
 
     // ---- Dark mode toggle ----
     function toggleDarkMode() {
