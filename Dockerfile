@@ -43,7 +43,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY --chown=appuser:appuser . .
 
 # Download Tailwind CSS standalone CLI
-RUN wget -qO tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+RUN wget -qO tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64-musl \
     && chmod +x tailwindcss
 
 # Build Tailwind CSS
