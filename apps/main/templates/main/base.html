@@ -22,8 +22,15 @@
   <script>
     (function() {
       var t = localStorage.getItem('theme');
-      if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      if (t === 'dark') {
         document.documentElement.classList.add('dark');
+      } else if (t === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        // 'system' or no preference stored — follow OS setting
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
       }
     })();
   </script>
@@ -130,10 +137,14 @@
 
         <div class="flex-1"></div>
 
-        <!-- Dark mode toggle -->
-        <button onclick="toggleDarkMode()" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" aria-label="Toggle dark mode">
-          <svg id="icon-sun" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
-          <svg id="icon-moon" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+        <!-- Dark mode toggle (cycles: light → dark → system) -->
+        <button id="dark-mode-btn" onclick="toggleDarkMode()" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" aria-label="Toggle dark mode">
+          <!-- Sun: shown when current mode is 'light' -->
+          <svg id="icon-sun" style="display:none" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
+          <!-- Moon: shown when current mode is 'dark' -->
+          <svg id="icon-moon" style="display:none" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+          <!-- Monitor: shown when current mode is 'system' -->
+          <svg id="icon-monitor" style="display:none" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
         </button>
 
         <!-- Notifications -->
@@ -246,11 +257,45 @@
       }
     });
 
-    /* Dark mode */
-    function toggleDarkMode() {
-      document.documentElement.classList.toggle('dark');
-      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    /* Dark mode — three-state: light → dark → system */
+    function applyThemeState(state) {
+      var sun = document.getElementById('icon-sun');
+      var moon = document.getElementById('icon-moon');
+      var monitor = document.getElementById('icon-monitor');
+      sun.style.display = 'none';
+      moon.style.display = 'none';
+      monitor.style.display = 'none';
+      if (state === 'light') {
+        document.documentElement.classList.remove('dark');
+        sun.style.display = 'block';
+      } else if (state === 'dark') {
+        document.documentElement.classList.add('dark');
+        moon.style.display = 'block';
+      } else {
+        // system
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        monitor.style.display = 'block';
+      }
     }
+    function toggleDarkMode() {
+      var current = localStorage.getItem('theme') || 'system';
+      var next = current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light';
+      if (next === 'system') {
+        localStorage.removeItem('theme');
+      } else {
+        localStorage.setItem('theme', next);
+      }
+      applyThemeState(next);
+    }
+    // Initialise icons on page load to match current stored state
+    (function() {
+      var t = localStorage.getItem('theme') || 'system';
+      applyThemeState(t);
+    })();
 
     /* Sidebar */
     function toggleSidebar() {
