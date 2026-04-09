@@ -1,144 +1,111 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-	{% load static %}
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<meta name="description" content="Responsive Admin &amp; Dashboard Template based on Bootstrap 5">
-	<meta name="author" content="AdminKit">
-	<meta name="keywords" content="adminkit, bootstrap, bootstrap 5, admin, dashboard, template, responsive, css, sass, html, theme, front-end, ui kit, web">
-
-	<link rel="preconnect" href="https://fonts.gstatic.com">
-	<link rel="shortcut icon" href="{% static 'login_app/img/icon-48x48.png' %}" />
-
-
-
-	<title>Sign In | C.O.D.E</title>
-
-	<link href="{% static 'login_app/css/app.css' %}" rel="stylesheet">
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
-	<!-- BEGIN SETTINGS -->
-	<!-- <script src="{% static 'login_app/js/settings.js' %}"></script> -->
-	<!-- END SETTINGS -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign In | C.O.D.E</title>
+    <link rel="shortcut icon" href="{% static 'login_app/img/icon-48x48.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
 </head>
-<!--
-  HOW TO USE: 
-  data-theme: default (default), dark, light
-  data-layout: fluid (default), boxed
-  data-sidebar: left (default), right
--->
+<body class="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative">
+    <!-- Gradient background -->
+    <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900"></div>
 
-<body data-theme="default" data-layout="fluid" data-sidebar="left">
-	<main class="d-flex w-100 h-100">
-		<div class="container d-flex flex-column">
-			<div class="row vh-100">
-				<div class="col-sm-10 col-md-8 col-lg-6 mx-auto d-table h-100">
-					<div class="d-table-cell align-middle">
-							
-						<div class="text-center mt-4">
-							<h1 class="h2">Welcome Back</h1>
-							<p class="lead">
-								Sign in to your account to continue
-							</p>
-						</div>
+    <div class="relative w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <img src="{% static 'login_app/img/TierZeroCODE.png' %}" alt="Tier Zero C.O.D.E" class="h-12 mx-auto mb-4" onerror="this.style.display='none'">
+            <p class="text-slate-400 text-sm">Correlation of Distributed Endpoints</p>
+        </div>
 
-						<div class="card">
-							<div class="card-body">
-								<div class="m-sm-4">
-									<div class="text-center">
-										<img src="{% static 'login_app/img/Tier Zero CO.D.E-logos_black.png' %}" alt="Tier Zero CO.D.E Logo" class="img-fluid"  />
-									</div>
-									{% if messages %}
-										{% for message in messages %}
-										<div class="alert alert-{{message.tags}} alert-dismissible" role="alert">
-											<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-											<div class="alert-message">
-												<strong>{{message|safe}}</strong>
-											</div>
-										</div>
-										{% endfor %}
-									{% endif %}
-									
-									<!-- SSO Login Form -->
-									{% if enabledSSOIntegrations %}
-									<div id="sso-login-form">
-										<form action="{% url 'login-user' %}" method='post'>
-											{% csrf_token %}
-											<div class="mb-3">
-												<label class="form-label">Email</label>
-												<input class="form-control form-control-lg" type="email" name="email" placeholder="Enter your email" required/>
-											</div>
-											<div class="text-center mt-3">
-												<button type="submit" class="btn btn-lg btn-primary"><img src="{% static 'login_app/img/microsoft.webp' %}" class="align-middle" width="24" height="24" style="margin-right: 5px;" alt="Microsoft Entra ID"> Entra ID Sign in</button>
-												<button type="button" class="btn btn-lg btn-secondary" onclick="toggleLoginForm()">Local Log On?</button>
-											</div>
-										</form>
-									</div>
-									{% endif %}
-									
-									<!-- Local Login Form -->
-									<div id="local-login-form" {% if enabledSSOIntegrations %}style="display: none;"{% endif %}>
-										<form action='{% url 'login-user' %}' method='post'>
-											{% csrf_token %}
-											<div class="mb-3">
-												<label class="form-label">Email</label>
-												<input class="form-control form-control-lg" type="email" name="email" placeholder="Enter your email" />
-											</div>
-											<div class="mb-3">
-												<label class="form-label">Password</label>
-												<input class="form-control form-control-lg" type="password" name="password" placeholder="Enter your password" />
-												<!-- <small>
-													<a href="pages-reset-password.html">Forgot password?</a>
-												</small> -->
-											</div>
-											<!-- <div>
-												<label class="form-check">
-													<input class="form-check-input" type="checkbox" value="remember-me" name="remember-me" checked>
-													<span class="form-check-label">
-														Remember me next time
-													</span>
-												</label>
-											</div> -->
-											<div class="text-center mt-3">
-												<button type="submit" class="btn btn-lg btn-primary">Sign in</button>
-												{% if enabledSSOIntegrations %}
-													<button type="button" class="btn btn-lg btn-secondary" onclick="toggleLoginForm()">Single Sign On?</button>
-												{% endif %}
-											</div>
-										</form>
-									</div>
-								</div>
-							</div>
-						</div>
+        <!-- Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-8">
 
-					</div>
-				</div>
-			</div>
-		</div>
-	</main>
+            <!-- Messages -->
+            {% if messages %}
+            {% for message in messages %}
+            <div class="mb-4 px-4 py-3 rounded-lg text-sm
+                {% if message.tags == 'error' or message.tags == 'danger' %}bg-red-50 text-red-700 border border-red-200
+                {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
 
-	<script src="{% static 'login_app/js/app.js' %}"></script>
-	<script>
-		function toggleLoginForm() {
-			var ssoForm = document.getElementById('sso-login-form');
-			var localForm = document.getElementById('local-login-form');
-			
-			if (ssoForm && localForm) {
-				var ssoDisplay = window.getComputedStyle(ssoForm).display;
-				if (ssoDisplay === 'none') {
-					ssoForm.style.display = 'block';
-					localForm.style.display = 'none';
-				} else {
-					ssoForm.style.display = 'none';
-					localForm.style.display = 'block';
-				}
-			}
-		}
-	</script>
+            <!-- SSO Login Form -->
+            <form id="sso-form" method="post" action="{% url 'login-user' %}" {% if not enabledSSOIntegrations %}class="hidden"{% endif %}>
+                {% csrf_token %}
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-6">Sign in with SSO</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="sso-email">Email address</label>
+                    <input type="email" name="email" id="sso-email"
+                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="you@company.com" required>
+                </div>
+                <button type="submit"
+                    class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-150">
+                    <img src="{% static 'login_app/img/microsoft.webp' %}" class="h-5 w-5" alt="" onerror="this.style.display='none'">
+                    Sign in with Entra ID
+                </button>
+            </form>
 
+            <!-- Local Login Form -->
+            <form id="local-form" method="post" action="{% url 'login-user' %}" {% if enabledSSOIntegrations %}class="hidden"{% endif %}>
+                {% csrf_token %}
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-6">Sign In</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="local-email">Email address</label>
+                    <input type="email" name="email" id="local-email"
+                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="you@company.com" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1" for="password">Password</label>
+                    <input type="password" name="password" id="password"
+                        class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white dark:bg-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter your password" required>
+                </div>
+                <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-150">
+                    Sign In
+                </button>
+            </form>
+
+            <!-- Toggle between SSO and local -->
+            {% if enabledSSOIntegrations %}
+            <div class="mt-4 text-center">
+                <button type="button" id="toggle-login" onclick="toggleLoginForm()"
+                    class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                    Sign in with password instead
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-slate-500 text-xs mt-8">
+            &copy; {% now "Y" %} Tier Zero Code LLC
+        </p>
+    </div>
+
+    <script>
+    function toggleLoginForm() {
+        var ssoForm = document.getElementById('sso-form');
+        var localForm = document.getElementById('local-form');
+        var toggleBtn = document.getElementById('toggle-login');
+
+        if (ssoForm.classList.contains('hidden')) {
+            ssoForm.classList.remove('hidden');
+            localForm.classList.add('hidden');
+            toggleBtn.textContent = 'Sign in with password instead';
+        } else {
+            ssoForm.classList.add('hidden');
+            localForm.classList.remove('hidden');
+            toggleBtn.textContent = 'Sign in with SSO instead';
+        }
+    }
+    </script>
 </body>
-
 </html>

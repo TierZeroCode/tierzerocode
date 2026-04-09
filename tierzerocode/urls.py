@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.urls import path, include
 
+handler404 = 'apps.main.views.custom_404'
+handler403 = 'apps.main.views.custom_403'
+
 urlpatterns = [
     path('admin/django_rq/', include('django_rq.urls')),  # django-rq admin URLs (must be before admin.site.urls)
     path('admin/', admin.site.urls),
