@@ -1021,6 +1021,177 @@ def updateIntegration(request, id):
 ############################################################################################
 
 @login_required
+def create_backup(request):
+	"""Export all application data as a downloadable JSON file."""
+	if not request.user.is_superuser:
+		return redirect('general-settings')
+
+	import json
+	from django.http import HttpResponse
+	from django.core import serializers
+	from apps.main.models import (
+		Device, DeviceComplianceSettings, Integration,
+		CloudflareZeroTrustDeviceData, CrowdStrikeFalconDeviceData,
+		MicrosoftEntraIDDeviceData, MicrosoftIntuneDeviceData,
+		SophosCentralDeviceData, MicrosoftDefenderforEndpointDeviceData,
+		QualysDevice, TailscaleDeviceData,
+		Persona, PersonaGroup, UserData, SignInSummary, Notification
+	)
+	from apps.authhandler.models import SSOIntegration
+	from apps.logger.views import createLog
+	from django.utils import timezone
+
+	models_to_backup = [
+		('integrations', Integration),
+		('sso_integrations', SSOIntegration),
+		('compliance_settings', DeviceComplianceSettings),
+		('personas', Persona),
+		('persona_groups', PersonaGroup),
+		('devices', Device),
+		('user_data', UserData),
+		('signin_summary', SignInSummary),
+		('cloudflare_devices', CloudflareZeroTrustDeviceData),
+		('crowdstrike_devices', CrowdStrikeFalconDeviceData),
+		('entra_devices', MicrosoftEntraIDDeviceData),
+		('intune_devices', MicrosoftIntuneDeviceData),
+		('sophos_devices', SophosCentralDeviceData),
+		('defender_devices', MicrosoftDefenderforEndpointDeviceData),
+		('qualys_devices', QualysDevice),
+		('tailscale_devices', TailscaleDeviceData),
+	]
+
+	backup_data = {
+		'metadata': {
+			'version': '1.0',
+			'created_at': timezone.now().isoformat(),
+			'created_by': request.user.email,
+		},
+		'data': {}
+	}
+
+	for key, model in models_to_backup:
+		backup_data['data'][key] = json.loads(serializers.serialize('json', model.objects.all()))
+
+	# Log the backup event
+	createLog('BACKUP', 'Backup', 'Create', 'Success',
+		request.user.email, request.META.get('REMOTE_ADDR', ''),
+		request.META.get('HTTP_USER_AGENT', ''), '', '',
+		f'Backup created by {request.user.email}')
+
+	timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+	response = HttpResponse(
+		json.dumps(backup_data, indent=2, default=str),
+		content_type='application/json'
+	)
+	response['Content-Disposition'] = f'attachment; filename="tierzerocode_backup_{timestamp}.json"'
+	return response
+
+
+@login_required
+def restore_backup(request):
+	"""Restore application data from an uploaded JSON backup file."""
+	if not request.user.is_superuser:
+		return redirect('general-settings')
+
+	if request.method != 'POST':
+		return redirect(reverse('general-settings') + '#backup')
+
+	import json
+	from django.core import serializers
+	from django.contrib import messages
+	from django.db import transaction
+	from apps.main.models import (
+		Device, DeviceComplianceSettings, Integration,
+		CloudflareZeroTrustDeviceData, CrowdStrikeFalconDeviceData,
+		MicrosoftEntraIDDeviceData, MicrosoftIntuneDeviceData,
+		SophosCentralDeviceData, MicrosoftDefenderforEndpointDeviceData,
+		QualysDevice, TailscaleDeviceData,
+		Persona, PersonaGroup, UserData, SignInSummary, Notification
+	)
+	from apps.authhandler.models import SSOIntegration
+	from apps.logger.views import createLog
+
+	uploaded_file = request.FILES.get('backup_file')
+	if not uploaded_file:
+		messages.error(request, 'No backup file provided.')
+		return redirect(reverse('general-settings') + '#backup')
+
+	if not uploaded_file.name.endswith('.json'):
+		messages.error(request, 'Invalid file format. Please upload a .json backup file.')
+		return redirect(reverse('general-settings') + '#backup')
+
+	try:
+		backup_data = json.loads(uploaded_file.read().decode('utf-8'))
+	except (json.JSONDecodeError, UnicodeDecodeError):
+		messages.error(request, 'Invalid JSON file. The backup file appears to be corrupted.')
+		return redirect(reverse('general-settings') + '#backup')
+
+	if 'metadata' not in backup_data or 'data' not in backup_data:
+		messages.error(request, 'Invalid backup format. Missing metadata or data sections.')
+		return redirect(reverse('general-settings') + '#backup')
+
+	# Map keys to models — order matters for FK dependencies
+	model_map = [
+		('integrations', Integration),
+		('sso_integrations', SSOIntegration),
+		('compliance_settings', DeviceComplianceSettings),
+		('personas', Persona),
+		('persona_groups', PersonaGroup),
+		('devices', Device),
+		('user_data', UserData),
+		('signin_summary', SignInSummary),
+		('cloudflare_devices', CloudflareZeroTrustDeviceData),
+		('crowdstrike_devices', CrowdStrikeFalconDeviceData),
+		('entra_devices', MicrosoftEntraIDDeviceData),
+		('intune_devices', MicrosoftIntuneDeviceData),
+		('sophos_devices', SophosCentralDeviceData),
+		('defender_devices', MicrosoftDefenderforEndpointDeviceData),
+		('qualys_devices', QualysDevice),
+		('tailscale_devices', TailscaleDeviceData),
+	]
+
+	restore_mode = request.POST.get('restore_mode', 'merge')
+
+	try:
+		with transaction.atomic():
+			restored_counts = {}
+			for key, model in model_map:
+				if key not in backup_data['data']:
+					continue
+
+				serialized_data = json.dumps(backup_data['data'][key])
+				objects = list(serializers.deserialize('json', serialized_data))
+
+				if restore_mode == 'replace':
+					model.objects.all().delete()
+
+				count = 0
+				for obj in objects:
+					obj.save()
+					count += 1
+				restored_counts[key] = count
+
+			total = sum(restored_counts.values())
+
+			createLog('RESTORE', 'Backup', 'Restore', 'Success',
+				request.user.email, request.META.get('REMOTE_ADDR', ''),
+				request.META.get('HTTP_USER_AGENT', ''), '', '',
+				f'Backup restored by {request.user.email}. Mode: {restore_mode}. Records: {total}')
+
+			messages.success(request, f'Backup restored successfully. {total} records processed.')
+
+	except Exception as e:
+		messages.error(request, f'Restore failed: {str(e)}')
+		createLog('RESTORE', 'Backup', 'Restore', 'Failure',
+			request.user.email, request.META.get('REMOTE_ADDR', ''),
+			request.META.get('HTTP_USER_AGENT', ''), '', '',
+			f'Backup restore failed: {str(e)}')
+
+	return redirect(reverse('general-settings') + '#backup')
+
+############################################################################################
+
+@login_required
 def error500(request):
 	return render( request, 'main/pages-500.html')
 

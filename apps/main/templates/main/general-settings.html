@@ -20,6 +20,7 @@
                 <button data-tab="notifications" class="tz-sidebar-item w-full text-left">Notifications</button>
                 <button data-tab="personas" class="tz-sidebar-item w-full text-left">Personas</button>
                 <button data-tab="persona-groups" class="tz-sidebar-item w-full text-left">Persona Groups</button>
+                <button data-tab="backup" class="tz-sidebar-item w-full text-left">Backup &amp; Restore</button>
                 {% endif %}
             </div>
         </nav>
@@ -524,6 +525,50 @@
                                 <p class="tz-empty-state-description">No persona groups found. Add your first persona group above.</p>
                             </div>
                             {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup & Restore Tab -->
+            <div id="panel-backup" class="tab-panel hidden">
+                <div class="space-y-5">
+                    <!-- Create Backup -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Create Backup</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            <p class="text-xs text-slate-500 mb-4">Download a complete backup of all application data including integrations, devices, users, compliance settings, and personas.</p>
+                            <a href="{% url 'create_backup' %}" class="tz-btn-primary text-xs py-1.5 px-3">Download Backup</a>
+                        </div>
+                    </div>
+
+                    <!-- Restore Backup -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Restore Backup</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            <p class="text-xs text-slate-500 mb-4">Restore application data from a previously downloaded backup file. This operation cannot be undone.</p>
+                            <form method="post" action="{% url 'restore_backup' %}" enctype="multipart/form-data" onsubmit="return confirm('Are you sure you want to restore from this backup? This will modify your current data.');">
+                                {% csrf_token %}
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="tz-form-label">Backup File</label>
+                                        <input type="file" name="backup_file" accept=".json" required
+                                            class="tz-form-input" style="padding:0.25rem 0.5rem;">
+                                    </div>
+                                    <div>
+                                        <label class="tz-form-label">Restore Mode</label>
+                                        <select name="restore_mode" class="tz-form-select">
+                                            <option value="merge">Merge — add/update records, keep existing data</option>
+                                            <option value="replace">Replace — delete existing data first</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="tz-btn-danger text-xs py-1.5 px-3">Restore Backup</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
