@@ -180,5 +180,190 @@
 
 {% block extra_js %}
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-{{ sankey_js|safe }}
+<script>
+	document.addEventListener("DOMContentLoaded", function() {
+		var sk1_count_privileged_users = {{ sk1_count_privileged_users|default:0 }};
+		var sk1_count_privileged_phishing_resistant_users = {{ sk1_count_privileged_phishing_resistant_users|default:0 }};
+		var sk1_count_privileged_passkey_users = {{ sk1_count_privileged_passkey_users|default:0 }};
+		var sk1_count_privileged_whfb_users = {{ sk1_count_privileged_whfb_users|default:0 }};
+		var sk1_count_privileged_phishable_users = {{ sk1_count_privileged_phishable_users|default:0 }};
+		var sk1_count_privileged_phone_users = {{ sk1_count_privileged_phone_users|default:0 }};
+		var sk1_count_privileged_authenticator_users = {{ sk1_count_privileged_authenticator_users|default:0 }};
+		var sk1_count_privileged_single_factor_users = {{ sk1_count_privileged_single_factor_users|default:0 }};
+
+		var data = {
+			type: "sankey",
+			orientation: "h",
+			node: {
+				pad: 35, thickness: 12,
+				line: { color: "black", width: 0.5 },
+				label: ["Users", "Phish Resistant", "Phishable", "Passkey", "WHfB", "Phone", "Authenticator", "Single Factor"],
+				color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#50C878", "#dce24a", "#dce24a", "#FF6B6B"],
+				x: [0, 0.5, 0.5, 1, 1, 1, 1, 1],
+				y: [0.5, 0.25, 0.5, 0.1, 0.25, 0.5, 0.75, 0.95]
+			},
+			link: {
+				source: [0, 1, 1, 0, 2, 2, 0],
+				target: [1, 3, 4, 2, 5, 6, 7],
+				value: [
+					sk1_count_privileged_phishing_resistant_users,
+					sk1_count_privileged_passkey_users,
+					sk1_count_privileged_whfb_users,
+					sk1_count_privileged_phishable_users,
+					sk1_count_privileged_phone_users,
+					sk1_count_privileged_authenticator_users,
+					sk1_count_privileged_single_factor_users
+				],
+				color: [
+					"rgba(80, 200, 120, 0.4)", "rgba(80, 200, 120, 0.4)", "rgba(80, 200, 120, 0.4)",
+					"rgba(220, 226, 74, 0.4)", "rgba(220, 226, 74, 0.4)", "rgba(220, 226, 74, 0.4)",
+					"rgba(255, 107, 107, 0.4)"
+				]
+			}
+		};
+		var layout = {
+			title: "", font: { family: 'Archivo', size: 12 },
+			paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+			margin: { l: 10, r: 10, t: 10, b: 10 }
+		};
+		Plotly.newPlot('sankey-diagram-privileged-users', [data], layout, { responsive: true, displayModeBar: false });
+	});
+</script>
+<script>
+	document.addEventListener("DOMContentLoaded", function() {
+		var sk2_count_users = {{ sk2_count_users|default:0 }};
+		var sk2_count_single_factor_users = {{ sk2_count_single_factor_users|default:0 }};
+		var sk2_count_phone_users = {{ sk2_count_phone_users|default:0 }};
+		var sk2_count_authenticator_users = {{ sk2_count_authenticator_users|default:0 }};
+		var sk2_count_phishable_users = {{ sk2_count_phishable_users|default:0 }};
+		var sk2_count_passkey_users = {{ sk2_count_passkey_users|default:0 }};
+		var sk2_count_whfb_users = {{ sk2_count_whfb_users|default:0 }};
+		var sk2_count_phishing_resistant_users = {{ sk2_count_phishing_resistant_users|default:0 }};
+
+		var data = {
+			type: "sankey",
+			orientation: "h",
+			node: {
+				pad: 50, thickness: 12,
+				line: { color: "black", width: 0.5 },
+				label: ["Users", "Phish Resistant", "Phishable", "Passkey", "WHfB", "Phone", "Authenticator", "Single Factor"],
+				color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#50C878", "#dce24a", "#dce24a", "#FF6B6B"],
+				x: [0, 0.5, 0.5, 1, 1, 1, 1, 1],
+				y: [0.5, 0.25, 0.5, 0.1, 0.25, 0.5, 0.75, 0.95]
+			},
+			link: {
+				source: [0, 1, 1, 0, 2, 2, 0],
+				target: [1, 3, 4, 2, 5, 6, 7],
+				value: [
+					sk2_count_phishing_resistant_users, sk2_count_passkey_users, sk2_count_whfb_users,
+					sk2_count_phishable_users, sk2_count_phone_users, sk2_count_authenticator_users,
+					sk2_count_single_factor_users
+				],
+				color: [
+					"rgba(80, 200, 120, 0.4)", "rgba(80, 200, 120, 0.4)", "rgba(80, 200, 120, 0.4)",
+					"rgba(220, 226, 74, 0.4)", "rgba(220, 226, 74, 0.4)", "rgba(220, 226, 74, 0.4)",
+					"rgba(255, 107, 107, 0.4)"
+				]
+			}
+		};
+		var layout = {
+			title: "", font: { family: 'Archivo', size: 12 },
+			paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+			margin: { l: 10, r: 10, t: 10, b: 10 }
+		};
+		Plotly.newPlot('sankey-diagram-all-users', [data], layout, { responsive: true, displayModeBar: false });
+	});
+</script>
+<script>
+	document.addEventListener("DOMContentLoaded", function() {
+		var ca_mfa = {{ signin_summary.ca_mfa|default:0 }};
+		var ca_no_mfa = {{ signin_summary.ca_no_mfa|default:0 }};
+		var no_ca_mfa = {{ signin_summary.no_ca_mfa|default:0 }};
+		var no_ca_no_mfa = {{ signin_summary.no_ca_no_mfa|default:0 }};
+		var total = ca_mfa + ca_no_mfa + no_ca_mfa + no_ca_no_mfa;
+
+		if (total > 0) {
+			var data = {
+				type: "sankey",
+				orientation: "h",
+				node: {
+					pad: 35, thickness: 12,
+					line: { color: "black", width: 0.5 },
+					label: ["Sign-ins", "CA Applied", "CA Not Applied", "MFA", "No MFA", "MFA", "No MFA"],
+					color: ["#4A90E2", "#50C878", "#dce24a", "#50C878", "#FF6B6B", "#50C878", "#FF6B6B"],
+					x: [0, 0.5, 0.5, 1, 1, 1, 1],
+					y: [0.5, 0.25, 0.75, 0.1, 0.35, 0.65, 0.9]
+				},
+				link: {
+					source: [0, 0, 1, 1, 2, 2],
+					target: [1, 2, 3, 4, 5, 6],
+					value: [ca_mfa + ca_no_mfa, no_ca_mfa + no_ca_no_mfa, ca_mfa, ca_no_mfa, no_ca_mfa, no_ca_no_mfa],
+					color: [
+						"rgba(80, 200, 120, 0.4)", "rgba(220, 226, 74, 0.4)",
+						"rgba(80, 200, 120, 0.4)", "rgba(255, 107, 107, 0.4)",
+						"rgba(80, 200, 120, 0.4)", "rgba(255, 107, 107, 0.4)"
+					]
+				}
+			};
+			var layout = {
+				title: "", font: { family: 'Archivo', size: 12 },
+				paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+				margin: { l: 10, r: 10, t: 10, b: 10 }
+			};
+			Plotly.newPlot('sankey-ca-mfa', [data], layout, { responsive: true, displayModeBar: false });
+		} else {
+			document.getElementById('sankey-ca-mfa').innerHTML = '<p style="text-align:center;color:#6b7a8d;font-size:0.875rem;margin-top:1.25rem;">No sign-in data available. Sync Entra ID users to populate.</p>';
+		}
+	});
+</script>
+<script>
+	document.addEventListener("DOMContentLoaded", function() {
+		var compliant = {{ device_compliance_compliant|default:0 }};
+		var noncompliant = {{ device_compliance_noncompliant|default:0 }};
+		var totalDevices = compliant + noncompliant;
+		var integrationNames = {{ enabled_device_integrations|safe }};
+		var integrationCountsRaw = {{ device_integration_counts|safe }};
+
+		if (totalDevices > 0 && integrationNames.length > 0) {
+			var labels = ["Devices"].concat(integrationNames).concat(["Compliant", "Non-Compliant"]);
+			var colors = ["#4A90E2"];
+			for (var i = 0; i < integrationNames.length; i++) { colors.push("#6f42c1"); }
+			colors.push("#50C878");
+			colors.push("#FF6B6B");
+
+			var countMap = {};
+			for (var j = 0; j < integrationCountsRaw.length; j++) {
+				countMap[integrationCountsRaw[j].integration__integration_type_short] = integrationCountsRaw[j].count;
+			}
+
+			var source = [], target = [], value = [], linkColors = [];
+			var compIdx = integrationNames.length + 1;
+			var noncompIdx = integrationNames.length + 2;
+
+			for (var k = 0; k < integrationNames.length; k++) {
+				var cnt = countMap[integrationNames[k]] || 0;
+				if (cnt > 0) {
+					source.push(0); target.push(k + 1); value.push(cnt);
+					linkColors.push("rgba(111, 66, 193, 0.3)");
+				}
+			}
+			if (compliant > 0) { source.push(0); target.push(compIdx); value.push(compliant); linkColors.push("rgba(80, 200, 120, 0.4)"); }
+			if (noncompliant > 0) { source.push(0); target.push(noncompIdx); value.push(noncompliant); linkColors.push("rgba(255, 107, 107, 0.4)"); }
+
+			var data = {
+				type: "sankey", orientation: "h",
+				node: { pad: 25, thickness: 12, line: { color: "black", width: 0.5 }, label: labels, color: colors },
+				link: { source: source, target: target, value: value, color: linkColors }
+			};
+			var layout = {
+				title: "", font: { family: 'Archivo', size: 12 },
+				paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+				margin: { l: 10, r: 10, t: 10, b: 10 }
+			};
+			Plotly.newPlot('sankey-device-coverage', [data], layout, { responsive: true, displayModeBar: false });
+		} else {
+			document.getElementById('sankey-device-coverage').innerHTML = '<p style="text-align:center;color:#6b7a8d;font-size:0.875rem;margin-top:1.25rem;">No device data available.</p>';
+		}
+	});
+</script>
 {% endblock %}
