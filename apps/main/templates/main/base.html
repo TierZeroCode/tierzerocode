@@ -1,319 +1,393 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 {% load static %}
 <head>
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<meta name="description" content="Tier Zero C.O.D.E is an enterprise-level dashboard for managing your endpoints and users.">
-	<meta name="author" content="Tier Zero C.O.D.E">
-	<meta name="keywords" content="tierzerocode, tierzero, code, enterprise, dashboard, template, responsive, css, sass, html, theme, front-end, ui kit, web">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Tier Zero C.O.D.E is an enterprise-level dashboard for managing your endpoints and users.">
+  <meta name="author" content="Tier Zero C.O.D.E">
+  <meta name="keywords" content="tierzerocode, tierzero, code, enterprise, dashboard, template, responsive, css, sass, html, theme, front-end, ui kit, web">
 
-	<link rel="preconnect" href="https://fonts.gstatic.com">
-	<link rel="shortcut icon" href="{% static 'main/img/icons/icon-48x48.png' %}" />
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link rel="shortcut icon" href="{% static 'main/img/icons/icon-48x48.png' %}" />
+  <link rel="canonical" href="https://tierzerocode.com/" />
 
-	<link rel="canonical" href="https://tierzerocode.com/" />
+  <title>Tier Zero C.O.D.E</title>
 
-	<title>Tier Zero C.O.D.E</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="{% static 'main/css/light.css' %}" rel="stylesheet">
+  <link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
 
-	<link href="{% static 'main/css/light.css' %}" rel="stylesheet">
-	<link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
 
-	{% block extra_css %}{% endblock %}
+  <!-- Dark mode init: must run before paint to avoid flash -->
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme');
+      if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
 
-<body data-theme="default" data-layout="fluid" data-sidebar-position="left" data-sidebar-layout="default">
-	<div class="wrapper">
-		<nav id="sidebar" class="sidebar js-sidebar">
-			<div class="sidebar-content js-simplebar">
-				<a class="sidebar-brand" href="/">
-					<span class="sidebar-brand-text align-middle">
-						C.O.D.E
-						<sup><small class="badge bg-primary text-uppercase">Enterprise</small></sup>
-					</span>
-					<svg class="sidebar-brand-icon align-middle" width="32px" height="32px" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.5"
-						stroke-linecap="square" stroke-linejoin="miter" color="#FFFFFF" style="margin-left: -3px">
-						<path d="M12 4L20 8.00004L12 12L4 8.00004L12 4Z"></path>
-						<path d="M20 12L12 16L4 12"></path>
-						<path d="M20 16L12 20L4 16"></path>
-					</svg>
-				</a>
+<body class="bg-slate-50 dark:bg-slate-900 font-sans text-sm text-slate-600 dark:text-slate-400">
 
-				<div class="sidebar-user">
-					<div class="d-flex justify-content-center">
-						<div class="flex-shrink-0">
-							<img src="{% static 'main/img/avatars/avatar-blank.webp' %}" class="avatar img-fluid rounded me-1" alt="Charles Hall" />
-						</div>
-						<div class="flex-grow-1 ps-2">
-							<a class="sidebar-user-title dropdown-toggle" href="#" data-bs-toggle="dropdown">
-								{{request.user.first_name}} {{request.user.last_name}}
-							</a>
-							<div class="dropdown-menu dropdown-menu-start">
-								<a class="dropdown-item" href="{% url 'general-settings' %}"><i class="align-middle me-1" data-feather="settings"></i> Settings</a>
-								<a class="dropdown-item" href="https://docs.tierzerocode.com/" target="_blank"><i class="align-middle me-1" data-feather="help-circle"></i> Help Center</a>
-								<div class="dropdown-divider"></div>
-								<form method="post" action="{% url 'logout-user' %}" style="display:inline;">{% csrf_token %}<button type="submit" class="dropdown-item">Log out</button></form>
-							</div>
+  <div class="flex h-screen overflow-hidden">
 
-							<div class="sidebar-user-subtitle">Administrator</div>
-						</div>
-					</div>
-				</div>
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 w-64 flex flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-transform duration-300">
 
-				<ul class="sidebar-nav">
-					{% if page == 'dashboard' %}
-					<li class="sidebar-item active">
-					{% else %}
-					<li class="sidebar-item">
-					{% endif %}
-						<a class="sidebar-link" href="/">
-							<i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span>
-						</a>
-					</li>
+      <!-- Logo -->
+      <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+        <a href="/" class="flex items-center gap-3 min-w-0">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+            <path d="M12 4L20 8.00004L12 12L4 8.00004L12 4Z"></path>
+            <path d="M20 12L12 16L4 12"></path>
+            <path d="M20 16L12 20L4 16"></path>
+          </svg>
+          <div class="flex flex-col leading-tight min-w-0">
+            <span class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">C.O.D.E</span>
+            <span class="text-xs text-code-blue-600 dark:text-code-blue-500 font-medium truncate">Enterprise</span>
+          </div>
+        </a>
+      </div>
 
-					<li class="sidebar-header">
-						Endpoints
-					</li>
-					{% if page == 'device-dashboard' %}
-					<li class="sidebar-item active">
-					{% else %}
-					<li class="sidebar-item">
-					{% endif %}
-						<a class="sidebar-link" href="/device-dashboard">
-							<i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Endpoint Dashboard</span>
-						</a>
-					</li>
-					{% if page == 'master-list' %}
-					<li class="sidebar-item active">
-					{% else %}
-					<li class="sidebar-item">
-					{% endif %}
-						<a class="sidebar-link" href="/endpoints/master-list">
-							<i class="align-middle" data-feather="smartphone"></i> <span class="align-middle">Endpoint List</span>
-						</a>
-					</li>				
+      <!-- Navigation -->
+      <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
 
-					<li class="sidebar-header">
-						Users
-					</li>
-					{% if page == 'user-dashboard' %}
-					<li class="sidebar-item active">
-					{% else %}
-					<li class="sidebar-item">
-					{% endif %}
-						<a class="sidebar-link" href="/user-dashboard">
-							<i class="align-middle" data-feather="sliders"></i> <span class="align-middle">User Dashboard</span>
-						</a>
-					</li>
-					{% if page == 'user-master-list' %}
-					<li class="sidebar-item active">
-					{% else %}
-					<li class="sidebar-item">
-					{% endif %}
-						<a class="sidebar-link" href="/users/master-list">
-							<i class="align-middle" data-feather="user"></i> <span class="align-middle">User List</span>
-						</a>
-					</li>
+        <!-- OVERVIEW -->
+        <div>
+          <p class="tz-section-label px-3 mb-2">Overview</p>
+          <div class="space-y-0.5">
+            <a href="/" class="{% if page == 'admin-dashboard' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"/></svg>
+              <span>Dashboard</span>
+            </a>
+          </div>
+        </div>
 
-					<li class="sidebar-header">
-						Groups
-					</li>
+        <!-- ENDPOINTS -->
+        <div>
+          <p class="tz-section-label px-3 mb-2">Endpoints</p>
+          <div class="space-y-0.5">
+            <a href="/device-dashboard" class="{% if page == 'device-dashboard' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <span>Dashboard</span>
+            </a>
+            <a href="/endpoints/master-list" class="{% if page == 'master-list' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+              <span>Endpoint List</span>
+            </a>
+          </div>
+        </div>
 
-					<li class="sidebar-header">
-						Applications
-					</li>
+        <!-- USERS -->
+        <div>
+          <p class="tz-section-label px-3 mb-2">Users</p>
+          <div class="space-y-0.5">
+            <a href="/user-dashboard" class="{% if page == 'user-dashboard' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+              <span>Dashboard</span>
+            </a>
+            <a href="/users/master-list" class="{% if page == 'user-list' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+              <span>User List</span>
+            </a>
+          </div>
+        </div>
 
-					<li class="sidebar-header">
-						Configurations
-					</li>
-					{% if page == 'integrations' %}
-					<li class="sidebar-item active">
-					{% else %}
-					<li class="sidebar-item">
-					{% endif %}
-						<a class="sidebar-link" href="/integrations">
-							<i class="align-middle" data-feather="link"></i> <span class="align-middle">Integrations</span>
-						</a>
-					</li>
-				</ul> 
-			</div>
-		</nav>
+        <!-- CONFIGURATION -->
+        <div>
+          <p class="tz-section-label px-3 mb-2">Configuration</p>
+          <div class="space-y-0.5">
+            <a href="/integrations" class="{% if page == 'integrations' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span>Integrations</span>
+            </a>
+            <a href="{% url 'general-settings' %}" class="{% if page == 'general-settings' %}tz-sidebar-item-active{% else %}tz-sidebar-item{% endif %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <span>Settings</span>
+            </a>
+          </div>
+        </div>
 
-		<div class="main">
-			<nav class="navbar navbar-expand navbar-light navbar-bg">
-				<a class="sidebar-toggle js-sidebar-toggle">
-					<i class="hamburger align-self-center"></i>
-				</a>
+      </nav>
 
-				<div class="navbar-collapse collapse">
-					<ul class="navbar-nav navbar-align">
-						<li class="nav-item dropdown">
-							<a class="nav-icon dropdown-toggle" href="#" id="alertsDropdown" data-bs-toggle="dropdown">
-								<div class="position-relative">
-									<i class="align-middle" data-feather="bell"></i>
-									<span class="indicator">{{notifications.count}}</span>
-								</div>
-							</a>
-							<div class="dropdown-menu dropdown-menu-lg dropdown-menu-end py-0" aria-labelledby="alertsDropdown">
-								<div class="dropdown-menu-header">
-									{% if notifications.count > 1 %}
-									{{notifications.count}} Notifications
-									{% elif notifications.count == 1 %}
-									{{notifications.count}} Notification
-									{% elif notifications.count == 0 %}
-									{% else %}
-									No Notifications
-									{% endif %}
-								</div>
-								<div style="max-height: 350px; overflow-y: auto;">
-								{% if notifications %}
-								{% for notification in notifications %}
-								<div class="list-group">
-									<div class="list-group-item d-flex align-items-center py-2">
-										<div class="row g-0 align-items-center flex-grow-1">
-											<div class="col-2">
-												{% if notification.status == 'Success' %}
-												<i class="text-success" data-feather="check"></i>
-												{% elif notification.status == 'Failure' %}
-												<i class="text-danger" data-feather="x"></i>
-												{% elif notification.status == 'In Progress' %}
-												<i class="text-info" data-feather="loader"></i>
-												{% else %}
-												<i class="text-info" data-feather="mail"></i>
-												{% endif %}
-											</div>
-											<div class="col-10">
-												<div class="text-dark">{{notification.title}} - {{notification.status}}</div>
-												<div class="text-muted small mt-1">{{notification.updated_at}}</div>
-											</div>
-										</div>
-										<form method="post" action="/delete-notification/{{notification.id}}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this notification?');">
-											{% csrf_token %}
-											<button type="submit" class="btn btn-link text-danger ms-2 p-0" title="Delete notification">
-												<i data-feather="x-circle"></i>
-											</button>
-										</form>
-									</div>
-								</div>
-								{% endfor %}
-								{% else %}
-								<div class="list-group">
-									<a href="javascript:void(0)" class="list-group-item">
-										<div class="row g-0 align-items-center">
-											<div class="col-2">
-												<i class="text-info" data-feather="mail"></i>
-											</div>
-											<div class="col-10">
-												<div class="text-dark">No New Notifications</div>
-												<div class="text-muted small mt-1">Now</div>
-											</div>
-										</div>
-									</a>
-								</div>
-								{% endif %}
-								</div>
-								{% if notifications %}
-								<div class="dropdown-menu-footer text-center py-2">
-									<form method="post" action="{% url 'clear_all_notifications' %}" style="display:inline;" onsubmit="return confirm('Clear all notifications?');">
-										{% csrf_token %}
-										<button type="submit" class="btn btn-sm btn-outline-danger">Clear All Notifications</button>
-									</form>
-								</div>
-								{% endif %}
-							</div>
-						</li>
-						<li class="nav-item dropdown">
-							<a class="nav-flag dropdown-toggle" href="#" id="languageDropdown" data-bs-toggle="dropdown">
-								<img src="{% static 'main/img/flags/us.png' %}" alt="English" />
-							</a>
-							<div class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
-								<a class="dropdown-item" href="javascript:void(0)">
-									<img src="{% static 'main/img/flags/us.png' %}" alt="English" width="20" class="align-middle me-1" />
-									<span class="align-middle">English</span>
-								</a>
-							</div>
-						</li>
-						<li class="nav-item">
-							<a class="nav-icon js-fullscreen d-none d-lg-block" href="#">
-								<div class="position-relative">
-									<i class="align-middle" data-feather="maximize"></i>
-								</div>
-							</a>
-						</li>
-						<li class="nav-item dropdown">
-							<a class="nav-icon pe-md-0 dropdown-toggle" href="#" data-bs-toggle="dropdown">
-								<img src="{% static 'main/img/avatars/avatar-blank.webp' %}" class="avatar img-fluid rounded" alt="Charles Hall" />
-							</a>
-							<div class="dropdown-menu dropdown-menu-end">
-								<a class="dropdown-item" href="{% url 'general-settings' %}"><i class="align-middle me-1" data-feather="settings"></i> Settings</a>
-								<a class="dropdown-item" href="https://docs.tierzerocode.com/" target="_blank"><i class="align-middle me-1" data-feather="help-circle"></i> Help Center</a>
-								<div class="dropdown-divider"></div>
-								<form method="post" action="{% url 'logout-user' %}" style="display:inline;">{% csrf_token %}<button type="submit" class="dropdown-item">Log out</button></form>
-							</div>
-						</li>
-					</ul>
-				</div>
-			</nav>
+      <!-- Sidebar footer: user info -->
+      <div class="shrink-0 px-3 py-3 border-t border-slate-200 dark:border-slate-700">
+        <div class="relative">
+          <button id="sidebar-user-btn" onclick="toggleSidebarUserMenu()" class="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors text-left">
+            <img src="{% static 'main/img/avatars/avatar-blank.webp' %}" class="w-8 h-8 rounded-full object-cover shrink-0" alt="User avatar" />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{{ request.user.first_name }} {{ request.user.last_name }}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 truncate">Administrator</p>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <!-- Sidebar user dropdown -->
+          <div id="sidebar-user-menu" class="hidden absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden z-50">
+            <a href="{% url 'general-settings' %}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              Settings
+            </a>
+            <a href="https://docs.tierzerocode.com/" target="_blank" class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Help Center
+            </a>
+            <div class="border-t border-slate-200 dark:border-slate-700"></div>
+            <form method="post" action="{% url 'logout-user' %}">
+              {% csrf_token %}
+              <button type="submit" class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-code-red-600 dark:text-code-red-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                Log out
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
 
-			{% block content %}
-			{% endblock %}
+    </aside>
+    <!-- ===================== END SIDEBAR ===================== -->
 
-			<footer class="footer">
-				<div class="container-fluid">
-					<div class="row text-muted">
-						<div class="col-6 text-start">
-							<p class="mb-0">
-								<!-- <a href="https://awbtech.org/" target="_blank" class="text-muted"><strong>AwB Tech LLC.</strong></a> &copy; -->
-							</p>
-						</div>
-					</div>
-				</div>
-			</footer>
-		</div>
-	</div>
+    <!-- ===================== MAIN CONTENT ===================== -->
+    <div id="main-content" class="flex-1 flex flex-col ml-64 transition-all duration-300 min-w-0">
 
-	<script src="{% static 'main/js/app.js' %}"></script>
-	<!-- <script src="{% static 'main/js/datatables.js' %}"></script>
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 flex items-center gap-4 px-6 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
 
-	<script>
-		document.addEventListener("DOMContentLoaded", function() {
-			// Datatables Responsive
-			$("#datatables-reponsive").DataTable({
-				responsive: true
-			});
-		});
-	</script> -->
+        <!-- Sidebar toggle -->
+        <button onclick="toggleSidebar()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Toggle sidebar">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
 
-	{% block extra_js %}
-	{% endblock %}
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+
+        <!-- Right side controls -->
+        <div class="flex items-center gap-1">
+
+          <!-- Dark mode toggle -->
+          <button onclick="toggleDarkMode()" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Toggle dark mode">
+            <!-- Sun icon (shown in dark mode) -->
+            <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            <!-- Moon icon (shown in light mode) -->
+            <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          </button>
+
+          <!-- Notification bell -->
+          <div class="relative">
+            <button id="notifications-btn" onclick="toggleNotifications()" class="relative p-1.5 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="Notifications">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+              {% if notifications %}
+              <span class="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center text-xs font-bold text-white bg-code-red-500 rounded-full leading-none">{{ notifications|length }}</span>
+              {% endif %}
+            </button>
+
+            <!-- Notifications dropdown -->
+            <div id="notifications-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden z-50">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {% if notifications %}
+                    {{ notifications|length }} Notification{{ notifications|length|pluralize }}
+                  {% else %}
+                    Notifications
+                  {% endif %}
+                </span>
+                {% if notifications %}
+                <form method="post" action="{% url 'clear_all_notifications' %}" onsubmit="return confirm('Clear all notifications?');">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs text-code-red-600 dark:text-code-red-500 hover:underline font-medium">Clear All</button>
+                </form>
+                {% endif %}
+              </div>
+
+              <div class="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
+                {% if notifications %}
+                  {% for notification in notifications %}
+                  <div class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <!-- Status indicator -->
+                    <div class="w-1 self-stretch rounded-full shrink-0
+                      {% if notification.status == 'Success' %}bg-code-green-500
+                      {% elif notification.status == 'Failure' %}bg-code-red-500
+                      {% elif notification.status == 'In Progress' %}bg-code-blue-500
+                      {% else %}bg-slate-300 dark:bg-slate-600{% endif %}">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{{ notification.title }}</p>
+                      <p class="text-xs
+                        {% if notification.status == 'Success' %}text-code-green-600 dark:text-code-green-500
+                        {% elif notification.status == 'Failure' %}text-code-red-600 dark:text-code-red-500
+                        {% elif notification.status == 'In Progress' %}text-code-blue-600 dark:text-code-blue-500
+                        {% else %}text-slate-500 dark:text-slate-400{% endif %}">
+                        {{ notification.status }}
+                      </p>
+                      <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{{ notification.updated_at }}</p>
+                    </div>
+                    <form method="post" action="/delete-notification/{{ notification.id }}" onsubmit="return confirm('Delete this notification?');" class="shrink-0">
+                      {% csrf_token %}
+                      <button type="submit" class="p-1 text-slate-400 hover:text-code-red-500 dark:hover:text-code-red-400 transition-colors" title="Delete notification">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">No new notifications</p>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- User dropdown -->
+          <div class="relative">
+            <button id="user-menu-btn" onclick="toggleUserMenu()" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" aria-label="User menu">
+              <img src="{% static 'main/img/avatars/avatar-blank.webp' %}" class="w-7 h-7 rounded-full object-cover" alt="User avatar" />
+              <span class="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">{{ request.user.first_name }} {{ request.user.last_name }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <!-- User dropdown menu -->
+            <div id="user-menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden z-50">
+              <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ request.user.first_name }} {{ request.user.last_name }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">Administrator</p>
+              </div>
+              <a href="{% url 'general-settings' %}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Settings
+              </a>
+              <a href="https://docs.tierzerocode.com/" target="_blank" class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Help Center
+              </a>
+              <div class="border-t border-slate-200 dark:border-slate-700"></div>
+              <form method="post" action="{% url 'logout-user' %}">
+                {% csrf_token %}
+                <button type="submit" class="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-code-red-600 dark:text-code-red-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                  Log out
+                </button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </header>
+      <!-- End top bar -->
+
+      <!-- Page content -->
+      <main class="flex-1 overflow-auto px-6 py-6 lg:px-8">
+        {% block content %}{% endblock %}
+      </main>
+
+      <!-- Footer -->
+      <footer class="shrink-0 px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <p class="text-xs text-slate-400 dark:text-slate-500">Tier Zero C.O.D.E &copy; {% now "Y" %}</p>
+      </footer>
+
+    </div>
+    <!-- ===================== END MAIN CONTENT ===================== -->
+
+  </div>
+
+  <!-- ===================== TOAST CONTAINER ===================== -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2 w-80 pointer-events-none">
+    {% for message in messages %}
+    <div class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border
+      {% if message.tags == 'success' %}bg-code-green-50 border-code-green-500/20 text-code-green-800 dark:bg-code-green-500/10 dark:border-code-green-500/20 dark:text-code-green-400
+      {% elif message.tags == 'danger' or message.tags == 'error' %}bg-code-red-50 border-code-red-500/20 text-code-red-800 dark:bg-code-red-500/10 dark:border-code-red-500/20 dark:text-code-red-400
+      {% elif message.tags == 'warning' %}bg-code-amber-50 border-code-amber-500/20 text-code-amber-800 dark:bg-code-amber-500/10 dark:border-code-amber-500/20 dark:text-code-amber-400
+      {% else %}bg-code-blue-50 border-code-blue-500/20 text-code-blue-800 dark:bg-code-blue-500/10 dark:border-code-blue-500/20 dark:text-code-blue-400
+      {% endif %}" role="alert" data-toast>
+      <span class="text-sm font-medium flex-1">{{ message }}</span>
+      <button onclick="this.closest('[data-toast]').remove()" class="shrink-0 opacity-50 hover:opacity-100 transition-opacity text-current text-lg leading-none">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+  <!-- ===================== END TOAST CONTAINER ===================== -->
+
+  <script src="{% static 'main/js/app.js' %}"></script>
+
+  {% block extra_js %}{% endblock %}
+
+  <script>
+    // ---- Feather icons (child templates still use data-feather) ----
+    if (typeof feather !== 'undefined') { feather.replace(); }
+
+    // ---- Dark mode toggle ----
+    function toggleDarkMode() {
+      var html = document.documentElement;
+      html.classList.toggle('dark');
+      localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    // ---- Sidebar toggle ----
+    function toggleSidebar() {
+      var sidebar = document.getElementById('sidebar');
+      var main = document.getElementById('main-content');
+      var isHidden = sidebar.classList.contains('-translate-x-full');
+      if (isHidden) {
+        sidebar.classList.remove('-translate-x-full');
+        main.classList.add('ml-64');
+        main.classList.remove('ml-0');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        main.classList.remove('ml-64');
+        main.classList.add('ml-0');
+      }
+    }
+
+    // ---- Generic dropdown helper ----
+    function closeAllDropdowns(except) {
+      var dropdowns = ['notifications-dropdown', 'user-menu-dropdown', 'sidebar-user-menu'];
+      dropdowns.forEach(function(id) {
+        if (id !== except) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        }
+      });
+    }
+
+    function toggleDropdown(id) {
+      closeAllDropdowns(id);
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden');
+    }
+
+    function toggleNotifications() { toggleDropdown('notifications-dropdown'); }
+    function toggleUserMenu() { toggleDropdown('user-menu-dropdown'); }
+    function toggleSidebarUserMenu() { toggleDropdown('sidebar-user-menu'); }
+
+    // Click outside to close dropdowns
+    document.addEventListener('click', function(e) {
+      var dropdownPairs = [
+        { btn: 'notifications-btn',  menu: 'notifications-dropdown' },
+        { btn: 'user-menu-btn',      menu: 'user-menu-dropdown' },
+        { btn: 'sidebar-user-btn',   menu: 'sidebar-user-menu' },
+      ];
+      dropdownPairs.forEach(function(pair) {
+        var btn = document.getElementById(pair.btn);
+        var menu = document.getElementById(pair.menu);
+        if (!menu || menu.classList.contains('hidden')) return;
+        if (!btn || (!btn.contains(e.target) && !menu.contains(e.target))) {
+          menu.classList.add('hidden');
+        }
+      });
+    });
+
+    // ---- Toast auto-dismiss ----
+    document.querySelectorAll('[data-toast]').forEach(function(toast) {
+      setTimeout(function() {
+        if (toast.parentNode) { toast.remove(); }
+      }, 5000);
+    });
+  </script>
 
 </body>
-<!-- Start Bootstrap Toast Notifications Div -->
-<div aria-live="polite" aria-atomic="true" class="position-relative">
-	<div class="toast-container position-fixed top-0 end-0 p-3">
-		{% for message in messages %}
-		<div class="toast align-items-center {% if 'custom' in message.tags %} custom-bg-color {% elif message.tags %} text-bg-{{ message.tags }} {% else %} text-bg-primary {% endif %} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
-			<div class="d-flex">
-				<div class="toast-body"><h6 class="h6 fw-normal">{{ message }}</h6></div>
-				<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-			</div>
-		</div>
-		{% endfor %}
-	</div>
-</div>
-<!-- End Bootstrap Toast Notifications Div -->
-<!-- Start Bootstrap Toast Notifications Script -->
-<script>
-	document.addEventListener('DOMContentLoaded', function () {
-		var toastElements = document.querySelectorAll('.toast');
-		toastElements.forEach(function (toastElement) {
-			var toast = new bootstrap.Toast(toastElement);
-			toast.show();
-		});
-	});
-</script>
-<!-- End Bootstrap Toast Notifications Script -->
-
 </html>
