@@ -11,23 +11,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Epilogue:wght@600;700;800&display=swap" rel="stylesheet">
     <link href="{% static 'main/css/tailwind-output.css' %}" rel="stylesheet">
 </head>
-<body class="min-h-screen bg-slate-950 flex items-center justify-center p-6 font-sans antialiased">
+<body style="font-family:'Archivo',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;margin:0;background:#1a1d2b;color:#8a93a6;-webkit-font-smoothing:antialiased;">
 
-    <div class="w-full max-w-md">
-        <div class="text-center mb-8">
-            <img src="{% static 'login_app/img/Tier Zero CO.D.E-logos_black.png' %}" alt="Tier Zero C.O.D.E" class="h-10 mx-auto mb-3 invert" onerror="this.style.display='none'">
-            <p class="text-xs text-slate-500">Correlation of Distributed Endpoints</p>
+    <div style="width:100%;max-width:28rem;">
+        <div style="text-align:center;margin-bottom:2rem;">
+            <img src="{% static 'login_app/img/Tier Zero CO.D.E-logos_black.png' %}" alt="Tier Zero C.O.D.E" style="height:2.5rem;margin:0 auto 0.75rem;display:block;filter:invert(1);" onerror="this.style.display='none'">
+            <p style="font-size:0.75rem;color:#6b7a8d;">Correlation of Distributed Endpoints</p>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 px-8 py-7">
-            <h2 class="font-display text-base font-bold text-slate-900 dark:text-slate-100 mb-0.5">Create Administrator Account</h2>
-            <p class="text-xs text-slate-500 mb-5">Set up the first administrator for your C.O.D.E instance</p>
+        <div style="background:#fff;border:1px solid #d8dce6;padding:2rem;">
+            <h2 style="font-family:'Epilogue',sans-serif;font-size:1rem;font-weight:700;color:#1a1d2b;margin:0 0 0.125rem;">Create Administrator Account</h2>
+            <p style="font-size:0.75rem;color:#6b7a8d;margin:0 0 1.25rem;">Set up the first administrator for your C.O.D.E instance</p>
 
             {% if messages %}
             {% for message in messages %}
-            <div class="mb-4 px-3 py-2 text-xs border
-                {% if message.tags == 'error' or message.tags == 'danger' %}bg-code-red-50 text-code-red-700 border-code-red-200 dark:bg-code-red-500/10 dark:text-code-red-400 dark:border-code-red-500/20
-                {% else %}bg-code-blue-50 text-code-blue-700 border-code-blue-200 dark:bg-code-blue-500/10 dark:text-code-blue-400 dark:border-code-blue-500/20{% endif %}">
+            <div style="margin-bottom:1rem;padding:0.5rem 0.75rem;font-size:0.75rem;border:1px solid {% if message.tags == 'error' or message.tags == 'danger' %}#f5c6c2;background:#fdf2f2;color:#b83a2e{% else %}#c2d4f5;background:#f0f5fd;color:#2e5fb8{% endif %};">
                 {{ message }}
             </div>
             {% endfor %}
@@ -35,34 +33,39 @@
 
             <form action="/identity/accountcreation" method="post">
                 {% csrf_token %}
-                <div class="mb-3">
-                    <label class="tz-form-label" for="firstName">First Name</label>
-                    <input type="text" name="firstName" id="firstName" class="tz-form-input" placeholder="Enter your first name" required>
+                <div style="margin-bottom:0.75rem;">
+                    <label for="firstName" style="display:block;font-size:0.75rem;font-weight:500;color:#4a5568;margin-bottom:0.25rem;">First Name</label>
+                    <input type="text" name="firstName" id="firstName" placeholder="Enter your first name" required
+                        style="display:block;width:100%;box-sizing:border-box;padding:0.5rem 0.75rem;font-size:0.875rem;border:1px solid #c0c8d4;border-radius:0.25rem;outline:none;color:#1a1d2b;background:#fff;">
                 </div>
-                <div class="mb-3">
-                    <label class="tz-form-label" for="lastName">Last Name</label>
-                    <input type="text" name="lastName" id="lastName" class="tz-form-input" placeholder="Enter your last name" required>
+                <div style="margin-bottom:0.75rem;">
+                    <label for="lastName" style="display:block;font-size:0.75rem;font-weight:500;color:#4a5568;margin-bottom:0.25rem;">Last Name</label>
+                    <input type="text" name="lastName" id="lastName" placeholder="Enter your last name" required
+                        style="display:block;width:100%;box-sizing:border-box;padding:0.5rem 0.75rem;font-size:0.875rem;border:1px solid #c0c8d4;border-radius:0.25rem;outline:none;color:#1a1d2b;background:#fff;">
                 </div>
-                <div class="mb-3">
-                    <label class="tz-form-label" for="email">Email address</label>
-                    <input type="email" name="email" id="email" class="tz-form-input" placeholder="you@company.com" required>
+                <div style="margin-bottom:0.75rem;">
+                    <label for="email" style="display:block;font-size:0.75rem;font-weight:500;color:#4a5568;margin-bottom:0.25rem;">Email address</label>
+                    <input type="email" name="email" id="email" placeholder="you@company.com" required
+                        style="display:block;width:100%;box-sizing:border-box;padding:0.5rem 0.75rem;font-size:0.875rem;border:1px solid #c0c8d4;border-radius:0.25rem;outline:none;color:#1a1d2b;background:#fff;">
                 </div>
-                <div class="mb-3">
-                    <label class="tz-form-label" for="password">Password</label>
-                    <input type="password" name="password" id="password" class="tz-form-input" placeholder="Create a password" required>
+                <div style="margin-bottom:0.75rem;">
+                    <label for="password" style="display:block;font-size:0.75rem;font-weight:500;color:#4a5568;margin-bottom:0.25rem;">Password</label>
+                    <input type="password" name="password" id="password" placeholder="Create a password" required
+                        style="display:block;width:100%;box-sizing:border-box;padding:0.5rem 0.75rem;font-size:0.875rem;border:1px solid #c0c8d4;border-radius:0.25rem;outline:none;color:#1a1d2b;background:#fff;">
                 </div>
-                <div class="mb-5">
-                    <label class="tz-form-label" for="c_password">Confirm Password</label>
-                    <input type="password" name="c_password" id="c_password" class="tz-form-input" placeholder="Confirm your password" required>
+                <div style="margin-bottom:1.25rem;">
+                    <label for="c_password" style="display:block;font-size:0.75rem;font-weight:500;color:#4a5568;margin-bottom:0.25rem;">Confirm Password</label>
+                    <input type="password" name="c_password" id="c_password" placeholder="Confirm your password" required
+                        style="display:block;width:100%;box-sizing:border-box;padding:0.5rem 0.75rem;font-size:0.875rem;border:1px solid #c0c8d4;border-radius:0.25rem;outline:none;color:#1a1d2b;background:#fff;">
                 </div>
                 <input type="checkbox" name="initial-setup" value="initial-setup" checked hidden>
-                <button type="submit" class="w-full bg-code-blue-600 hover:bg-code-blue-700 text-white font-medium py-2 px-4 rounded text-sm transition-colors">
+                <button type="submit" style="width:100%;background:#3b6fd9;color:#fff;font-weight:500;padding:0.625rem 1rem;border-radius:0.25rem;font-size:0.875rem;border:none;cursor:pointer;">
                     Create Account
                 </button>
             </form>
         </div>
 
-        <p class="text-center text-slate-600 text-[11px] mt-6">&copy; {% now "Y" %} Tier Zero Code LLC</p>
+        <p style="text-align:center;color:#4a5568;font-size:0.6875rem;margin-top:1.5rem;">&copy; {% now "Y" %} Tier Zero Code LLC</p>
     </div>
 </body>
 </html>
