@@ -2,864 +2,636 @@
 {% load static %}
 
 {% block content %}
-<main class="content">
-    <div class="container-fluid p-0">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1 class="h3 mb-0">Settings</h1>
-        </div>
+<main class="flex-1 overflow-y-auto p-6">
 
-        <div class="row">
-            <!-- Settings Navigation -->
-            <div class="col-md-3 col-xl-2">
-                <div class="card">
-                    <div class="list-group list-group-flush" role="tablist">
-                        <!-- Profile Section -->
-                        <div class="card-header bg-secondary">
-                            <h5 class="card-title text-white mb-0">
-                                <i class="fas fa-user"></i> Profile
-                            </h5>
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-6">Settings</h1>
+
+    <div class="flex gap-6">
+        <!-- Left sidebar nav -->
+        <nav class="w-56 shrink-0">
+            <div class="sticky top-20 space-y-1">
+                <p class="tz-section-label px-3 mb-2">Profile</p>
+                <button data-tab="profile" class="tz-sidebar-item-active w-full text-left">Account</button>
+
+                {% if is_superuser %}
+                <p class="tz-section-label px-3 mb-2 mt-6">System Settings</p>
+                <button data-tab="users" class="tz-sidebar-item w-full text-left">User Management</button>
+                <button data-tab="sso" class="tz-sidebar-item w-full text-left">SSO Integrations</button>
+                <button data-tab="compliance" class="tz-sidebar-item w-full text-left">Compliance Policies</button>
+                <button data-tab="notifications" class="tz-sidebar-item w-full text-left">Notifications</button>
+                <button data-tab="personas" class="tz-sidebar-item w-full text-left">Personas</button>
+                <button data-tab="persona-groups" class="tz-sidebar-item w-full text-left">Persona Groups</button>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Content area -->
+        <div class="flex-1 min-w-0">
+
+            <!-- Profile Tab -->
+            <div id="panel-profile" class="tab-panel">
+                <div class="tz-card">
+                    <div class="tz-card-header">
+                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Account Information</h2>
+                    </div>
+                    <div class="tz-card-body">
+                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                            <div>
+                                <dt class="tz-form-label">First Name</dt>
+                                <dd class="tz-form-input bg-slate-50 dark:bg-slate-700/50 text-slate-500 cursor-not-allowed">{{ request.user.first_name }}</dd>
+                                <p class="text-xs text-slate-400 mt-1">Managed by your organization</p>
+                            </div>
+                            <div>
+                                <dt class="tz-form-label">Last Name</dt>
+                                <dd class="tz-form-input bg-slate-50 dark:bg-slate-700/50 text-slate-500 cursor-not-allowed">{{ request.user.last_name }}</dd>
+                                <p class="text-xs text-slate-400 mt-1">Managed by your organization</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <dt class="tz-form-label">Email Address</dt>
+                                <dd class="tz-form-input bg-slate-50 dark:bg-slate-700/50 text-slate-500 cursor-not-allowed">{{ request.user.email }}</dd>
+                                <p class="text-xs text-slate-400 mt-1">Managed by your organization</p>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            {% if is_superuser %}
+
+            <!-- User Management Tab -->
+            <div id="panel-users" class="tab-panel hidden">
+                <div class="tz-card">
+                    <div class="tz-card-header flex items-center justify-between">
+                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">User Management</h2>
+                        <button type="button" class="tz-btn-primary text-sm"
+                                data-bs-toggle="modal" data-bs-target="#createUserModal"
+                                data-bs-backdrop="static" data-bs-keyboard="false">
+                            Add User
+                        </button>
+                    </div>
+                    <div class="tz-card-body">
+                        {% if users %}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                                        <th class="text-left py-2 px-3 tz-section-label">Name</th>
+                                        <th class="text-left py-2 px-3 tz-section-label">Email</th>
+                                        <th class="text-left py-2 px-3 tz-section-label">Permission</th>
+                                        <th class="text-left py-2 px-3 tz-section-label">Provisioning</th>
+                                        <th class="text-left py-2 px-3 tz-section-label">Last Login</th>
+                                        <th class="text-left py-2 px-3 tz-section-label">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                    {% for user in users %}
+                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                        <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td class="py-3 px-3 text-slate-500">{{ user.email }}</td>
+                                        <td class="py-3 px-3">
+                                            {% if user.is_active == False %}
+                                            <span class="tz-badge tz-badge-warning">Suspended</span>
+                                            {% elif user.is_superuser %}
+                                            <span class="tz-badge tz-badge-danger">Administrator</span>
+                                            {% else %}
+                                            <span class="tz-badge tz-badge-info">User</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 px-3">
+                                            {% if user.has_usable_password %}
+                                            <span class="tz-badge tz-badge-neutral">Local</span>
+                                            {% else %}
+                                            <span class="tz-badge tz-badge-info">Microsoft Entra ID</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 px-3 text-slate-500">{{ user.last_login|date:"M d, Y g:i A"|default:"Never" }}</td>
+                                        <td class="py-3 px-3">
+                                            <div class="flex items-center gap-2">
+                                                {% if user.is_active == False %}
+                                                <a href="{% url 'activate-user' user.id %}" class="tz-btn-primary text-xs py-1 px-2.5">Activate</a>
+                                                {% else %}
+                                                <a href="{% url 'suspend-user' user.id %}"
+                                                   class="tz-btn-secondary text-xs py-1 px-2.5"
+                                                   onclick="return confirm('Are you sure you want to suspend {{ user.first_name }} {{ user.last_name }}?');">
+                                                    Suspend
+                                                </a>
+                                                {% endif %}
+                                                <a href="{% url 'delete-user' user.id %}"
+                                                   class="text-xs text-code-red-500 hover:text-code-red-700 font-medium"
+                                                   onclick="return confirm('Are you sure you want to delete {{ user.first_name }} {{ user.last_name }}? This action cannot be undone.');">
+                                                    Delete
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#profile" role="tab" id="profile-tab-link">
-                            <i class="fas fa-user-circle me-2"></i>Account Information
-                        </a>
-                        
-                        {% if is_superuser %}
-                        <!-- System Settings Section -->
-                        <div class="card-header bg-secondary mt-3">
-                            <h5 class="card-title text-white mb-0">
-                                <i class="fas fa-cogs"></i> System Settings
-                            </h5>
+                        {% else %}
+                        <div class="tz-empty-state">
+                            <svg class="tz-empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/>
+                            </svg>
+                            <h3 class="tz-empty-state-title">No users found</h3>
+                            <p class="tz-empty-state-description">Add your first user to get started.</p>
                         </div>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#user-management" role="tab">
-                            <i class="fas fa-users-cog me-2"></i>User Management
-                        </a>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#sso-integrations" role="tab">
-                            <i class="fas fa-key me-2"></i>SSO Integrations
-                        </a>
-                        
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#compliance" role="tab">
-                            <i class="fas fa-shield-alt me-2"></i>Compliance Policies
-                        </a>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#notifications" role="tab">
-                            <i class="fas fa-bell me-2"></i>Notifications
-                        </a>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#personas" role="tab">
-                            <i class="fas fa-user-tag me-2"></i>Personas
-                        </a>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#persona-groups" role="tab">
-                            <i class="fas fa-users me-2"></i>Persona Groups
-                        </a>
-                        <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#integrations" role="tab">
-                            <i class="fas fa-plug me-2"></i>Integrations
-                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Create User Modal -->
+                <div class="modal fade" id="createUserModal" tabindex="-1" role="dialog" aria-hidden="true">
+                    <div class="modal-dialog modal-md" role="document">
+                        <div class="modal-content bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+                            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                                <h5 class="text-base font-semibold text-slate-900 dark:text-white">Create New User</h5>
+                                <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <form action='/identity/accountcreation' method='post'>
+                                {% csrf_token %}
+                                <div class="px-6 py-4 space-y-4">
+                                    <div>
+                                        <label class="tz-form-label">First Name <span class="text-code-red-500">*</span></label>
+                                        <input class="tz-form-input" type="text" name="firstName" placeholder="Enter First Name" required />
+                                    </div>
+                                    <div>
+                                        <label class="tz-form-label">Last Name <span class="text-code-red-500">*</span></label>
+                                        <input class="tz-form-input" type="text" name="lastName" placeholder="Enter Last Name" required />
+                                    </div>
+                                    <div>
+                                        <label class="tz-form-label">Email <span class="text-code-red-500">*</span></label>
+                                        <input class="tz-form-input" type="email" name="email" placeholder="Enter Email" required />
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input class="w-4 h-4 rounded border-slate-300 text-code-blue-600" type="checkbox" value="sso-user" name="sso-user" id="ssoUserCheck">
+                                        <label class="text-sm text-slate-700 dark:text-slate-300" for="ssoUserCheck">
+                                            SSO User (No local password)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                                    <button type="button" class="tz-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="tz-btn-primary">Create User</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SSO Integrations Tab -->
+            <div id="panel-sso" class="tab-panel hidden">
+                <div class="tz-card">
+                    <div class="tz-card-header">
+                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">SSO Integrations</h2>
+                    </div>
+                    <div class="tz-card-body">
+                        {% if integrationStatuses %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {% for integrationStatus in integrationStatuses %}
+                            <div class="tz-card hover:shadow-md transition-shadow">
+                                <div class="tz-card-body">
+                                    <div class="flex items-center gap-4 mb-4">
+                                        <img src="{% static integrationStatus.1 %}" alt="{{ integrationStatus.0 }}" class="w-10 h-10 object-contain">
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-semibold text-slate-900 dark:text-white text-sm truncate">{{ integrationStatus.0 }}</h3>
+                                            {% if integrationStatus.2 and integrationStatus.3 %}
+                                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                                <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
+                                                <span class="text-code-green-600">Active</span>
+                                            </span>
+                                            {% elif integrationStatus.2 and not integrationStatus.3 %}
+                                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                                <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
+                                                <span class="text-code-amber-600">Setup Required</span>
+                                            </span>
+                                            {% else %}
+                                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                                <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                                                <span class="text-slate-400">Disabled</span>
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% if integrationStatus.8 %}
+                                    <p class="text-xs text-slate-500 mb-4">Last test: {{ integrationStatus.8|date:"M d, Y g:i A" }}</p>
+                                    {% endif %}
+                                    <div class="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                        {% if integrationStatus.2 %}
+                                        <button class="tz-btn-secondary text-xs py-1.5 px-3"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#{{ integrationStatus.0|slugify }}_modal">
+                                            Configure
+                                        </button>
+                                        <a href="{% url 'disable-sso-integration' integrationStatus.4 %}" class="ml-auto text-xs text-slate-400 hover:text-code-red-500 transition-colors">Disable</a>
+                                        {% else %}
+                                        <a href="{% url 'enable-sso-integration' integrationStatus.4 %}" class="tz-btn-primary text-xs py-1.5 px-3">Enable</a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configure SSO Modal -->
+                            <div class="modal fade" id="{{ integrationStatus.0|slugify }}_modal" tabindex="-1" role="dialog" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                    <div class="modal-content bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+                                        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                                            <h5 class="text-base font-semibold text-slate-900 dark:text-white">Configure {{ integrationStatus.0 }}</h5>
+                                            <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                        <form action="{% url 'update-sso-integration' integrationStatus.4 %}" method="post">
+                                            {% csrf_token %}
+                                            <div class="px-6 py-4 space-y-4">
+                                                <div>
+                                                    <label class="tz-form-label">Client ID <span class="text-code-red-500">*</span></label>
+                                                    <input type="text" class="tz-form-input" name="client_id" placeholder="Client ID" value="{{ integrationStatus.5 }}" required>
+                                                </div>
+                                                <div>
+                                                    <label class="tz-form-label">Client Secret <span class="text-code-red-500">*</span></label>
+                                                    <input type="password" class="tz-form-input" name="client_secret" placeholder="Client Secret" required>
+                                                </div>
+                                                <div>
+                                                    <label class="tz-form-label">Tenant ID <span class="text-code-red-500">*</span></label>
+                                                    <input type="text" class="tz-form-input" name="tenant_id" placeholder="Tenant ID" value="{{ integrationStatus.6 }}" required>
+                                                </div>
+                                                <div>
+                                                    <label class="tz-form-label">Tenant Domain <span class="text-code-red-500">*</span></label>
+                                                    <input type="text" class="tz-form-input" name="tenant_domain" placeholder="example.com" value="{{ integrationStatus.7 }}" required>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                                                <button type="button" class="tz-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="tz-btn-primary">Save Changes</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- End Configure SSO Modal -->
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="tz-empty-state">
+                            <svg class="tz-empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
+                            </svg>
+                            <h3 class="tz-empty-state-title">No SSO integrations found</h3>
+                            <p class="tz-empty-state-description">SSO integrations will appear here once configured.</p>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- Settings Content -->
-            <div class="col-md-9 col-xl-10">
-                <div class="tab-content">
-                    <!-- User Management Tab (Superuser Only) -->
-                    {% if is_superuser %}
-                    <div class="tab-pane fade" id="user-management" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-users-cog me-2"></i>User Management
-                                </h5>
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal" data-bs-backdrop="static" data-bs-keyboard="false">
-                                    <i class="fas fa-plus me-2"></i>Add User
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                {% if users %}
-                                <div class="table-responsive">
-                                    <table id="userTable" class="table table-striped" style="width:100%">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Permission</th>
-                                                <th>Provisioning Type</th>
-                                                <th>Last Login</th>
-                                                <th>Manage User</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for user in users %}
-                                            <tr>
-                                                <td>{{user.first_name}} {{user.last_name}}</td>
-                                                <td>{{user.email}}</td>
-                                                {% if user.is_active == False %}
-                                                <td><span class="badge bg-warning">Suspended</span></td>
-                                                {% else %}
-                                                    {% if user.is_superuser %}
-                                                    <td><span class="badge bg-danger">Administrator</span></td>
-                                                    {% else %}
-                                                    <td><span class="badge bg-info">User</span></td>
-                                                    {% endif %}
-                                                {% endif %}
-                                                {% if user.has_usable_password %}
-                                                <td><span class="badge bg-secondary">Local</span></td>
-                                                {% else %}
-                                                <td><span class="badge bg-primary">Microsoft Entra ID</span></td>
-                                                {% endif %}
-                                                <td>{{user.last_login|date:"M d, Y g:i A"|default:"Never"}}</td>
-                                                <td>
-                                                    <div class="btn-group" role="group">
-                                                        {% if user.is_active == False %}
-                                                        <a href="{% url 'activate-user' user.id %}" class="btn btn-sm btn-primary">
-                                                            <i class="fas fa-check me-1"></i>Activate
-                                                        </a>
-                                                        {% else %}
-                                                        <a href="{% url 'suspend-user' user.id %}" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure you want to suspend {{user.first_name}} {{user.last_name}}?');">
-                                                            <i class="fas fa-ban me-1"></i>Suspend
-                                                        </a>
-                                                        {% endif %}
-                                                        <a href="{% url 'delete-user' user.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete {{user.first_name}} {{user.last_name}}? This action cannot be undone.');">
-                                                            <i class="fas fa-trash me-1"></i>Delete
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {% else %}
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>No users found.
-                                </div>
-                                {% endif %}
-                            </div>
+            <!-- Compliance Policies Tab -->
+            <div id="panel-compliance" class="tab-panel hidden">
+                <div class="tz-card">
+                    <div class="tz-card-header flex items-center justify-between flex-wrap gap-3">
+                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Compliance Policies</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="selectAllIntegrations()">Select All</button>
+                            <button type="button" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="deselectAllIntegrations()">Deselect All</button>
+                            <button type="button" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="resetAllSettings()">Reset All</button>
+                            <button type="button" class="tz-btn-primary text-xs py-1.5 px-3" onclick="saveAllSettings()">Save All Changes</button>
                         </div>
-                        
-                        <!-- Create User Modal -->
-                        <div class="modal fade" id="createUserModal" tabindex="-1" role="dialog" aria-hidden="true">
-                            <div class="modal-dialog modal-md" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Create New User</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <form action='/identity/accountcreation' method='post'>
+                    </div>
+                    <div class="tz-card-body">
+                        <div class="rounded-lg bg-code-blue-50 dark:bg-code-blue-500/10 border border-code-blue-200 dark:border-code-blue-500/20 px-4 py-3 mb-6 text-sm text-code-blue-700 dark:text-code-blue-400">
+                            Configure which security integrations are required for each operating system platform to be considered compliant.
+                        </div>
+
+                        <div class="space-y-4">
+                            {% for devicecomp in devicecomps %}
+                            <div class="tz-card compliance-platform-card">
+                                <div class="tz-card-header bg-slate-50 dark:bg-slate-700/50">
+                                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white">{{ devicecomp.os_platform }} Devices</h3>
+                                </div>
+                                <div class="tz-card-body">
+                                    <form class="compliance-form" data-platform-id="{{ devicecomp.id }}">
                                         {% csrf_token %}
-                                        <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label class="form-label">First Name <span class="text-danger">*</span></label>
-                                                <input class="form-control" type="text" name="firstName" placeholder="Enter First Name" required />
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                                                <input class="form-control" type="text" name="lastName" placeholder="Enter Last Name" required />
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label">Email <span class="text-danger">*</span></label>
-                                                <input class="form-control" type="email" name="email" placeholder="Enter Email" required />
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" value="sso-user" name="sso-user" id="ssoUserCheck">
-                                                <label class="form-check-label" for="ssoUserCheck">
-                                                    SSO User (No local password)
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                                            {% for integration_name, is_required in devicecomp.integrations.items %}
+                                            <div class="flex items-center gap-2">
+                                                <input class="w-4 h-4 rounded border-slate-300 text-code-blue-600 integration-checkbox"
+                                                       type="checkbox"
+                                                       name="{{ integration_name }}"
+                                                       id="integration_{{ devicecomp.id }}_{{ forloop.counter0 }}"
+                                                       {% if is_required %}checked{% endif %}
+                                                       data-integration="{{ integration_name }}"
+                                                       data-platform="{{ devicecomp.os_platform }}"
+                                                       data-index="{{ forloop.counter0 }}">
+                                                <label class="integration-label text-sm text-slate-700 dark:text-slate-300 cursor-pointer"
+                                                       for="integration_{{ devicecomp.id }}_{{ forloop.counter0 }}"
+                                                       data-checkbox-id="integration_{{ devicecomp.id }}_{{ forloop.counter0 }}"
+                                                       data-integration-name="{{ integration_name }}">
+                                                    <span class="integration-name">{{ integration_name }}</span>
                                                 </label>
                                             </div>
+                                            {% endfor %}
                                         </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-success">Create User</button>
+                                        <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                                            <div class="compliance-status">
+                                                <span class="tz-badge tz-badge-success" id="status_{{ devicecomp.id }}">Active</span>
+                                            </div>
+                                            <button type="submit" class="tz-btn-primary text-xs py-1.5 px-3">Save Changes</button>
                                         </div>
                                     </form>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- SSO Integrations Tab (Superuser Only) -->
-                    <div class="tab-pane fade" id="sso-integrations" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-key me-2"></i>SSO Integrations
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                {% if integrationStatuses %}
-                                <div class="row">
-                                    {% for integrationStatus in integrationStatuses %}
-                                    <div class="col-12 col-md-6 col-lg-3 mb-3">
-                                        <div class="card h-100">
-                                            <img class="card-img-top" src="{% static integrationStatus.1 %}" alt="{{integrationStatus.0}}" style="max-height: 100px; object-fit: contain; padding: 10px;">
-                                            <div class="card-header px-4 pt-4">
-                                                <div class="card-actions float-end">
-                                                    <div class="dropdown position-relative">
-                                                        <a href="#" data-bs-toggle="dropdown" data-bs-display="static">
-                                                            <i class="align-middle" data-feather="more-horizontal"></i>
-                                                        </a>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            {% if integrationStatus.2 %}
-                                                            <a class="dropdown-item" href="{% url 'disable-sso-integration' integrationStatus.4 %}">Disable Integration</a>
-                                                            <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#{{integrationStatus.0|slugify}}_modal" href="#">Configure Integration</a>
-                                                            {% else %}
-                                                            <a class="dropdown-item" href="{% url 'enable-sso-integration' integrationStatus.4 %}">Enable Integration</a>
-                                                            {% endif %}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <h5 class="card-title mb-0">{{integrationStatus.0}}</h5>
-                                                <div class="mt-2">
-                                                    {% if integrationStatus.2 %}
-                                                    <span class="badge bg-success">Enabled</span>
-                                                    {% else %}
-                                                    <span class="badge bg-danger">Disabled</span>
-                                                    {% endif %}
-                                                    {% if integrationStatus.3 %}
-                                                    <span class="badge bg-success">Configured</span>
-                                                    {% else %}
-                                                    <span class="badge bg-warning">Not Configured</span>
-                                                    {% endif %}
-                                                </div>
-                                                {% if integrationStatus.8 %}
-                                                <p class="text-muted small mb-0 mt-2">Last Test: {{integrationStatus.8|date:"M d, Y g:i A"}}</p>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Configure Integration Modal -->
-                                        <div class="modal fade" id="{{integrationStatus.0|slugify}}_modal" tabindex="-1" role="dialog" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered" role="document">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Configure {{integrationStatus.0}} Integration</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <form action="{% url 'update-sso-integration' integrationStatus.4 %}" method="post">
-                                                        {% csrf_token %}
-                                                        <div class="modal-body">
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Client ID <span class="text-danger">*</span></label>
-                                                                <input type="text" class="form-control" name="client_id" placeholder="Client ID" value="{{integrationStatus.5}}" required>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Client Secret <span class="text-danger">*</span></label>
-                                                                <input type="password" class="form-control" name="client_secret" placeholder="Client Secret" required>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Tenant ID <span class="text-danger">*</span></label>
-                                                                <input type="text" class="form-control" name="tenant_id" placeholder="Tenant ID" value="{{integrationStatus.6}}" required>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label class="form-label">Tenant Domain <span class="text-danger">*</span></label>
-                                                                <input type="text" class="form-control" name="tenant_domain" placeholder="example.com" value="{{integrationStatus.7}}" required>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                            <button type="submit" class="btn btn-primary">Save changes</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% else %}
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>No SSO integrations found.
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Profile Tab -->
-                    <div class="tab-pane fade" id="profile" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-user-circle me-2"></i>Profile Information
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="profileForm">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label" for="firstName">
-                                                <i class="fas fa-user me-1"></i>First Name
-                                            </label>
-                                            <input type="text" class="form-control" id="firstName" 
-                                                   value="{{request.user.first_name}}" disabled>
-                                            <div class="form-text">Managed by your organization</div>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label" for="lastName">
-                                                <i class="fas fa-user me-1"></i>Last Name
-                                            </label>
-                                            <input type="text" class="form-control" id="lastName" 
-                                                   value="{{request.user.last_name}}" disabled>
-                                            <div class="form-text">Managed by your organization</div>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label" for="email">
-                                            <i class="fas fa-envelope me-1"></i>Email Address
-                                        </label>
-                                        <input type="email" class="form-control" id="email" 
-                                               value="{{request.user.email}}" disabled>
-                                        <div class="form-text">Managed by your organization</div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Compliance Settings Tab -->
-                    <div class="tab-pane fade" id="compliance" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-shield-alt me-2"></i>Compliance Policies
-                                </h5>
-                                <div class="d-flex gap-2">
-                                    <div class="btn-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllIntegrations()">
-                                            Select All
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllIntegrations()">
-                                            Deselect All
-                                        </button>
-                                    </div>
-                                    <div class="btn-group" role="group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetAllSettings()">
-                                            <i class="fas fa-undo"></i> Reset All
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="saveAllSettings()">
-                                            <i class="fas fa-save"></i> Save All Changes
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Configure which security integrations are required for each operating system platform to be considered compliant.
-                                </div>
-                                
-                                <div class="compliance-settings-container">
-                                    
-                                    {% for devicecomp in devicecomps %}
-                                    <div class="compliance-platform-card mb-4">
-                                        <div class="card">
-                                            <div class="card-header bg-light">
-                                                <h6 class="mb-0">
-                                                    <i class="fas fa-desktop me-2"></i>{{devicecomp.os_platform}} Devices
-                                                </h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <form class="compliance-form" data-platform-id="{{devicecomp.id}}">
-                                                    {% csrf_token %}
-                                                    <div class="row">
-                                                        {% for integration_name, is_required in devicecomp.integrations.items %}
-                                                        <div class="col-md-6 col-lg-4 mb-3">
-                                                            <div class="form-check">
-                                                                <input class="form-check-input integration-checkbox" 
-                                                                       type="checkbox" 
-                                                                       name="{{integration_name}}" 
-                                                                       id="integration_{{devicecomp.id}}_{{forloop.counter0}}"
-                                                                       {% if is_required %}checked{% endif %}
-                                                                       data-integration="{{integration_name}}"
-                                                                       data-platform="{{devicecomp.os_platform}}"
-                                                                       data-index="{{forloop.counter0}}">
-                                                                <label class="form-check-label integration-label" 
-                                                                       for="integration_{{devicecomp.id}}_{{forloop.counter0}}"
-                                                                       data-checkbox-id="integration_{{devicecomp.id}}_{{forloop.counter0}}"
-                                                                       data-integration-name="{{integration_name}}">
-                                                                    <span class="integration-name">{{integration_name}}</span>
-                                                                    <small class="text-muted d-block">Required for compliance</small>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                    <div class="d-flex justify-content-between align-items-center mt-3">
-                                                        <div class="compliance-status">
-                                                            <span class="badge bg-success" id="status_{{devicecomp.id}}">
-                                                                <i class="fas fa-check-circle me-1"></i>Active
-                                                            </span>
-                                                        </div>
-                                                        <button type="submit" class="btn btn-primary btn-sm">
-                                                            <i class="fas fa-save me-1"></i>Save Changes
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Notifications Tab -->
-                    <div class="tab-pane fade" id="notifications" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-bell me-2"></i>Notification Preferences
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Notification settings are not yet implemented. This feature is coming soon.
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6>Email Notifications</h6>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="emailCompliance" disabled>
-                                            <label class="form-check-label" for="emailCompliance">
-                                                Compliance violations
-                                            </label>
-                                        </div>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="emailSecurity" disabled>
-                                            <label class="form-check-label" for="emailSecurity">
-                                                Security alerts
-                                            </label>
-                                        </div>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="emailUpdates" disabled>
-                                            <label class="form-check-label" for="emailUpdates">
-                                                System updates
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>In-App Notifications</h6>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="appCompliance" disabled>
-                                            <label class="form-check-label" for="appCompliance">
-                                                Compliance violations
-                                            </label>
-                                        </div>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="appSecurity" disabled>
-                                            <label class="form-check-label" for="appSecurity">
-                                                Security alerts
-                                            </label>
-                                        </div>
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="appUpdates" disabled>
-                                            <label class="form-check-label" for="appUpdates">
-                                                System updates
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Personas Tab -->
-                    <div class="tab-pane fade" id="personas" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-user-tag me-2"></i>Personas Management
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <!-- Add Persona Form -->
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-plus me-2"></i>Add New Persona
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <form method="POST" action="/add-persona" id="add-persona-form">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="current_tab" id="current_tab_persona" value="personas">
-                                            <div class="row">
-                                                <div class="col-md-2 mb-3">
-                                                    <label for="priority" class="form-label">Priority</label>
-                                                    <input type="number" class="form-control" id="priority" name="priority" placeholder="Priority number" min="0" step="1">
-                                                </div>
-                                                <div class="col-md-10 mb-3">
-                                                    <label for="persona_name" class="form-label">Persona Name <span class="text-danger">*</span></label>
-                                                    <input type="text" class="form-control" id="persona_name" name="persona_name" required placeholder="Enter persona name">
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-plus me-2"></i>Add Persona
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-
-                                <!-- Personas List -->
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-list me-2"></i>Existing Personas
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        {% if personas %}
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Priority</th>
-                                                        <th>Persona Name</th>
-                                                        <th>Created</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {% for persona in personas %}
-                                                    <tr>
-                                                        <td>{{ persona.priority|default:"—" }}</td>
-                                                        <td><strong>{{ persona.persona_name }}</strong></td>
-                                                        <td>{{ persona.created_at|date:"M d, Y" }}</td>
-                                                        <td>
-                                                            <a href="{% url 'delete_persona' persona.id %}?tab=personas" 
-                                                               class="btn btn-sm btn-danger" 
-                                                               onclick="return confirm('Are you sure you want to delete the persona &quot;{{ persona.persona_name }}&quot;?');">
-                                                                <i class="fas fa-trash me-1"></i>Delete
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                    {% endfor %}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {% else %}
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle me-2"></i>No personas found. Add your first persona above.
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Persona Groups Tab -->
-                    <div class="tab-pane fade" id="persona-groups" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-users me-2"></i>Persona Groups Management
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <!-- Add Persona Group Form -->
-                                <div class="card mb-4">
-                                    <div class="card-header bg-primary text-white">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-plus me-2"></i>Add New Persona Group
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        {% if personas %}
-                                        <form method="POST" action="/add-persona-group" id="add-persona-group-form">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="current_tab" id="current_tab_persona_group" value="persona-groups">
-                                            <div class="row">
-                                                <div class="col-md-12 mb-3">
-                                                    <label for="persona_id" class="form-label">Persona <span class="text-danger">*</span></label>
-                                                    <select class="form-select" id="persona_id" name="persona_id" required>
-                                                        <option value="">Select a persona</option>
-                                                        {% for persona in personas %}
-                                                        <option value="{{ persona.id }}">{{ persona.persona_name }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="group_name" class="form-label">Name <span class="text-danger">*</span></label>
-                                                    <input type="text" class="form-control" id="group_name" name="group_name" required placeholder="Enter group name">
-                                                </div>
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="object_id" class="form-label">Group ID</label>
-                                                    <input type="text" class="form-control" id="object_id" name="object_id" placeholder="Enter group ID">
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-plus me-2"></i>Add Persona Group
-                                            </button>
-                                        </form>
-                                        {% else %}
-                                        <div class="alert alert-warning">
-                                            <i class="fas fa-exclamation-triangle me-2"></i>You must create at least one persona before you can create a persona group. Please add a persona in the <a href="#personas" data-bs-toggle="list">Personas</a> tab first.
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <!-- Persona Groups List -->
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-list me-2"></i>Existing Persona Groups
-                                        </h6>
-                                    </div>
-                                    <div class="card-body">
-                                        {% if persona_groups %}
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Persona</th>
-                                                        <th>Name</th>
-                                                        <th>Group ID</th>
-                                                        <th>Created</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {% for group in persona_groups %}
-                                                    <tr>
-                                                        <td><strong>{{ group.persona.persona_name }}</strong></td>
-                                                        <td><strong>{{ group.group_name }}</strong></td>
-                                                        <td>{{ group.object_id|default:"—" }}</td>
-                                                        <td>{{ group.created_at|date:"M d, Y" }}</td>
-                                                        <td>
-                                                            <a href="{% url 'delete_persona_group' group.id %}?tab=persona-groups" 
-                                                               class="btn btn-sm btn-danger" 
-                                                               onclick="return confirm('Are you sure you want to delete the persona group &quot;{{ group.group_name }}&quot;?');">
-                                                                <i class="fas fa-trash me-1"></i>Delete
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                    {% endfor %}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {% else %}
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle me-2"></i>No persona groups found. Add your first persona group above.
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Integrations Tab -->
-                    <div class="tab-pane fade" id="integrations" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-plug me-2"></i>Integration Status
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    {% for integration in enabled_integrations %}
-                                    <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="card h-100">
-                                            <div class="card-body text-center">
-                                                <div class="mb-3">
-                                                    {% if integration.image_navbar_path %}
-                                                    <img src="{% static integration.image_navbar_path %}" 
-                                                         alt="{{integration.integration_type}}" 
-                                                         class="integration-icon" style="height: 40px;">
-                                                    {% else %}
-                                                    <i class="fas fa-plug fa-2x text-muted"></i>
-                                                    {% endif %}
-                                                </div>
-                                                <h6 class="card-title">{{integration.integration_type}}</h6>
-                                                <div class="mb-2">
-                                                    {% if integration.enabled %}
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-check-circle me-1"></i>Active
-                                                    </span>
-                                                    {% else %}
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-times-circle me-1"></i>Inactive
-                                                    </span>
-                                                    {% endif %}
-                                                </div>
-                                                {% if integration.last_synced_at %}
-                                                <small class="text-muted">
-                                                    Last synced: {{integration.last_synced_at|date:"M j, Y g:i A"}}
-                                                </small>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+
+            <!-- Notifications Tab -->
+            <div id="panel-notifications" class="tab-panel hidden">
+                <div class="tz-card">
+                    <div class="tz-card-header">
+                        <h2 class="text-base font-semibold text-slate-900 dark:text-white">Notifications</h2>
+                    </div>
+                    <div class="tz-card-body">
+                        <div class="tz-empty-state">
+                            <svg class="tz-empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                            </svg>
+                            <h3 class="tz-empty-state-title">Notification Settings</h3>
+                            <p class="tz-empty-state-description">Email and in-app notification preferences are coming soon.</p>
+                            <span class="tz-badge tz-badge-info">Coming Soon</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personas Tab -->
+            <div id="panel-personas" class="tab-panel hidden">
+                <div class="space-y-4">
+                    <!-- Add Persona Form -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Add New Persona</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            <form method="POST" action="/add-persona" id="add-persona-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="current_tab" id="current_tab_persona" value="personas">
+                                <div class="flex gap-4">
+                                    <div class="w-28 shrink-0">
+                                        <label for="priority" class="tz-form-label">Priority</label>
+                                        <input type="number" class="tz-form-input" id="priority" name="priority" placeholder="0" min="0" step="1">
+                                    </div>
+                                    <div class="flex-1">
+                                        <label for="persona_name" class="tz-form-label">Persona Name <span class="text-code-red-500">*</span></label>
+                                        <input type="text" class="tz-form-input" id="persona_name" name="persona_name" required placeholder="Enter persona name">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button type="submit" class="tz-btn-primary">Add Persona</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Personas List -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Existing Personas</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            {% if personas %}
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 dark:border-slate-700">
+                                            <th class="text-left py-2 px-3 tz-section-label">Priority</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Persona Name</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Created</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                        {% for persona in personas %}
+                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                            <td class="py-3 px-3 text-slate-500">{{ persona.priority|default:"—" }}</td>
+                                            <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ persona.persona_name }}</td>
+                                            <td class="py-3 px-3 text-slate-500">{{ persona.created_at|date:"M d, Y" }}</td>
+                                            <td class="py-3 px-3">
+                                                <a href="{% url 'delete_persona' persona.id %}?tab=personas"
+                                                   class="text-xs text-code-red-500 hover:text-code-red-700 font-medium"
+                                                   onclick="return confirm('Are you sure you want to delete the persona &quot;{{ persona.persona_name }}&quot;?');">
+                                                    Delete
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="tz-empty-state py-8">
+                                <p class="tz-empty-state-description">No personas found. Add your first persona above.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Persona Groups Tab -->
+            <div id="panel-persona-groups" class="tab-panel hidden">
+                <div class="space-y-4">
+                    <!-- Add Persona Group Form -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Add New Persona Group</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            {% if personas %}
+                            <form method="POST" action="/add-persona-group" id="add-persona-group-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="current_tab" id="current_tab_persona_group" value="persona-groups">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div>
+                                        <label for="persona_id" class="tz-form-label">Persona <span class="text-code-red-500">*</span></label>
+                                        <select class="tz-form-select" id="persona_id" name="persona_id" required>
+                                            <option value="">Select a persona</option>
+                                            {% for persona in personas %}
+                                            <option value="{{ persona.id }}">{{ persona.persona_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="group_name" class="tz-form-label">Name <span class="text-code-red-500">*</span></label>
+                                        <input type="text" class="tz-form-input" id="group_name" name="group_name" required placeholder="Enter group name">
+                                    </div>
+                                    <div>
+                                        <label for="object_id" class="tz-form-label">Group ID</label>
+                                        <input type="text" class="tz-form-input" id="object_id" name="object_id" placeholder="Enter group ID">
+                                    </div>
+                                </div>
+                                <button type="submit" class="tz-btn-primary">Add Persona Group</button>
+                            </form>
+                            {% else %}
+                            <div class="rounded-lg bg-code-amber-50 dark:bg-code-amber-500/10 border border-code-amber-200 dark:border-code-amber-500/20 px-4 py-3 text-sm text-code-amber-700 dark:text-code-amber-400">
+                                You must create at least one persona before you can create a persona group.
+                                <button data-tab="personas" class="font-medium underline ml-1 tab-switch-btn">Go to Personas</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Persona Groups List -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Existing Persona Groups</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            {% if persona_groups %}
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 dark:border-slate-700">
+                                            <th class="text-left py-2 px-3 tz-section-label">Persona</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Name</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Group ID</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Created</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                        {% for group in persona_groups %}
+                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                            <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ group.persona.persona_name }}</td>
+                                            <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ group.group_name }}</td>
+                                            <td class="py-3 px-3 text-slate-500">{{ group.object_id|default:"—" }}</td>
+                                            <td class="py-3 px-3 text-slate-500">{{ group.created_at|date:"M d, Y" }}</td>
+                                            <td class="py-3 px-3">
+                                                <a href="{% url 'delete_persona_group' group.id %}?tab=persona-groups"
+                                                   class="text-xs text-code-red-500 hover:text-code-red-700 font-medium"
+                                                   onclick="return confirm('Are you sure you want to delete the persona group &quot;{{ group.group_name }}&quot;?');">
+                                                    Delete
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="tz-empty-state py-8">
+                                <p class="tz-empty-state-description">No persona groups found. Add your first persona group above.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% endif %}{# end is_superuser #}
+
+        </div>{# end content area #}
+    </div>{# end flex gap-6 #}
+
 </main>
 {% endblock %}
 
 {% block extra_js %}
-<!-- Include jQuery and DataTables -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-
-<!-- Settings Management JavaScript -->
 <script>
+// Tab switching
+function switchTab(tabName) {
+    // Hide all panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    // Deactivate all tabs
+    document.querySelectorAll('[data-tab]').forEach(b => {
+        b.className = b.className.replace('tz-sidebar-item-active', 'tz-sidebar-item');
+    });
+    // Show target panel
+    var panel = document.getElementById('panel-' + tabName);
+    if (panel) {
+        panel.classList.remove('hidden');
+    }
+    // Activate tab button
+    document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(b => {
+        b.className = b.className.replace('tz-sidebar-item', 'tz-sidebar-item-active');
+    });
+    // Update URL hash
+    if (history.pushState) {
+        history.pushState(null, null, window.location.pathname + '#' + tabName);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTables for user management table (if it exists)
-    // Wait for jQuery and DataTables to be available
-    if (document.getElementById('userTable')) {
-        // Check if jQuery and DataTables are loaded
-        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
-            jQuery('#userTable').DataTable({
-                order: [[0, 'asc']],
-                pageLength: 25,
-                responsive: true
-            });
-        } else {
-            console.warn('jQuery or DataTables not loaded. Table will not be initialized.');
-        }
-    }
-    
-    // Initialize compliance form handlers
-    initializeComplianceForms();
-    
-    // --- Activate tab from URL hash and update hash on tab click ---
-    function activateTabFromHash(hash) {
-        var tabTrigger = document.querySelector('a[href="' + hash + '"]');
-        if (tabTrigger) {
-            var tabList = document.querySelectorAll('.list-group-item');
-            tabList.forEach(function(tab) {
-                tab.classList.remove('active');
-            });
-            tabTrigger.classList.add('active');
-
-            var tabPanes = document.querySelectorAll('.tab-pane');
-            tabPanes.forEach(function(pane) {
-                pane.classList.remove('show', 'active');
-            });
-            var targetPane = document.querySelector(hash);
-            if (targetPane) {
-                targetPane.classList.add('show', 'active');
-            }
-        }
-    }
-
-    // --- Parse hash and query parameters ---
-    function parseHashAndQuery() {
-        var hash = window.location.hash || '#profile';
-        var tab = hash;
-        var query = '';
-        if (hash.includes('?')) {
-            tab = hash.split('?')[0];
-            query = hash.split('?')[1];
-        }
-        return { tab, query };
-    }
-
-    // --- Initialize tab from URL hash ---
-    var parsed = parseHashAndQuery();
-    activateTabFromHash(parsed.tab);
-
-    // --- Update URL hash when tab is clicked ---
-    // Use event delegation to catch all tab clicks
-    document.addEventListener('click', function(e) {
-        var target = e.target.closest('a.list-group-item[data-bs-toggle="list"]');
-        if (target) {
-            var href = target.getAttribute('href');
-            if (href && href.startsWith('#')) {
-                // Update URL hash immediately
-                var newUrl = window.location.pathname + href;
-                if (history.pushState) {
-                    history.pushState(null, null, newUrl);
-                } else {
-                    window.location.hash = href;
-                }
-            }
-        }
+    // Attach click handlers to all tab buttons (sidebar + any tab-switch-btn)
+    document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            switchTab(this.dataset.tab);
+        });
     });
-    
-    // Listen for hash changes (e.g., after redirect or browser back/forward)
+
+    // Read tab from URL hash on load
+    var hash = window.location.hash;
+    if (hash && hash.length > 1) {
+        var tabName = hash.replace('#', '').split('?')[0];
+        switchTab(tabName);
+    } else {
+        switchTab('profile');
+    }
+
+    // Listen for hash changes (browser back/forward)
     window.addEventListener('hashchange', function() {
-        var parsed = parseHashAndQuery();
-        activateTabFromHash(parsed.tab);
+        var h = window.location.hash;
+        if (h && h.length > 1) {
+            switchTab(h.replace('#', '').split('?')[0]);
+        }
     });
-    
-    // Update fields when forms are submitted (capture current tab at submit time)
+
+    // Capture current tab on persona form submit
     const personaForm = document.getElementById('add-persona-form');
     if (personaForm) {
-        personaForm.addEventListener('submit', function(e) {
-            const activeTab = document.querySelector('.list-group-item.active');
-            if (activeTab) {
-                const href = activeTab.getAttribute('href');
-                if (href && href.startsWith('#')) {
-                    updateTabFields(href.replace('#', ''));
-                }
-            }
+        personaForm.addEventListener('submit', function() {
+            updateTabFields('personas');
         });
     }
-    
+
     const personaGroupForm = document.getElementById('add-persona-group-form');
     if (personaGroupForm) {
-        personaGroupForm.addEventListener('submit', function(e) {
-            const activeTab = document.querySelector('.list-group-item.active');
-            if (activeTab) {
-                const href = activeTab.getAttribute('href');
-                if (href && href.startsWith('#')) {
-                    updateTabFields(href.replace('#', ''));
-                }
-            }
+        personaGroupForm.addEventListener('submit', function() {
+            updateTabFields('persona-groups');
         });
     }
+
+    // Initialize compliance form handlers
+    initializeComplianceForms();
 });
 
 function initializeComplianceForms() {
     const forms = document.querySelectorAll('.compliance-form');
-    
+
     forms.forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             saveComplianceSettings(this);
         });
-        
-        // Add change listeners for real-time status updates
+
         const checkboxes = form.querySelectorAll('.integration-checkbox');
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 updateComplianceStatus(form);
             });
-            
-            // Ensure proper label association
-            const label = form.querySelector(`label[for="${checkbox.id}"]`);
-            if (!label) {
-                console.warn(`No label found for checkbox ${checkbox.id}`);
-            }
         });
-        
-        // Add click handlers to all labels in this form
+
         const labels = form.querySelectorAll('.integration-label');
         labels.forEach(label => {
             label.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
                 const integrationName = this.getAttribute('data-integration-name');
-                
-                // Find the checkbox by matching the integration name within this form
-                const checkbox = form.querySelector(`input[data-integration="${integrationName}"]`);
-                
+                const checkbox = form.querySelector('input[data-integration="' + integrationName + '"]');
                 if (checkbox) {
                     checkbox.checked = !checkbox.checked;
                     checkbox.dispatchEvent(new Event('change'));
@@ -872,14 +644,13 @@ function initializeComplianceForms() {
 function saveComplianceSettings(form) {
     const platformId = form.dataset.platformId;
     const formData = new FormData(form);
-    
-    // Show loading state
+
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    submitBtn.innerHTML = 'Saving...';
     submitBtn.disabled = true;
-    
-    fetch(`/update_compliance/${platformId}`, {
+
+    fetch('/update_compliance/' + platformId, {
         method: 'POST',
         body: formData,
         headers: {
@@ -906,14 +677,15 @@ function saveComplianceSettings(form) {
 
 function updateComplianceStatus(form) {
     const checkboxes = form.querySelectorAll('.integration-checkbox:checked');
-    const statusBadge = form.querySelector('.compliance-status .badge');
-    
+    const statusBadge = form.querySelector('.compliance-status .tz-badge');
+    if (!statusBadge) return;
+
     if (checkboxes.length > 0) {
-        statusBadge.className = 'badge bg-success';
-        statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i>Active';
+        statusBadge.className = 'tz-badge tz-badge-success';
+        statusBadge.textContent = 'Active';
     } else {
-        statusBadge.className = 'badge bg-warning';
-        statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>No Requirements';
+        statusBadge.className = 'tz-badge tz-badge-warning';
+        statusBadge.textContent = 'No Requirements';
     }
 }
 
@@ -936,37 +708,36 @@ function deselectAllIntegrations() {
 function saveAllSettings() {
     const forms = document.querySelectorAll('.compliance-form');
     let savedCount = 0;
-    
     forms.forEach(form => {
         saveComplianceSettings(form);
         savedCount++;
     });
-    
     if (savedCount > 0) {
-        showNotification(`Saving ${savedCount} platform settings...`, 'info');
+        showNotification('Saving ' + savedCount + ' platform settings...', 'info');
     }
 }
 
 function resetAllSettings() {
     if (confirm('Are you sure you want to reset all compliance settings to their default values?')) {
-        // This would need to be implemented in the backend
         showNotification('Reset functionality coming soon', 'info');
     }
 }
 
-function showNotification(message, type = 'info') {
-    // Create notification element
+function showNotification(message, type) {
+    type = type || 'info';
+    const colorMap = {
+        'success': 'bg-code-green-50 text-code-green-700 border-code-green-200',
+        'error': 'bg-code-red-50 text-code-red-700 border-code-red-200',
+        'info': 'bg-code-blue-50 text-code-blue-700 border-code-blue-200',
+        'warning': 'bg-code-amber-50 text-code-amber-700 border-code-amber-200'
+    };
+    const classes = colorMap[type] || colorMap['info'];
+
     const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
+    notification.className = 'fixed top-5 right-5 z-50 min-w-72 rounded-lg border px-4 py-3 text-sm font-medium shadow-lg ' + classes;
+    notification.textContent = message;
+
     document.body.appendChild(notification);
-    
-    // Auto-remove after 5 seconds
     setTimeout(() => {
         if (notification.parentNode) {
             notification.remove();
@@ -974,7 +745,6 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// Function to update hidden fields based on current tab (for form submissions)
 function updateTabFields(tabName) {
     const personaTabField = document.getElementById('current_tab_persona');
     if (personaTabField && tabName === 'personas') {
@@ -986,80 +756,4 @@ function updateTabFields(tabName) {
     }
 }
 </script>
-
-<style>
-.compliance-platform-card .card {
-    border-left: 4px solid #007bff;
-    transition: all 0.3s ease;
-}
-
-.compliance-platform-card .card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transform: translateY(-2px);
-}
-
-.integration-checkbox:checked + .form-check-label .integration-name {
-    font-weight: 600;
-    color: #007bff;
-}
-
-.integration-icon {
-    max-width: 100%;
-    object-fit: contain;
-}
-
-.form-check-input:checked {
-    background-color: #007bff;
-    border-color: #007bff;
-}
-
-.alert {
-    border-radius: 8px;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.card-header {
-    border-bottom: 1px solid rgba(0,0,0,0.125);
-}
-
-.list-group-item {
-    border: none;
-    border-radius: 0;
-    transition: all 0.2s ease;
-}
-
-.list-group-item:hover {
-    background-color: #f8f9fa;
-}
-
-.list-group-item.active {
-    background-color: #007bff;
-    border-color: #007bff;
-}
-
-.badge {
-    font-size: 0.75rem;
-    padding: 0.5em 0.75em;
-}
-
-.btn-group .btn {
-    border-radius: 4px;
-}
-
-.compliance-status {
-    font-size: 0.875rem;
-}
-
-@media (max-width: 768px) {
-    .compliance-settings-container .row {
-        margin: 0;
-    }
-    
-    .compliance-settings-container .col-md-6,
-    .compliance-settings-container .col-lg-4 {
-        padding: 0 5px;
-    }
-}
-</style>
-{% endblock extra_js %}
+{% endblock %}

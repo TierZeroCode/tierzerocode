@@ -1,209 +1,274 @@
 {% extends 'main/base.html' %}
 {% load static %}
 {% block content %}
-<main class="content">
-    <div class="container-fluid p-0">
+<main class="flex-1 overflow-y-auto p-6">
 
-        <!-- Device Integrations Section -->
-        <div class="mb-3">
-            <h1 class="h3 d-inline align-middle">Device Integrations</h1>
-            <a class="badge bg-primary ms-2" href="https://docs.tierzerocode.com/manage-tier-zero-code/device-integrations/add-device-integration" target="_blank">
-                Documentation<i class="fas fa-fw fa-external-link-alt"></i>
-            </a>
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Integrations</h1>
+    <p class="text-sm text-slate-500 mb-6">Manage your security vendor connections</p>
+
+    <!-- Device Integrations Section -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <h2 class="text-base font-semibold text-slate-900 dark:text-white">Device Integrations</h2>
+            <a href="https://docs.tierzerocode.com/manage-tier-zero-code/device-integrations/add-device-integration" target="_blank"
+               class="tz-badge tz-badge-info text-xs">Documentation</a>
         </div>
 
-        <div class="row">
-            <!-- Integration Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {% for deviceIntegrationStatus in deviceIntegrationStatuses %}
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card">
-                    <img class="card-img-top" src="{% static deviceIntegrationStatus.1 %}" alt="{{deviceIntegrationStatus.0}}">
-                    <div class="card-header px-4 pt-4">
-                        <div class="card-actions float-end">
-                            <div class="dropdown position-relative">
-                                <a href="#" data-bs-toggle="dropdown" data-bs-display="static">
-                                    <i class="align-middle" data-feather="more-horizontal"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    {% if deviceIntegrationStatus.2 %}
-                                    <form method="post" action="/disable-integration/{{deviceIntegrationStatus.4}}" style="display:inline;">{% csrf_token %}<button type="submit" class="dropdown-item">Disable Integration</button></form>
-                                    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#{{deviceIntegrationStatus.0|slugify}}_modal_device" href="#">Configure Integration</a>
-                                    {% if deviceIntegrationStatus.3 %}
-                                    {% if deviceIntegrationStatus.0 == 'Microsoft Entra ID' or deviceIntegrationStatus.0 == 'Microsoft Intune' %}
-                                    <a class="dropdown-item" href="/test-connection/{{deviceIntegrationStatus.4}}">Test Connection</a>
-                                    {% endif %}
-                                    <a class="dropdown-item" href="/sync-{{deviceIntegrationStatus.0|slugify}}-devices">Sync Integration</a>
-                                    {% endif %}
-                                    {% else %}
-                                    <form method="post" action="/enable-integration/{{deviceIntegrationStatus.4}}" style="display:inline;">{% csrf_token %}<button type="submit" class="dropdown-item">Enable Integration</button></form>
-                                    {% endif %}
-                                </div>
-                            </div>
+            <div class="tz-card hover:shadow-md transition-shadow">
+                <div class="tz-card-body">
+                    <!-- Top: Logo + Status -->
+                    <div class="flex items-center gap-4 mb-4">
+                        <img src="{% static deviceIntegrationStatus.1 %}" alt="{{ deviceIntegrationStatus.0 }}" class="w-10 h-10 object-contain">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-slate-900 dark:text-white text-sm truncate">{{ deviceIntegrationStatus.0 }}</h3>
+                            {% if deviceIntegrationStatus.2 and deviceIntegrationStatus.3 %}
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
+                                <span class="text-code-green-600">Active</span>
+                            </span>
+                            {% elif deviceIntegrationStatus.2 and not deviceIntegrationStatus.3 %}
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
+                                <span class="text-code-amber-600">Setup Required</span>
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                                <span class="text-slate-400">Disabled</span>
+                            </span>
+                            {% endif %}
                         </div>
-                        <h5 class="card-title mb-0">{{deviceIntegrationStatus.0}}</h5>
-                        <div class="badge bg-{{ deviceIntegrationStatus.2|yesno:"success,danger" }} my-2">{{ deviceIntegrationStatus.2|yesno:"Enabled,Disabled" }}</div>
-                        <div class="badge bg-{{ deviceIntegrationStatus.3|yesno:"success,danger" }} my-2">{{ deviceIntegrationStatus.3|yesno:"Configured,Not Configured" }}</div>
-                        <p>Last Successful Sync: {{deviceIntegrationStatus.8}}</p>
+                    </div>
+
+                    <!-- Meta: Last sync, last test -->
+                    <div class="text-xs text-slate-500 space-y-1 mb-4">
+                        {% if deviceIntegrationStatus.8 %}
+                        <p>Last sync: {{ deviceIntegrationStatus.8 }}</p>
+                        {% endif %}
                         {% if deviceIntegrationStatus.0 == 'Microsoft Entra ID' or deviceIntegrationStatus.0 == 'Microsoft Intune' %}
-                        <p>Last Successful Test: {{deviceIntegrationStatus.9}}</p>
+                        {% if deviceIntegrationStatus.9 %}
+                        <p>Last test: {{ deviceIntegrationStatus.9 }}</p>
+                        {% endif %}
                         {% endif %}
                     </div>
-                    <!-- Configure Integration Modal -->
-                    <div class="modal fade" id="{{deviceIntegrationStatus.0|slugify}}_modal_device" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Configure {{deviceIntegrationStatus.0}} Integration</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body m-3">
-                                    <form action="/update-integration/{{deviceIntegrationStatus.4}}" method="post">
-                                        {% csrf_token %}
-                                        <div class="mb-3">
-                                            {% if deviceIntegrationStatus.0 == 'Cloudflare Zero Trust' %}
-                                            <input type="text" class="form-control" name="client_id" placeholder="Not Required for Cloudflare Zero Trust" value="Not Required for Cloudflare Zero Trust" hidden>
-                                            {% else %}
-                                            <label class="form-label">Client ID <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="client_id" placeholder="Client ID" value="{{deviceIntegrationStatus.5}}">
-                                            {% endif %}
-                                        </div>
-                                        <div class="mb-3">
-                                            {% if deviceIntegrationStatus.0 == 'Cloudflare Zero Trust' %}
-                                            <label class="form-label">API Key <span style="color: red;">*</span></label>
-                                            <input type="password" class="form-control" name="client_secret" placeholder="API Key" required>
-                                            {% elif deviceIntegrationStatus.0 == 'CrowdStrike Falcon' %}
-                                            <label class="form-label">Secret <span style="color: red;">*</span></label>
-                                            <input type="password" class="form-control" name="client_secret" placeholder="Secret" required>
-                                            {% else %}
-                                            <label class="form-label">Client Secret <span style="color: red;">*</span></label>
-                                            <input type="password" class="form-control" name="client_secret" placeholder="Client Secret" required>
-                                            {% endif %}
-                                        </div>
-                                        <div class="mb-3">
-                                            {% if deviceIntegrationStatus.0 == 'Tailscale' %}
-                                            <input type="text" class="form-control" name="tenant_id" placeholder="Not Required for Tailscale" value="Not Required for Tailscale" hidden>
-                                            {% elif deviceIntegrationStatus.0 == 'CrowdStrike Falcon' %}
-                                            <label class="form-label">Base URL <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="tenant_id" placeholder="Base URL" value="{{deviceIntegrationStatus.6}}">
-                                            {% else %}
-                                            <label class="form-label">Tenant ID <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="tenant_id" placeholder="Tenant ID" value="{{deviceIntegrationStatus.6}}">
-                                            {% endif %}
-                                        </div>
-                                        <div class="mb-3">
-                                            {% if deviceIntegrationStatus.0 == 'Tailscale' %}
-                                            <label class="form-label">Tailnet ID <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="tenant_domain" placeholder="example.com" value="{{deviceIntegrationStatus.7}}">
-                                            {% else %}
-                                            <label class="form-label">Tenant Domain <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="tenant_domain" placeholder="example.com" value="{{deviceIntegrationStatus.7}}">
-                                            {% endif %}
-                                        </div>
-                                        {% if deviceIntegrationStatus.0 == 'Microsoft Entra ID' or deviceIntegrationStatus.0 == 'Microsoft Intune' %}
-                                        <div class="mb-3">
-                                            <label class="form-label">Device Ownership Filter</label>
-                                            <select class="form-control" name="device_ownership_filter">
-                                                <option value="All" {% if deviceIntegrationStatus.10 == 'All' %}selected{% endif %}>All Devices</option>
-                                                <option value="Company" {% if deviceIntegrationStatus.10 == 'Company' %}selected{% endif %}>Corporate Devices Only</option>
-                                                <option value="Personal" {% if deviceIntegrationStatus.10 == 'Personal' %}selected{% endif %}>Personal Devices Only</option>
-                                            </select>
-                                        </div>
-                                        {% endif %}
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="submit" class="btn btn-primary">Save changes</button>
-                                </div>
-                                    </form>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- End Configure Integration Modal -->
-                </div>
-            </div>
-            {% endfor %}
-            <!-- End Integration Cards -->
-        </div>
 
-        <!-- User Integrations Section -->
-        <div class="mb-3">
-            <h1 class="h3 d-inline align-middle">User Integrations</h1>
-            <a class="badge bg-primary ms-2" href="https://docs.tierzerocode.com/manage-tier-zero-code/user-integrations/add-user-integration" target="_blank">
-                Documentation<i class="fas fa-fw fa-external-link-alt"></i>
-            </a>
-        </div>
-        <div class="row">
-            <!-- User Integration Cards -->
-            {% for userIntegrationStatus in userIntegrationStatuses %}
-            <div class="col-12 col-md-6 col-lg-3">
-                <div class="card">
-                    <img class="card-img-top" src="{% static userIntegrationStatus.1 %}" alt="{{userIntegrationStatus.0}}">
-                    <div class="card-header px-4 pt-4">
-                        <div class="card-actions float-end">
-                            <div class="dropdown position-relative">
-                                <a href="#" data-bs-toggle="dropdown" data-bs-display="static">
-                                    <i class="align-middle" data-feather="more-horizontal"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    {% if userIntegrationStatus.2 %}
-                                    <form method="post" action="/disable-integration/{{userIntegrationStatus.4}}" style="display:inline;">{% csrf_token %}<button type="submit" class="dropdown-item">Disable Integration</button></form>
-                                    <a class="dropdown-item" data-bs-toggle="modal" data-bs-target="#{{userIntegrationStatus.0|slugify}}_modal_user" href="#">Configure Integration</a>
-                                    {% if userIntegrationStatus.3 %}
-                                    <a class="dropdown-item" href="/sync-{{userIntegrationStatus.0|slugify}}-users">Sync Integration</a>
-                                    {% endif %}
-                                    {% else %}
-                                    <form method="post" action="/enable-integration/{{userIntegrationStatus.4}}" style="display:inline;">{% csrf_token %}<button type="submit" class="dropdown-item">Enable Integration</button></form>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        <h5 class="card-title mb-0">{{userIntegrationStatus.0}}</h5>
-                        <div class="badge bg-{{ userIntegrationStatus.2|yesno:"success,danger" }} my-2">{{ userIntegrationStatus.2|yesno:"Enabled,Disabled" }}</div>
-                        <div class="badge bg-{{ userIntegrationStatus.3|yesno:"success,danger" }} my-2">{{ userIntegrationStatus.3|yesno:"Configured,Not Configured" }}</div>
-                        <p>Last Sync: {{userIntegrationStatus.8}}</p>
+                    <!-- Action buttons -->
+                    <div class="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                        {% if deviceIntegrationStatus.2 %}
+                        <button class="tz-btn-secondary text-xs py-1.5 px-3"
+                                data-bs-toggle="modal"
+                                data-bs-target="#{{ deviceIntegrationStatus.0|slugify }}_modal_device">
+                            Configure
+                        </button>
+                        {% if deviceIntegrationStatus.3 %}
+                        {% if deviceIntegrationStatus.0 == 'Microsoft Entra ID' or deviceIntegrationStatus.0 == 'Microsoft Intune' %}
+                        <a href="/test-connection/{{ deviceIntegrationStatus.4 }}" class="tz-btn-secondary text-xs py-1.5 px-3">Test</a>
+                        {% endif %}
+                        <a href="/sync-{{ deviceIntegrationStatus.0|slugify }}-devices" class="tz-btn-primary text-xs py-1.5 px-3">Sync</a>
+                        {% endif %}
+                        <form method="post" action="/disable-integration/{{ deviceIntegrationStatus.4 }}" class="ml-auto">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-slate-400 hover:text-code-red-500 transition-colors">Disable</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/enable-integration/{{ deviceIntegrationStatus.4 }}">
+                            {% csrf_token %}
+                            <button type="submit" class="tz-btn-primary text-xs py-1.5 px-3">Enable</button>
+                        </form>
+                        {% endif %}
                     </div>
-                    <!-- Configure Integration Modal -->
-                    <div class="modal fade" id="{{userIntegrationStatus.0|slugify}}_modal_user" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Configure {{userIntegrationStatus.0}} Integration</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body m-3">
-                                    <form action="/update-integration/{{userIntegrationStatus.4}}" method="post">
-                                        {% csrf_token %}
-                                        <div class="mb-3">
-                                            <label class="form-label">Client ID <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="client_id" placeholder="Client ID" value="{{userIntegrationStatus.5}}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Client Secret <span style="color: red;">*</span></label>
-                                            <input type="password" class="form-control" name="client_secret" placeholder="Client Secret" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Tenant ID <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="tenant_id" placeholder="Tenant ID" value="{{userIntegrationStatus.6}}">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">Tenant Domain <span style="color: red;">*</span></label>
-                                            <input type="text" class="form-control" name="tenant_domain" placeholder="example.com" value="{{userIntegrationStatus.7}}">
-                                        </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="submit" class="btn btn-primary">Save changes</button>
-                                </div>
-                                    </form>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- End Configure Integration Modal -->
                 </div>
             </div>
+
+            <!-- Configure Integration Modal -->
+            <div class="modal fade" id="{{ deviceIntegrationStatus.0|slugify }}_modal_device" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                            <h5 class="text-base font-semibold text-slate-900 dark:text-white">Configure {{ deviceIntegrationStatus.0 }}</h5>
+                            <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <form action="/update-integration/{{ deviceIntegrationStatus.4 }}" method="post">
+                            {% csrf_token %}
+                            <div class="px-6 py-4 space-y-4">
+                                <div>
+                                    {% if deviceIntegrationStatus.0 == 'Cloudflare Zero Trust' %}
+                                    <input type="text" class="tz-form-input" name="client_id" value="Not Required for Cloudflare Zero Trust" hidden>
+                                    {% else %}
+                                    <label class="tz-form-label">Client ID <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="client_id" placeholder="Client ID" value="{{ deviceIntegrationStatus.5 }}">
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    {% if deviceIntegrationStatus.0 == 'Cloudflare Zero Trust' %}
+                                    <label class="tz-form-label">API Key <span class="text-code-red-500">*</span></label>
+                                    <input type="password" class="tz-form-input" name="client_secret" placeholder="API Key" required>
+                                    {% elif deviceIntegrationStatus.0 == 'CrowdStrike Falcon' %}
+                                    <label class="tz-form-label">Secret <span class="text-code-red-500">*</span></label>
+                                    <input type="password" class="tz-form-input" name="client_secret" placeholder="Secret" required>
+                                    {% else %}
+                                    <label class="tz-form-label">Client Secret <span class="text-code-red-500">*</span></label>
+                                    <input type="password" class="tz-form-input" name="client_secret" placeholder="Client Secret" required>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    {% if deviceIntegrationStatus.0 == 'Tailscale' %}
+                                    <input type="text" class="tz-form-input" name="tenant_id" value="Not Required for Tailscale" hidden>
+                                    {% elif deviceIntegrationStatus.0 == 'CrowdStrike Falcon' %}
+                                    <label class="tz-form-label">Base URL <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="tenant_id" placeholder="Base URL" value="{{ deviceIntegrationStatus.6 }}">
+                                    {% else %}
+                                    <label class="tz-form-label">Tenant ID <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="tenant_id" placeholder="Tenant ID" value="{{ deviceIntegrationStatus.6 }}">
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    {% if deviceIntegrationStatus.0 == 'Tailscale' %}
+                                    <label class="tz-form-label">Tailnet ID <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="tenant_domain" placeholder="example.com" value="{{ deviceIntegrationStatus.7 }}">
+                                    {% else %}
+                                    <label class="tz-form-label">Tenant Domain <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="tenant_domain" placeholder="example.com" value="{{ deviceIntegrationStatus.7 }}">
+                                    {% endif %}
+                                </div>
+                                {% if deviceIntegrationStatus.0 == 'Microsoft Entra ID' or deviceIntegrationStatus.0 == 'Microsoft Intune' %}
+                                <div>
+                                    <label class="tz-form-label">Device Ownership Filter</label>
+                                    <select class="tz-form-select" name="device_ownership_filter">
+                                        <option value="All" {% if deviceIntegrationStatus.10 == 'All' %}selected{% endif %}>All Devices</option>
+                                        <option value="Company" {% if deviceIntegrationStatus.10 == 'Company' %}selected{% endif %}>Corporate Devices Only</option>
+                                        <option value="Personal" {% if deviceIntegrationStatus.10 == 'Personal' %}selected{% endif %}>Personal Devices Only</option>
+                                    </select>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                                <button type="button" class="tz-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="tz-btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- End Configure Integration Modal -->
             {% endfor %}
-            <!-- End User Integration Cards -->
         </div>
     </div>
+
+    <!-- User Integrations Section -->
+    <div class="mb-8">
+        <div class="flex items-center gap-3 mb-4">
+            <h2 class="text-base font-semibold text-slate-900 dark:text-white">User Integrations</h2>
+            <a href="https://docs.tierzerocode.com/manage-tier-zero-code/user-integrations/add-user-integration" target="_blank"
+               class="tz-badge tz-badge-info text-xs">Documentation</a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for userIntegrationStatus in userIntegrationStatuses %}
+            <div class="tz-card hover:shadow-md transition-shadow">
+                <div class="tz-card-body">
+                    <!-- Top: Logo + Status -->
+                    <div class="flex items-center gap-4 mb-4">
+                        <img src="{% static userIntegrationStatus.1 %}" alt="{{ userIntegrationStatus.0 }}" class="w-10 h-10 object-contain">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-slate-900 dark:text-white text-sm truncate">{{ userIntegrationStatus.0 }}</h3>
+                            {% if userIntegrationStatus.2 and userIntegrationStatus.3 %}
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
+                                <span class="text-code-green-600">Active</span>
+                            </span>
+                            {% elif userIntegrationStatus.2 and not userIntegrationStatus.3 %}
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
+                                <span class="text-code-amber-600">Setup Required</span>
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                                <span class="text-slate-400">Disabled</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Meta: Last sync -->
+                    <div class="text-xs text-slate-500 space-y-1 mb-4">
+                        {% if userIntegrationStatus.8 %}
+                        <p>Last sync: {{ userIntegrationStatus.8 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                        {% if userIntegrationStatus.2 %}
+                        <button class="tz-btn-secondary text-xs py-1.5 px-3"
+                                data-bs-toggle="modal"
+                                data-bs-target="#{{ userIntegrationStatus.0|slugify }}_modal_user">
+                            Configure
+                        </button>
+                        {% if userIntegrationStatus.3 %}
+                        <a href="/sync-{{ userIntegrationStatus.0|slugify }}-users" class="tz-btn-primary text-xs py-1.5 px-3">Sync</a>
+                        {% endif %}
+                        <form method="post" action="/disable-integration/{{ userIntegrationStatus.4 }}" class="ml-auto">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-slate-400 hover:text-code-red-500 transition-colors">Disable</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/enable-integration/{{ userIntegrationStatus.4 }}">
+                            {% csrf_token %}
+                            <button type="submit" class="tz-btn-primary text-xs py-1.5 px-3">Enable</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configure Integration Modal -->
+            <div class="modal fade" id="{{ userIntegrationStatus.0|slugify }}_modal_user" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl">
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                            <h5 class="text-base font-semibold text-slate-900 dark:text-white">Configure {{ userIntegrationStatus.0 }}</h5>
+                            <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" data-bs-dismiss="modal" aria-label="Close">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <form action="/update-integration/{{ userIntegrationStatus.4 }}" method="post">
+                            {% csrf_token %}
+                            <div class="px-6 py-4 space-y-4">
+                                <div>
+                                    <label class="tz-form-label">Client ID <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="client_id" placeholder="Client ID" value="{{ userIntegrationStatus.5 }}">
+                                </div>
+                                <div>
+                                    <label class="tz-form-label">Client Secret <span class="text-code-red-500">*</span></label>
+                                    <input type="password" class="tz-form-input" name="client_secret" placeholder="Client Secret" required>
+                                </div>
+                                <div>
+                                    <label class="tz-form-label">Tenant ID <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="tenant_id" placeholder="Tenant ID" value="{{ userIntegrationStatus.6 }}">
+                                </div>
+                                <div>
+                                    <label class="tz-form-label">Tenant Domain <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="tenant_domain" placeholder="example.com" value="{{ userIntegrationStatus.7 }}">
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                                <button type="button" class="tz-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="tz-btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- End Configure Integration Modal -->
+            {% endfor %}
+        </div>
+    </div>
+
 </main>
 {% endblock %}
