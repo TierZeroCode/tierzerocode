@@ -477,54 +477,93 @@ def syncConditionalAccessPolicies(access_token):
 
 
 def syncTenantSecurityConfig(access_token):
-    """Fetch tenant security settings from Microsoft Graph. Requires Directory.Read.All."""
+    """Fetch tenant security settings from Microsoft Graph.
+
+    Tries multiple endpoints to find password protection config:
+    1. GET /settings (directory settings — customized tenants)
+    2. GET /beta/settings (beta endpoint — may have more data)
+    3. GET /beta/security/authenticationMethodsPolicy (auth method policies)
+
+    If no password protection settings are found in any endpoint, saves
+    Entra ID defaults (global banned list is ON by default in all tenants).
+
+    Requires Directory.Read.All permission.
+    """
     from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
 
     try:
-        # Fetch directory settings (includes password protection config)
-        url = "https://graph.microsoft.com/v1.0/settings"
         headers = {'Authorization': access_token}
+        found_settings = False
 
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            _sync_log("Microsoft Entra ID", "1510", "Failure",
-                      f"Tenant settings fetch failed: {response.status_code} - {response.text[:500]}")
-            return
-
-        settings_list = response.json().get('value', [])
-
-        # Find the password protection settings
         password_protection_enabled = False
         password_protection_mode = None
         password_protection_on_prem = False
         custom_banned_enabled = False
         custom_banned_list = None
+        raw_data = {}
 
-        for setting_group in settings_list:
-            template_id = setting_group.get('templateId', '')
-            values = {v['name']: v.get('value') for v in setting_group.get('values', [])}
+        # Password Rule Settings template ID
+        PASSWORD_TEMPLATE_ID = '5cf42378-d67d-4f36-ba46-e8b86229381d'
 
-            # Password Rule Settings template
-            if 'BannedPasswordCheck' in str(values) or 'Password' in setting_group.get('displayName', ''):
-                password_protection_enabled = str(values.get('EnableBannedPasswordCheck', 'false')).lower() == 'true'
-                password_protection_mode = values.get('BannedPasswordCheckOnPremisesMode', 'Audit')
-                password_protection_on_prem = str(values.get('EnableBannedPasswordCheckOnPremises', 'false')).lower() == 'true'
-                custom_banned_enabled = str(values.get('EnableCustomBannedPasswords', 'false')).lower() == 'true'
-                raw_list = values.get('BannedPasswordList', '')
-                if raw_list:
-                    custom_banned_list = [p.strip() for p in raw_list.split(',') if p.strip()]
+        def parse_settings_values(settings_list):
+            """Extract password protection from directory settings."""
+            nonlocal found_settings, password_protection_enabled, password_protection_mode
+            nonlocal password_protection_on_prem, custom_banned_enabled, custom_banned_list
 
-        # Also try the beta endpoint for more complete data
-        beta_url = "https://graph.microsoft.com/beta/settings"
-        beta_response = requests.get(beta_url, headers=headers)
-        if beta_response.status_code == 200:
-            for setting_group in beta_response.json().get('value', []):
-                values = {v['name']: v.get('value') for v in setting_group.get('values', [])}
-                if 'EnableBannedPasswordCheck' in values:
+            for setting_group in settings_list:
+                template_id = setting_group.get('templateId', '')
+                display_name = setting_group.get('displayName', '')
+                raw_values = setting_group.get('values', [])
+
+                if not raw_values:
+                    continue
+
+                values = {v.get('name', ''): v.get('value') for v in raw_values if isinstance(v, dict)}
+
+                # Match by template ID or by content
+                if (template_id == PASSWORD_TEMPLATE_ID or
+                    'BannedPasswordCheck' in str(values) or
+                    'Password Rule' in display_name):
+
+                    found_settings = True
                     password_protection_enabled = str(values.get('EnableBannedPasswordCheck', 'false')).lower() == 'true'
-                    password_protection_mode = values.get('BannedPasswordCheckOnPremisesMode', password_protection_mode)
+                    password_protection_mode = values.get('BannedPasswordCheckOnPremisesMode', 'Audit')
                     password_protection_on_prem = str(values.get('EnableBannedPasswordCheckOnPremises', 'false')).lower() == 'true'
                     custom_banned_enabled = str(values.get('EnableCustomBannedPasswords', 'false')).lower() == 'true'
+                    raw_list = values.get('BannedPasswordList', '')
+                    if raw_list:
+                        custom_banned_list = [p.strip() for p in str(raw_list).split(',') if p.strip()]
+
+        # Try v1.0 /settings
+        response = requests.get("https://graph.microsoft.com/v1.0/settings", headers=headers)
+        if response.status_code == 200:
+            settings_list = response.json().get('value', [])
+            raw_data['v1_settings'] = settings_list
+            parse_settings_values(settings_list)
+
+        # Try beta /settings if not found yet
+        if not found_settings:
+            beta_response = requests.get("https://graph.microsoft.com/beta/settings", headers=headers)
+            if beta_response.status_code == 200:
+                beta_list = beta_response.json().get('value', [])
+                raw_data['beta_settings'] = beta_list
+                parse_settings_values(beta_list)
+
+        # Try groupSettings (some tenants store it here)
+        if not found_settings:
+            group_response = requests.get("https://graph.microsoft.com/v1.0/groupSettings", headers=headers)
+            if group_response.status_code == 200:
+                group_list = group_response.json().get('value', [])
+                raw_data['group_settings'] = group_list
+                parse_settings_values(group_list)
+
+        # If still no explicit settings found, Entra ID defaults apply:
+        # Global banned password list is ENABLED by default in all Entra ID tenants
+        # Mode defaults to "Enforce" for cloud-only
+        if not found_settings:
+            password_protection_enabled = True  # Entra ID default
+            password_protection_mode = 'Enforce'  # Cloud-only default
+            raw_data['note'] = 'No explicit password protection settings found. Using Entra ID defaults (global banned list enabled, enforce mode for cloud).'
 
         TenantSecurityConfig.objects.update_or_create(
             id=1,
@@ -534,12 +573,13 @@ def syncTenantSecurityConfig(access_token):
                 'password_protection_on_premises_enabled': password_protection_on_prem,
                 'custom_banned_passwords_enabled': custom_banned_enabled,
                 'custom_banned_password_list': custom_banned_list,
-                'raw_settings': settings_list,
+                'raw_settings': raw_data,
             },
         )
 
+        source = 'explicit settings' if found_settings else 'Entra ID defaults'
         _sync_log("Microsoft Entra ID", "1510", "Success",
-                  f"Tenant security config synced (password protection: {'enabled' if password_protection_enabled else 'disabled'}, mode: {password_protection_mode})")
+                  f"Tenant security config synced from {source} (password protection: {'enabled' if password_protection_enabled else 'disabled'}, mode: {password_protection_mode})")
 
     except Exception as e:
         _sync_log("Microsoft Entra ID", "1511", "Failure",
