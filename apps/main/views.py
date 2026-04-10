@@ -553,6 +553,45 @@ def personaMetrics(request, persona_id):
 ############################################################################################
 
 @login_required
+def reports(request):
+	from apps.authhandler.models import SSOIntegration
+
+	compliance_total = Device.objects.count()
+	compliance_compliant = Device.objects.filter(compliant=True).count()
+	compliance_noncompliant = Device.objects.filter(compliant=False).count()
+
+	total_users = UserData.objects.count()
+	mfa_enrolled = UserData.objects.exclude(highest_authentication_strength='None').exclude(highest_authentication_strength__isnull=True).count()
+	mfa_percent = round((mfa_enrolled / total_users * 100) if total_users > 0 else 0)
+	phishing_resistant_users = UserData.objects.filter(highest_authentication_strength='Phishing Resistant').count()
+	users_no_mfa = UserData.objects.filter(highest_authentication_strength='None').count() + UserData.objects.filter(highest_authentication_strength__isnull=True).count()
+	users_deprecated_auth = UserData.objects.filter(highest_authentication_strength='Deprecated').count()
+
+	managed_devices = Device.objects.exclude(integrations=None).count()
+	active_integrations = Integration.objects.filter(enabled=True).count()
+	sso_enabled = SSOIntegration.objects.filter(enabled=True).exists()
+
+	context = {
+		'page': 'reports',
+		'compliance_total': compliance_total,
+		'compliance_compliant': compliance_compliant,
+		'compliance_noncompliant': compliance_noncompliant,
+		'total_users': total_users,
+		'mfa_enrolled': mfa_enrolled,
+		'mfa_percent': mfa_percent,
+		'phishing_resistant_users': phishing_resistant_users,
+		'users_no_mfa': users_no_mfa,
+		'users_deprecated_auth': users_deprecated_auth,
+		'managed_devices': managed_devices,
+		'active_integrations': active_integrations,
+		'sso_enabled': sso_enabled,
+		'notifications': Notification.objects.all().order_by('-created_at')[:10],
+	}
+	return render(request, 'main/reports.html', context)
+
+############################################################################################
+
+@login_required
 def generalSettings(request):
 	from .utils import ComplianceSettingsManager
 	from django.contrib.auth.models import User

@@ -1,0 +1,215 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100 mb-5">Reports</h1>
+
+<div class="flex gap-6">
+    <!-- Left sidebar nav -->
+    <nav class="w-48 shrink-0">
+        <div class="sticky top-20 space-y-1">
+            <button data-tab="ciso" class="tz-nav-item-active w-full text-left">CISO Overview</button>
+            <button data-tab="controls" class="tz-nav-item w-full text-left">Controls Monitoring</button>
+            <button data-tab="sox" class="tz-nav-item w-full text-left">SOX Controls</button>
+        </div>
+    </nav>
+
+    <!-- Content area -->
+    <div class="flex-1 min-w-0">
+
+        <!-- CISO Overview Tab -->
+        <div id="panel-ciso" class="tab-panel">
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">CISO Overview</h2>
+                </div>
+                <div class="tz-card-body">
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Executive-level security posture summary for CISO reporting. Includes compliance trends, risk scores, and key metrics across all integrated security tools.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="tz-stat-card">
+                            <span class="tz-section-label">Compliance Rate</span>
+                            <span class="tz-stat-value">{% widthratio compliance_compliant compliance_total 100 %}%</span>
+                            <span class="tz-stat-label">{{ compliance_compliant }} / {{ compliance_total }} devices</span>
+                        </div>
+                        <div class="tz-stat-card">
+                            <span class="tz-section-label">MFA Coverage</span>
+                            <span class="tz-stat-value">{{ mfa_percent }}%</span>
+                            <span class="tz-stat-label">{{ mfa_enrolled }} / {{ total_users }} users</span>
+                        </div>
+                        <div class="tz-stat-card">
+                            <span class="tz-section-label">Managed Devices</span>
+                            <span class="tz-stat-value">{{ managed_devices }}</span>
+                            <span class="tz-stat-label">Across {{ active_integrations }} integrations</span>
+                        </div>
+                    </div>
+
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Risk Summary</h3>
+                        </div>
+                        <div class="tz-card-body">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                        <th class="text-left py-2 px-3 tz-section-label">Category</th>
+                                        <th class="text-left py-2 px-3 tz-section-label">Status</th>
+                                        <th class="text-right py-2 px-3 tz-section-label">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                    <tr>
+                                        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300">Non-compliant devices</td>
+                                        <td class="py-2.5 px-3">
+                                            {% if compliance_noncompliant > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                        </td>
+                                        <td class="py-2.5 px-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ compliance_noncompliant }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300">Users without MFA</td>
+                                        <td class="py-2.5 px-3">
+                                            {% if users_no_mfa > 0 %}<span class="tz-badge tz-badge-warning">Review</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                        </td>
+                                        <td class="py-2.5 px-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_no_mfa }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300">Users with deprecated auth</td>
+                                        <td class="py-2.5 px-3">
+                                            {% if users_deprecated_auth > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                        </td>
+                                        <td class="py-2.5 px-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_deprecated_auth }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Monitoring Tab -->
+        <div id="panel-controls" class="tab-panel hidden">
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Controls Monitoring</h2>
+                </div>
+                <div class="tz-card-body">
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Continuous monitoring of security controls across endpoint management, identity governance, and vulnerability management.</p>
+
+                    <div class="space-y-4">
+                        <div class="tz-card">
+                            <div class="tz-card-header flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Endpoint Management</h3>
+                                {% if compliance_compliant == compliance_total and compliance_total > 0 %}<span class="tz-badge tz-badge-success">Passing</span>{% elif compliance_total > 0 %}<span class="tz-badge tz-badge-warning">Gaps Detected</span>{% else %}<span class="tz-badge tz-badge-neutral">No Data</span>{% endif %}
+                            </div>
+                            <div class="tz-card-body">
+                                <table class="w-full text-sm">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">All devices enrolled in MDM</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ managed_devices }} / {{ compliance_total }}</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">Devices meeting compliance policy</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ compliance_compliant }} / {{ compliance_total }}</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">Active security integrations</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ active_integrations }}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tz-card">
+                            <div class="tz-card-header flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Identity & Access</h3>
+                                {% if users_no_mfa == 0 and users_deprecated_auth == 0 and total_users > 0 %}<span class="tz-badge tz-badge-success">Passing</span>{% elif total_users > 0 %}<span class="tz-badge tz-badge-warning">Gaps Detected</span>{% else %}<span class="tz-badge tz-badge-neutral">No Data</span>{% endif %}
+                            </div>
+                            <div class="tz-card-body">
+                                <table class="w-full text-sm">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">MFA enrollment</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ mfa_enrolled }} / {{ total_users }}</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">Phishing-resistant auth</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ phishing_resistant_users }}</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">Users with deprecated methods</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_deprecated_auth }}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SOX Controls Tab -->
+        <div id="panel-sox" class="tab-panel hidden">
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">SOX Controls</h2>
+                </div>
+                <div class="tz-card-body">
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Sarbanes-Oxley IT General Controls (ITGC) evidence for access management, change management, and system operations.</p>
+
+                    <div class="space-y-4">
+                        <div class="tz-card">
+                            <div class="tz-card-header flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Access Management (SOX.AC)</h3>
+                                {% if total_users > 0 %}<span class="tz-badge tz-badge-info">{{ total_users }} Users</span>{% endif %}
+                            </div>
+                            <div class="tz-card-body">
+                                <table class="w-full text-sm">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">AC-1: MFA enforcement</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ mfa_enrolled }} / {{ total_users }} enrolled</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">AC-2: Phishing-resistant auth</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ phishing_resistant_users }} users</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">AC-3: SSO integration</td><td class="py-2 text-right">{% if sso_enabled %}<span class="tz-badge tz-badge-success">Enabled</span>{% else %}<span class="tz-badge tz-badge-warning">Not Configured</span>{% endif %}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tz-card">
+                            <div class="tz-card-header flex items-center justify-between">
+                                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">System Operations (SOX.SO)</h3>
+                                {% if compliance_total > 0 %}<span class="tz-badge tz-badge-info">{{ compliance_total }} Devices</span>{% endif %}
+                            </div>
+                            <div class="tz-card-body">
+                                <table class="w-full text-sm">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">SO-1: Endpoint compliance</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{% if compliance_total > 0 %}{% widthratio compliance_compliant compliance_total 100 %}%{% else %}N/A{% endif %}</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">SO-2: MDM enrollment</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ managed_devices }} / {{ compliance_total }} managed</td></tr>
+                                        <tr><td class="py-2 text-slate-600 dark:text-slate-400">SO-3: Security tool coverage</td><td class="py-2 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ active_integrations }} integrations active</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function switchReportTab(tabName) {
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
+    document.querySelectorAll('[data-tab]').forEach(function(b) {
+        b.className = b.className.replace('tz-nav-item-active', 'tz-nav-item');
+    });
+    var panel = document.getElementById('panel-' + tabName);
+    if (panel) panel.classList.remove('hidden');
+    document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(function(b) {
+        b.className = b.className.replace('tz-nav-item', 'tz-nav-item-active');
+    });
+    if (history.pushState) history.pushState(null, null, window.location.pathname + '#' + tabName);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-tab]').forEach(function(btn) {
+        btn.addEventListener('click', function() { switchReportTab(this.dataset.tab); });
+    });
+    var hash = window.location.hash;
+    if (hash && hash.length > 1) {
+        switchReportTab(hash.replace('#', ''));
+    } else {
+        switchReportTab('ciso');
+    }
+});
+</script>
+{% endblock %}
