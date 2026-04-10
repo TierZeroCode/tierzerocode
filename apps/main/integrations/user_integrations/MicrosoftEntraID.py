@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.utils.timezone import make_aware
 # Import Models
-from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy
+from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy, TenantSecurityConfig
 # Import Function Scripts
 from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
@@ -476,6 +476,76 @@ def syncConditionalAccessPolicies(access_token):
                   f"CA policy sync error: {str(e)}")
 
 
+def syncTenantSecurityConfig(access_token):
+    """Fetch tenant security settings from Microsoft Graph. Requires Directory.Read.All."""
+    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
+
+    try:
+        # Fetch directory settings (includes password protection config)
+        url = "https://graph.microsoft.com/v1.0/settings"
+        headers = {'Authorization': access_token}
+
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            _sync_log("Microsoft Entra ID", "1510", "Failure",
+                      f"Tenant settings fetch failed: {response.status_code} - {response.text[:500]}")
+            return
+
+        settings_list = response.json().get('value', [])
+
+        # Find the password protection settings
+        password_protection_enabled = False
+        password_protection_mode = None
+        password_protection_on_prem = False
+        custom_banned_enabled = False
+        custom_banned_list = None
+
+        for setting_group in settings_list:
+            template_id = setting_group.get('templateId', '')
+            values = {v['name']: v.get('value') for v in setting_group.get('values', [])}
+
+            # Password Rule Settings template
+            if 'BannedPasswordCheck' in str(values) or 'Password' in setting_group.get('displayName', ''):
+                password_protection_enabled = str(values.get('EnableBannedPasswordCheck', 'false')).lower() == 'true'
+                password_protection_mode = values.get('BannedPasswordCheckOnPremisesMode', 'Audit')
+                password_protection_on_prem = str(values.get('EnableBannedPasswordCheckOnPremises', 'false')).lower() == 'true'
+                custom_banned_enabled = str(values.get('EnableCustomBannedPasswords', 'false')).lower() == 'true'
+                raw_list = values.get('BannedPasswordList', '')
+                if raw_list:
+                    custom_banned_list = [p.strip() for p in raw_list.split(',') if p.strip()]
+
+        # Also try the beta endpoint for more complete data
+        beta_url = "https://graph.microsoft.com/beta/settings"
+        beta_response = requests.get(beta_url, headers=headers)
+        if beta_response.status_code == 200:
+            for setting_group in beta_response.json().get('value', []):
+                values = {v['name']: v.get('value') for v in setting_group.get('values', [])}
+                if 'EnableBannedPasswordCheck' in values:
+                    password_protection_enabled = str(values.get('EnableBannedPasswordCheck', 'false')).lower() == 'true'
+                    password_protection_mode = values.get('BannedPasswordCheckOnPremisesMode', password_protection_mode)
+                    password_protection_on_prem = str(values.get('EnableBannedPasswordCheckOnPremises', 'false')).lower() == 'true'
+                    custom_banned_enabled = str(values.get('EnableCustomBannedPasswords', 'false')).lower() == 'true'
+
+        TenantSecurityConfig.objects.update_or_create(
+            id=1,
+            defaults={
+                'password_protection_enabled': password_protection_enabled,
+                'password_protection_mode': password_protection_mode,
+                'password_protection_on_premises_enabled': password_protection_on_prem,
+                'custom_banned_passwords_enabled': custom_banned_enabled,
+                'custom_banned_password_list': custom_banned_list,
+                'raw_settings': settings_list,
+            },
+        )
+
+        _sync_log("Microsoft Entra ID", "1510", "Success",
+                  f"Tenant security config synced (password protection: {'enabled' if password_protection_enabled else 'disabled'}, mode: {password_protection_mode})")
+
+    except Exception as e:
+        _sync_log("Microsoft Entra ID", "1511", "Failure",
+                  f"Tenant security config sync error: {str(e)}")
+
+
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
@@ -500,6 +570,9 @@ def syncMicrosoftEntraIDUser():
 
     # Sync Conditional Access policies (requires Policy.Read.All)
     syncConditionalAccessPolicies(access_token)
+
+    # Sync tenant security configuration (requires Directory.Read.All)
+    syncTenantSecurityConfig(access_token)
 
     data.last_synced_at = timezone.now()
     data.save()

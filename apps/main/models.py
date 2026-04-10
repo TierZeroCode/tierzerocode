@@ -623,3 +623,26 @@ class ConditionalAccessPolicy(models.Model):
         ordering = ['display_name']
         verbose_name = "Conditional Access Policy"
         verbose_name_plural = "Conditional Access Policies"
+
+
+class TenantSecurityConfig(models.Model):
+    """Stores tenant-level security configuration synced from Microsoft Entra ID."""
+    # Password Protection
+    password_protection_enabled = models.BooleanField(default=False)
+    password_protection_mode = models.CharField(max_length=20, null=True, blank=True)  # Enforce, Audit
+    password_protection_on_premises_enabled = models.BooleanField(default=False)
+    custom_banned_passwords_enabled = models.BooleanField(default=False)
+    custom_banned_password_list = models.JSONField(null=True, blank=True)
+
+    # Raw settings for reference
+    raw_settings = models.JSONField(null=True, blank=True)
+
+    synced_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return f"Tenant Config (synced {self.synced_at})"
+
+    class Meta:
+        verbose_name = "Tenant Security Config"
+        verbose_name_plural = "Tenant Security Configs"
