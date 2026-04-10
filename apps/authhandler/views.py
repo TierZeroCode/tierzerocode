@@ -1,3 +1,5 @@
+import string
+import secrets
 from .authentication_backends.MicrosoftEntraID import MicrosoftEntraIDBackend
 from .decorators import permission_required_with_message
 from django.shortcuts import redirect
