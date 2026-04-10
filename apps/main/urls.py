@@ -11,6 +11,7 @@ urlpatterns = [
     path('user-dashboard', views.indexUser, name='user-dashboard'),
     path('user-dashboard/<int:persona_id>', views.personaMetrics, name='persona-metrics'),
     path('reports', views.reports, name='reports'),
+    path('reports/evaluate', views.evaluate_controls_view, name='evaluate_controls'),
     
     # ============================================================================
     # Device Management
