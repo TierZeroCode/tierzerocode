@@ -107,7 +107,11 @@
         {% if detail.policies %}
         <div class="mt-4">
             <div class="flex items-center justify-between mb-2">
-                <p class="tz-section-label">Conditional Access Policies ({{ detail.total_enabled_policies }} enforced / {{ detail.total_all_policies }} total)</p>
+                <div>
+                    <p class="tz-section-label">Conditional Access Policies ({{ detail.total_enabled_policies }} enforced / {{ detail.total_all_policies }} total)</p>
+                    {% if detail.without_session_count %}<p class="text-xs text-code-red-600 dark:text-code-red-400 mt-0.5">{{ detail.without_session_count }} enforced polic{{ detail.without_session_count|pluralize:"y,ies" }} missing session controls</p>{% endif %}
+                    {% if detail.exceeds_30d_count %}<p class="text-xs text-code-red-600 dark:text-code-red-400">{{ detail.exceeds_30d_count }} enforced polic{{ detail.exceeds_30d_count|pluralize:"y,ies" }} exceed 30 days</p>{% endif %}
+                </div>
                 <a href="{% url 'control_export_noncompliant' ctrl.control_id %}" class="tz-btn-secondary text-xs py-1 px-2.5">Export XLSX</a>
             </div>
             <table class="w-full text-sm">
@@ -117,12 +121,12 @@
                         <th class="text-left py-2 px-3 tz-section-label">State</th>
                         <th class="text-left py-2 px-3 tz-section-label">Sign-in Frequency</th>
                         <th class="text-left py-2 px-3 tz-section-label">Persistent Browser</th>
-                        <th class="text-left py-2 px-3 tz-section-label">Session Control</th>
+                        <th class="text-left py-2 px-3 tz-section-label">Compliant</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                     {% for p in detail.policies %}
-                    <tr class="{% if p.state != 'enabled' %}opacity-50{% elif p.sign_in_frequency_days and p.sign_in_frequency_days > 30 %}bg-code-red-50/30 dark:bg-code-red-500/5{% endif %}">
+                    <tr class="{% if p.state != 'enabled' %}opacity-50{% elif not p.is_compliant %}bg-code-red-50/30 dark:bg-code-red-500/5{% endif %}">
                         <td class="py-2 px-3 text-slate-800 dark:text-slate-200 font-medium">{{ p.display_name }}</td>
                         <td class="py-2 px-3">
                             {% if p.state == 'enabled' %}<span class="tz-badge tz-badge-success">Enforced</span>
@@ -139,6 +143,8 @@
                                         <span class="tz-badge tz-badge-success ml-1">OK</span>
                                     {% endif %}
                                 {% endif %}
+                            {% elif p.state == 'enabled' %}
+                                <span class="text-code-red-600 dark:text-code-red-400">No limit (infinite session)</span>
                             {% else %}
                                 <span class="text-slate-400">Not configured</span>
                             {% endif %}
@@ -147,11 +153,13 @@
                             {% if p.persistent_browser_enabled %}
                                 {{ p.persistent_browser_mode }}
                             {% else %}
-                                <span class="text-slate-400">Not configured</span>
+                                <span class="text-slate-400">-</span>
                             {% endif %}
                         </td>
                         <td class="py-2 px-3">
-                            {% if p.has_session_control %}<span class="tz-badge tz-badge-info">Active</span>{% else %}<span class="tz-badge tz-badge-neutral">None</span>{% endif %}
+                            {% if p.state != 'enabled' %}<span class="tz-badge tz-badge-neutral">N/A</span>
+                            {% elif p.is_compliant %}<span class="tz-badge tz-badge-success">Yes</span>
+                            {% else %}<span class="tz-badge tz-badge-danger">No</span>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}

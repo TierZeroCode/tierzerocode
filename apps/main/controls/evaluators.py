@@ -218,57 +218,72 @@ def aal_04_detail():
 
 
 def aal_05():
-    """AAL-05: Maximum session lifetime for AAL1 should be <= 30 days.
+    """AAL-05: ALL enforced CA policies must have a session lifetime <= 30 days.
 
-    Only counts policies with state='enabled' (not 'disabled' or
-    'enabledForReportingButNotEnforced'). Checks sign-in frequency
-    is configured and <= 30 days.
+    Every enforced policy (state='enabled') must have sign-in frequency
+    configured. Policies without session controls allow indefinite sessions,
+    which violates the NIST requirement for a definite reauthentication timeout.
+
+    Fails if ANY enforced policy is missing a session limit or has one > 30 days.
 
     Target: <= 30 days
     """
-    # Only enforced policies count — report-only does not enforce session limits
-    enforced_with_session = ConditionalAccessPolicy.objects.filter(
-        state='enabled',
-        sign_in_frequency_enabled=True,
-    ).exclude(
-        sign_in_frequency_value__isnull=True,
-    )
+    enforced = ConditionalAccessPolicy.objects.filter(state='enabled')
 
-    if not enforced_with_session.exists():
+    if not enforced.exists():
         all_synced = ConditionalAccessPolicy.objects.count()
         if all_synced == 0:
             return ('-', 'not_measured')
-        enforced_any = ConditionalAccessPolicy.objects.filter(state='enabled').count()
-        if enforced_any == 0:
-            return ('No enforced policies', 'not_measured')
-        return ('No session policy', 'failing')
+        return ('No enforced policies', 'not_measured')
 
+    total_enforced = enforced.count()
+    without_session = enforced.filter(
+        Q(sign_in_frequency_enabled=False) | Q(sign_in_frequency_value__isnull=True)
+    ).count()
+    exceeds_30d = 0
     max_days = 0
-    for policy in enforced_with_session:
+
+    for policy in enforced.filter(sign_in_frequency_enabled=True).exclude(sign_in_frequency_value__isnull=True):
         days = policy.sign_in_frequency_days
-        if days is not None and days > max_days:
-            max_days = days
+        if days is not None:
+            if days > max_days:
+                max_days = days
+            if days > 30:
+                exceeds_30d += 1
 
-    if max_days == 0:
-        return ('No valid frequency', 'failing')
+    with_valid_session = total_enforced - without_session
+    compliant = with_valid_session - exceeds_30d
 
-    status = 'passing' if max_days <= 30 else 'failing'
+    if without_session > 0 or exceeds_30d > 0:
+        return (f'{compliant}/{total_enforced} compliant', 'failing')
+
     display = f'{int(max_days)} days' if max_days == int(max_days) else f'{max_days:.1f} days'
-    return (display, status)
+    return (f'{display} max ({total_enforced}/{total_enforced})', 'passing')
 
 
 def aal_05_detail():
     """Return detailed data for AAL-05: all CA policies with session controls."""
-    # Show ALL policies (including disabled and report-only) for full visibility
     all_policies = ConditionalAccessPolicy.objects.all()
     enforced_policies = all_policies.filter(state='enabled')
-    session_policies = enforced_policies.filter(
-        sign_in_frequency_enabled=True,
-    ).exclude(sign_in_frequency_value__isnull=True)
 
     policies_data = []
+    without_session_count = 0
+    exceeds_30d_count = 0
+    max_days = 0
+
     for p in all_policies:
         days = p.sign_in_frequency_days
+        has_valid_session = p.sign_in_frequency_enabled and p.sign_in_frequency_value is not None
+
+        # Track stats for enforced policies only
+        if p.state == 'enabled':
+            if not has_valid_session:
+                without_session_count += 1
+            elif days is not None and days > 30:
+                exceeds_30d_count += 1
+            if days is not None and days > max_days:
+                max_days = days
+
         policies_data.append({
             'display_name': p.display_name,
             'state': p.state,
@@ -279,20 +294,16 @@ def aal_05_detail():
             'persistent_browser_enabled': p.persistent_browser_enabled,
             'persistent_browser_mode': p.persistent_browser_mode,
             'grant_controls': p.grant_controls,
-            'has_session_control': (p.sign_in_frequency_enabled and p.sign_in_frequency_value is not None) or p.persistent_browser_enabled,
+            'has_session_control': has_valid_session or p.persistent_browser_enabled,
+            'is_compliant': p.state != 'enabled' or (has_valid_session and days is not None and days <= 30),
         })
-
-    max_days = 0
-    for p in session_policies:
-        days = p.sign_in_frequency_days
-        if days is not None and days > max_days:
-            max_days = days
 
     return {
         'total_all_policies': all_policies.count(),
         'total_enabled_policies': enforced_policies.count(),
-        'session_policies_count': session_policies.count(),
+        'without_session_count': without_session_count,
+        'exceeds_30d_count': exceeds_30d_count,
         'max_session_days': max_days if max_days > 0 else None,
         'policies': policies_data,
-        'logic': 'Only policies with state "enabled" are evaluated (report-only and disabled policies are shown but do not count). Checks sign-in frequency settings where both isEnabled=True and a value is configured. AAL1 requires reauthentication timeout of no more than 30 days.',
+        'logic': 'Every enforced policy (state="enabled") must have a sign-in frequency configured at <= 30 days. Policies without session controls allow indefinite sessions, which violates the NIST requirement for a definite reauthentication timeout. Report-only and disabled policies are shown but not evaluated.',
     }
