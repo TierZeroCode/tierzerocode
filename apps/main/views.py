@@ -597,6 +597,40 @@ def reports(request):
 ############################################################################################
 
 @login_required
+def evaluate_controls_view(request):
+	"""Run all control evaluators and redirect back to reports."""
+	if not request.user.is_superuser:
+		return redirect('reports')
+
+	from apps.main.controls import evaluators
+
+	controls = Control.objects.filter(
+		enabled=True,
+		evaluator__isnull=False,
+	).exclude(evaluator='')
+
+	evaluated = 0
+	for ctrl in controls:
+		func = getattr(evaluators, ctrl.evaluator, None)
+		if func is None:
+			continue
+		try:
+			current_value, status = func()
+			ctrl.current_value = current_value
+			ctrl.status = status
+			ctrl.save(update_fields=['current_value', 'status', 'updated_at'])
+			evaluated += 1
+		except Exception:
+			ctrl.current_value = 'Error'
+			ctrl.status = 'not_measured'
+			ctrl.save(update_fields=['current_value', 'status', 'updated_at'])
+
+	messages.success(request, f'{evaluated} control(s) evaluated.')
+	return redirect(reverse('reports') + '#controls')
+
+############################################################################################
+
+@login_required
 def generalSettings(request):
 	from .utils import ComplianceSettingsManager
 	from django.contrib.auth.models import User

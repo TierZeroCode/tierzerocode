@@ -26,6 +26,7 @@ class Command(BaseCommand):
                 'indicator': '% of accounts with at least one authenticator registered at enrollment',
                 'measurement_method': 'Entra ID authentication methods registration report; SailPoint provisioning workflow audit',
                 'target': '100%',
+                'evaluator': 'alm_01',
             },
             {
                 'control_id': 'ALM-02',
@@ -35,6 +36,7 @@ class Command(BaseCommand):
                 'indicator': '% of MFA registration events that required prior authentication at AAL2 or higher',
                 'measurement_method': 'Entra ID MFA registration policy (require MFA to register MFA); CA policy for security info registration',
                 'target': '100%',
+                'evaluator': 'alm_02',
             },
         ]
 

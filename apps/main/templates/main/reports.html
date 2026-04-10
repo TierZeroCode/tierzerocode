@@ -90,6 +90,10 @@
 
         <!-- Controls Monitoring Tab -->
         <div id="panel-controls" class="tab-panel hidden">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-sm text-slate-600 dark:text-slate-400">Automated evaluation of security controls against live data.</p>
+                <a href="{% url 'evaluate_controls' %}" class="tz-btn-primary text-xs py-1.5 px-3">Evaluate All</a>
+            </div>
             {% if frameworks %}
             {% for fw in frameworks %}
             <div class="tz-card mb-5">
@@ -109,6 +113,7 @@
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Target</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Current</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Status</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Evaluated</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -135,6 +140,7 @@
                                     {% elif ctrl.status == 'failing' %}<span class="tz-badge tz-badge-danger">Failing</span>
                                     {% else %}<span class="tz-badge tz-badge-neutral">Not Measured</span>{% endif %}
                                 </td>
+                                <td class="py-2.5 px-4 text-[11px] text-slate-400">{% if ctrl.updated_at %}{{ ctrl.updated_at|timesince }} ago{% else %}-{% endif %}</td>
                             </tr>
                             {% endif %}
                             {% endfor %}

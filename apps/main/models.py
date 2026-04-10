@@ -561,6 +561,8 @@ class Control(models.Model):
 
     framework = models.ForeignKey(ControlFramework, on_delete=models.CASCADE, related_name='controls', null=True, blank=True)
     enabled = models.BooleanField(default=True)
+    evaluator = models.CharField(max_length=100, null=True, blank=True,
+        help_text='Dotted path to evaluator function, e.g. alm_01')
 
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
