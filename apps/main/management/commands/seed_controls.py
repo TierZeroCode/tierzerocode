@@ -68,6 +68,16 @@ class Command(BaseCommand):
                 'target': 'Monitored; declining trend toward 0%',
                 'evaluator': 'alm_06',
             },
+            {
+                'control_id': 'AAL-09',
+                'domain': 'Authentication Intent',
+                'statement': 'AAL2 SHOULD demonstrate authentication intent. AAL3 SHALL demonstrate authentication intent from at least one authenticator.',
+                'source_reference': 'SP 800-63B-4 § 2.2.2, 2.3.2',
+                'indicator': '% of AAL3 accounts configured with authenticators that require explicit user action (tap, biometric, PIN)',
+                'measurement_method': 'Entra ID authentication methods review for T0/T1; verify number matching enabled for push notifications',
+                'target': '100% for AAL3',
+                'evaluator': 'aal_09',
+            },
         ]
 
         for ctrl_data in controls:
