@@ -570,5 +570,52 @@ class Control(models.Model):
     def __str__(self):
         return f"{self.control_id}: {self.domain}"
 
+
+class ConditionalAccessPolicy(models.Model):
+    """Stores Conditional Access policies synced from Microsoft Entra ID."""
+    policy_id = models.CharField(max_length=100, unique=True, db_index=True)
+    display_name = models.CharField(max_length=500)
+    state = models.CharField(max_length=50)  # enabled, disabled, enabledForReportingButNotEnforced
+
+    # Conditions summary
+    conditions_users = models.JSONField(null=True, blank=True)
+    conditions_applications = models.JSONField(null=True, blank=True)
+    conditions_platforms = models.JSONField(null=True, blank=True)
+    conditions_locations = models.JSONField(null=True, blank=True)
+
+    # Grant controls
+    grant_controls = models.JSONField(null=True, blank=True)
+
+    # Session controls
+    session_controls = models.JSONField(null=True, blank=True)
+    sign_in_frequency_value = models.IntegerField(null=True, blank=True)
+    sign_in_frequency_type = models.CharField(max_length=20, null=True, blank=True)  # hours, days
+    sign_in_frequency_enabled = models.BooleanField(default=False)
+    persistent_browser_mode = models.CharField(max_length=20, null=True, blank=True)  # always, never
+    persistent_browser_enabled = models.BooleanField(default=False)
+
+    # Raw JSON for reference
+    raw_policy = models.JSONField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def __str__(self):
+        return f"{self.display_name} ({self.state})"
+
+    @property
+    def sign_in_frequency_days(self):
+        """Convert sign-in frequency to days for comparison."""
+        if not self.sign_in_frequency_enabled or self.sign_in_frequency_value is None:
+            return None
+        if self.sign_in_frequency_type == 'hours':
+            return self.sign_in_frequency_value / 24
+        return self.sign_in_frequency_value  # already in days
+
+    class Meta:
+        ordering = ['display_name']
+        verbose_name = "Conditional Access Policy"
+        verbose_name_plural = "Conditional Access Policies"
+
     class Meta:
         ordering = ['control_id']

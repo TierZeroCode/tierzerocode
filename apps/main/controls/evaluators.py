@@ -8,7 +8,7 @@ Each function takes no arguments and returns a tuple of (current_value, status).
 The function name must match the Control.evaluator field value.
 """
 from django.db.models import Q
-from apps.main.models import UserData, Device, Integration, SignInSummary, Persona
+from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy
 from apps.authhandler.models import SSOIntegration
 
 
@@ -214,4 +214,76 @@ def aal_04_detail():
         'logic': 'Privileged users (isAdmin=True or persona matching Tier 0/Tier 1/Privileged/Admin) must have hardware-bound phishing-resistant authenticators. FIDO2 device-bound keys and Windows Hello for Business qualify. Syncable passkeys do NOT qualify for AAL3.',
         'qualifying_methods': 'Hardware FIDO2 (passKeyDeviceBound) or Windows Hello for Business (windowsHelloforBusiness)',
         'disqualifying_methods': 'Syncable passkeys (passKeyDeviceBoundAuthenticator) do not meet AAL3 requirements.',
+    }
+
+
+def aal_05():
+    """AAL-05: Maximum session lifetime for AAL1 should be <= 30 days.
+
+    Checks all enabled CA policies that have sign-in frequency configured.
+    If any policy enforces a session lifetime > 30 days, or if no policy
+    enforces session lifetime at all, the control fails.
+
+    Target: <= 30 days
+    """
+    policies = ConditionalAccessPolicy.objects.filter(
+        state='enabled',
+        sign_in_frequency_enabled=True,
+    )
+
+    if not policies.exists():
+        # No session lifetime policy configured
+        all_policies = ConditionalAccessPolicy.objects.filter(state='enabled').count()
+        if all_policies == 0:
+            return ('-', 'not_measured')
+        return ('No session policy', 'failing')
+
+    max_days = 0
+    for policy in policies:
+        days = policy.sign_in_frequency_days
+        if days is not None and days > max_days:
+            max_days = days
+
+    if max_days <= 30:
+        status = 'passing'
+    else:
+        status = 'failing'
+
+    if max_days == int(max_days):
+        return (f'{int(max_days)} days', status)
+    return (f'{max_days:.1f} days', status)
+
+
+def aal_05_detail():
+    """Return detailed data for AAL-05: CA policies with session controls."""
+    all_policies = ConditionalAccessPolicy.objects.filter(state='enabled')
+    session_policies = all_policies.filter(sign_in_frequency_enabled=True)
+
+    policies_data = []
+    for p in all_policies:
+        policies_data.append({
+            'display_name': p.display_name,
+            'state': p.state,
+            'sign_in_frequency_enabled': p.sign_in_frequency_enabled,
+            'sign_in_frequency_value': p.sign_in_frequency_value,
+            'sign_in_frequency_type': p.sign_in_frequency_type,
+            'sign_in_frequency_days': p.sign_in_frequency_days,
+            'persistent_browser_enabled': p.persistent_browser_enabled,
+            'persistent_browser_mode': p.persistent_browser_mode,
+            'grant_controls': p.grant_controls,
+            'has_session_control': p.sign_in_frequency_enabled or p.persistent_browser_enabled,
+        })
+
+    max_days = 0
+    for p in session_policies:
+        days = p.sign_in_frequency_days
+        if days is not None and days > max_days:
+            max_days = days
+
+    return {
+        'total_enabled_policies': all_policies.count(),
+        'session_policies_count': session_policies.count(),
+        'max_session_days': max_days,
+        'policies': policies_data,
+        'logic': 'Checks all enabled Conditional Access policies for sign-in frequency settings. AAL1 requires a reauthentication timeout of no more than 30 days. The maximum configured session lifetime across all policies is compared against the 30-day threshold.',
     }
