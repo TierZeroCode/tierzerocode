@@ -10,6 +10,7 @@ urlpatterns = [
     path('device-dashboard', views.indexDevice, name='device-dashboard'),
     path('user-dashboard', views.indexUser, name='user-dashboard'),
     path('user-dashboard/<int:persona_id>', views.personaMetrics, name='persona-metrics'),
+    path('reports', views.reports, name='reports'),
     
     # ============================================================================
     # Device Management
