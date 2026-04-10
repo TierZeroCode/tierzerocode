@@ -106,7 +106,10 @@
         <!-- AAL-05 specific: CA policy breakdown -->
         {% if detail.policies %}
         <div class="mt-4">
-            <p class="tz-section-label mb-2">Conditional Access Policies ({{ detail.total_enabled_policies }} enabled)</p>
+            <div class="flex items-center justify-between mb-2">
+                <p class="tz-section-label">Conditional Access Policies ({{ detail.total_enabled_policies }} enabled)</p>
+                <a href="{% url 'control_export_noncompliant' ctrl.control_id %}" class="tz-btn-secondary text-xs py-1 px-2.5">Export XLSX</a>
+            </div>
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700/50">
@@ -159,6 +162,7 @@
 <div class="tz-card mb-5">
     <div class="tz-card-header flex items-center justify-between">
         <h2 class="text-sm font-semibold text-code-red-700 dark:text-code-red-400">Non-Compliant ({{ detail.failing_count }})</h2>
+        <a href="{% url 'control_export_noncompliant' ctrl.control_id %}" class="tz-btn-secondary text-xs py-1 px-2.5">Export XLSX</a>
     </div>
     <div class="tz-card-body p-0 overflow-x-auto">
         <table class="w-full text-sm">

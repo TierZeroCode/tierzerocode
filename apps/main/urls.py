@@ -13,6 +13,7 @@ urlpatterns = [
     path('reports', views.reports, name='reports'),
     path('reports/evaluate', views.evaluate_controls_view, name='evaluate_controls'),
     path('reports/control/<str:control_id>', views.control_detail, name='control_detail'),
+    path('reports/control/<str:control_id>/export', views.control_export_noncompliant, name='control_export_noncompliant'),
     
     # ============================================================================
     # Device Management

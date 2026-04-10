@@ -662,6 +662,135 @@ def control_detail(request, control_id):
 ############################################################################################
 
 @login_required
+def control_export_noncompliant(request, control_id):
+    """Export non-compliant records for a control as XLSX."""
+    import openpyxl
+    from django.http import HttpResponse
+    from apps.main.controls import evaluators
+
+    ctrl = Control.objects.filter(control_id=control_id).first()
+    if not ctrl:
+        from django.http import Http404
+        raise Http404(f'Control {control_id} not found')
+
+    # Get detail data
+    detail_data = None
+    detail_func_name = f'{ctrl.evaluator}_detail' if ctrl.evaluator else None
+    if detail_func_name:
+        detail_func = getattr(evaluators, detail_func_name, None)
+        if detail_func:
+            detail_data = detail_func()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f'{ctrl.control_id} Non-Compliant'
+
+    # Add header info
+    ws.append([f'Control: {ctrl.control_id} — {ctrl.domain}'])
+    ws.append([f'Status: {ctrl.get_status_display()}'])
+    ws.append([f'Target: {ctrl.target}', f'Current: {ctrl.current_value or "-"}'])
+    ws.append([])
+
+    if detail_data and detail_data.get('failing_users'):
+        users = detail_data['failing_users']
+        if users:
+            # Build headers from first record's keys
+            headers = []
+            header_map = {
+                'upn': 'UPN',
+                'given_name': 'First Name',
+                'surname': 'Last Name',
+                'highest_authentication_strength': 'Highest Auth Strength',
+                'isAdmin': 'Admin',
+                'persona__persona_name': 'Persona',
+                'passKeyDeviceBound_authentication_method': 'FIDO2 Key',
+                'passKeyDeviceBoundAuthenticator_authentication_method': 'Passkey (Sync)',
+                'windowsHelloforBusiness_authentication_method': 'WHfB',
+                'microsoftAuthenticatorPasswordless_authentication_method': 'Auth Passwordless',
+                'microsoftAuthenticatorPush_authentication_method': 'Auth Push',
+                'softwareOneTimePasscode_authentication_method': 'Software OTP',
+                'mobilePhone_authentication_method': 'Mobile Phone',
+                'temporaryAccessPass_authentication_method': 'TAP',
+                'email_authentication_method': 'Email',
+            }
+            keys = list(users[0].keys())
+            for key in keys:
+                headers.append(header_map.get(key, key))
+
+            ws.append(headers)
+
+            # Style header row
+            from openpyxl.styles import Font, PatternFill
+            header_font = Font(bold=True, color='FFFFFF')
+            header_fill = PatternFill(start_color='CC3333', end_color='CC3333', fill_type='solid')
+            for cell in ws[ws.max_row]:
+                cell.font = header_font
+                cell.fill = header_fill
+
+            # Add data rows
+            for user in users:
+                row = []
+                for key in keys:
+                    val = user.get(key)
+                    if isinstance(val, bool):
+                        val = 'Yes' if val else 'No'
+                    elif val is None:
+                        val = '-'
+                    row.append(val)
+                ws.append(row)
+
+            # Auto-fit column widths
+            for col in ws.columns:
+                max_length = 0
+                col_letter = col[0].column_letter
+                for cell in col:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                ws.column_dimensions[col_letter].width = min(max_length + 2, 40)
+
+    elif detail_data and detail_data.get('policies'):
+        # AAL-05: export policies instead
+        ws.append(['Policy Name', 'State', 'Sign-in Frequency', 'Frequency Type', 'Days', 'Persistent Browser', 'Has Session Control'])
+        from openpyxl.styles import Font, PatternFill
+        header_font = Font(bold=True, color='FFFFFF')
+        header_fill = PatternFill(start_color='CC3333', end_color='CC3333', fill_type='solid')
+        for cell in ws[ws.max_row]:
+            cell.font = header_font
+            cell.fill = header_fill
+
+        for p in detail_data['policies']:
+            ws.append([
+                p.get('display_name', ''),
+                p.get('state', ''),
+                p.get('sign_in_frequency_value', '-'),
+                p.get('sign_in_frequency_type', '-'),
+                p.get('sign_in_frequency_days', '-'),
+                p.get('persistent_browser_mode', '-'),
+                'Yes' if p.get('has_session_control') else 'No',
+            ])
+
+        for col in ws.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+    else:
+        ws.append(['No non-compliant data available for this control.'])
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    from django.utils import timezone
+    timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+    response['Content-Disposition'] = f'attachment; filename="{ctrl.control_id}_noncompliant_{timestamp}.xlsx"'
+    wb.save(response)
+    return response
+
+############################################################################################
+
+@login_required
 def generalSettings(request):
 	from .utils import ComplianceSettingsManager
 	from django.contrib.auth.models import User
