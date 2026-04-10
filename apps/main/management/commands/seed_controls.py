@@ -38,6 +38,16 @@ class Command(BaseCommand):
                 'target': '100%',
                 'evaluator': 'alm_02',
             },
+            {
+                'control_id': 'AAL-04',
+                'domain': 'Phishing-Resistant Authentication (AAL3)',
+                'statement': 'AAL3 SHALL require a cryptographic authenticator with a non-exportable private key that provides phishing resistance. Syncable authenticators SHALL NOT be used at AAL3.',
+                'source_reference': 'SP 800-63B-4 § 2.3.1-2.3.2',
+                'indicator': '% of AAL3 (Tier 0/Tier 1) accounts using hardware-bound phishing-resistant authenticators (non-syncable FIDO2/WHfB with TPM)',
+                'measurement_method': 'Entra ID authentication methods report for T0/T1 admin accounts; verify no passkey sync enabled',
+                'target': '100%',
+                'evaluator': 'aal_04',
+            },
         ]
 
         for ctrl_data in controls:

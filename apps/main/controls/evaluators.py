@@ -8,7 +8,7 @@ Each function takes no arguments and returns a tuple of (current_value, status).
 The function name must match the Control.evaluator field value.
 """
 from django.db.models import Q
-from apps.main.models import UserData, Device, Integration, SignInSummary
+from apps.main.models import UserData, Device, Integration, SignInSummary, Persona
 from apps.authhandler.models import SSOIntegration
 
 
@@ -61,3 +61,43 @@ def alm_02():
     pct = round(total_ca / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
     return (f'{pct}%', status)
+
+
+def aal_04():
+    """AAL-04: % of privileged accounts using hardware-bound phishing-resistant auth.
+
+    AAL3 requires cryptographic authenticators with non-exportable private keys.
+    Hardware FIDO2 (passKeyDeviceBound) and WHfB with TPM qualify.
+    Syncable passkeys (passKeyDeviceBoundAuthenticator) do NOT qualify.
+
+    Targets privileged users: isAdmin=True OR persona name contains
+    'Tier 0', 'Tier 1', 'Privileged', or 'Admin' (case-insensitive).
+
+    Target: 100%
+    """
+    # Identify privileged users
+    privileged_personas = Persona.objects.filter(
+        Q(persona_name__icontains='Tier 0') |
+        Q(persona_name__icontains='Tier 1') |
+        Q(persona_name__icontains='Privileged') |
+        Q(persona_name__icontains='Admin')
+    )
+
+    privileged_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+    ).distinct()
+
+    total = privileged_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    # Hardware-bound phishing-resistant: FIDO2 device-bound OR WHfB
+    # Explicitly exclude users who ONLY have syncable passkeys
+    with_hardware_auth = privileged_users.filter(
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True)
+    ).distinct().count()
+
+    pct = round(with_hardware_auth / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_hardware_auth}/{total} ({pct}%)', status)
