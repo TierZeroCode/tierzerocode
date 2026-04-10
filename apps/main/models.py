@@ -523,3 +523,50 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ControlFramework(models.Model):
+    """Reference framework/document that controls are sourced from."""
+    name = models.CharField(max_length=200)
+    short_name = models.CharField(max_length=50)
+    version = models.CharField(max_length=50, null=True, blank=True)
+    url = models.URLField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def __str__(self):
+        return f"{self.short_name} {self.version or ''}".strip()
+
+    class Meta:
+        ordering = ['short_name']
+
+
+class Control(models.Model):
+    """A security control with its measurement criteria and current status."""
+    control_id = models.CharField(max_length=20, unique=True, db_index=True)
+    domain = models.CharField(max_length=200)
+    statement = models.TextField()
+    source_reference = models.CharField(max_length=200, null=True, blank=True)
+    indicator = models.TextField(null=True, blank=True)
+    measurement_method = models.TextField(null=True, blank=True)
+    target = models.CharField(max_length=50, default='100%')
+    current_value = models.CharField(max_length=50, null=True, blank=True)
+
+    STATUS_CHOICES = (
+        ('passing', 'Passing'),
+        ('failing', 'Failing'),
+        ('not_measured', 'Not Measured'),
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_measured')
+
+    framework = models.ForeignKey(ControlFramework, on_delete=models.CASCADE, related_name='controls', null=True, blank=True)
+    enabled = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def __str__(self):
+        return f"{self.control_id}: {self.domain}"
+
+    class Meta:
+        ordering = ['control_id']
