@@ -616,6 +616,3 @@ class ConditionalAccessPolicy(models.Model):
         ordering = ['display_name']
         verbose_name = "Conditional Access Policy"
         verbose_name_plural = "Conditional Access Policies"
-
-    class Meta:
-        ordering = ['control_id']
