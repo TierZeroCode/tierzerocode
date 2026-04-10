@@ -628,6 +628,27 @@ def evaluate_controls_view(request):
 	messages.success(request, f'{evaluated} control(s) evaluated.')
 	return redirect(reverse('reports') + '#controls')
 
+
+@login_required
+def seed_controls_view(request):
+	"""Run seed_controls logic and redirect back to reports."""
+	if not request.user.is_superuser:
+		return redirect('reports')
+
+	from django.core.management import call_command
+	from django.contrib import messages
+	import io
+
+	out = io.StringIO()
+	try:
+		call_command('seed_controls', stdout=out)
+		output = out.getvalue()
+		messages.success(request, f'Controls seeded successfully. {output.strip().split(chr(10))[-1]}')
+	except Exception as e:
+		messages.error(request, f'Seed failed: {str(e)}')
+
+	return redirect(reverse('reports') + '#controls')
+
 ############################################################################################
 
 @login_required
