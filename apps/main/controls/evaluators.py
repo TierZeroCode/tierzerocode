@@ -8,7 +8,7 @@ Each function takes no arguments and returns a tuple of (current_value, status).
 The function name must match the Control.evaluator field value.
 """
 from django.db.models import Q
-from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy
+from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy, TenantSecurityConfig
 from apps.authhandler.models import SSOIntegration
 
 
@@ -736,4 +736,86 @@ def aal_08_detail():
         'logic': 'AAL2+ users (persona AAL level >= 2 or isAdmin=True) must have at least one replay-resistant authenticator. Challenge-response methods (FIDO2, WHfB, passkey) and single-use methods (push, TOTP) are replay-resistant. Phone/SMS and email codes can be intercepted and replayed within their validity window, so they are NOT replay-resistant.',
         'qualifying_methods': 'FIDO2 (challenge-response), WHfB (challenge-response), Passkey (challenge-response), MS Authenticator Passwordless (single-use challenge), MS Authenticator Push (single-use notification), Software OTP/TOTP (time-based single-use)',
         'disqualifying_methods': 'Phone/SMS codes (interceptable, replayable within validity window), Email codes (interceptable)',
+    }
+
+
+def pwd_05():
+    """PWD-05: Password blocklist enforcement.
+
+    Checks that Entra ID Password Protection is enabled with:
+    1. Global banned password list enabled (EnableBannedPasswordCheck)
+    2. Enforcement mode is 'Enforce' (not 'Audit')
+    3. Optionally: custom banned password list configured
+
+    Target: Enabled on all endpoints
+    """
+    config = TenantSecurityConfig.objects.first()
+    if not config:
+        return ('-', 'not_measured')
+
+    issues = []
+    if not config.password_protection_enabled:
+        issues.append('Global banned list disabled')
+    if config.password_protection_mode != 'Enforce':
+        issues.append(f'Mode is "{config.password_protection_mode}" (should be Enforce)')
+
+    if issues:
+        return ('; '.join(issues), 'failing')
+
+    extras = []
+    if config.custom_banned_passwords_enabled:
+        extras.append('custom list active')
+    if config.password_protection_on_premises_enabled:
+        extras.append('on-prem enabled')
+
+    status_parts = ['Enforced']
+    if extras:
+        status_parts.append(', '.join(extras))
+
+    return (' + '.join(status_parts), 'passing')
+
+
+def pwd_05_detail():
+    """Return detailed data for PWD-05: password protection configuration."""
+    config = TenantSecurityConfig.objects.first()
+    if not config:
+        return {
+            'total': 0,
+            'logic': 'No tenant security configuration synced. Sync Entra ID users to populate.',
+        }
+
+    checks = [
+        {
+            'check': 'Global Banned Password List',
+            'status': config.password_protection_enabled,
+            'detail': 'Enabled' if config.password_protection_enabled else 'Disabled',
+            'required': True,
+        },
+        {
+            'check': 'Enforcement Mode',
+            'status': config.password_protection_mode == 'Enforce',
+            'detail': config.password_protection_mode or 'Not set',
+            'required': True,
+        },
+        {
+            'check': 'Custom Banned Password List',
+            'status': config.custom_banned_passwords_enabled,
+            'detail': f"Enabled ({len(config.custom_banned_password_list or [])} words)" if config.custom_banned_passwords_enabled else 'Disabled',
+            'required': False,
+        },
+        {
+            'check': 'On-Premises Password Protection',
+            'status': config.password_protection_on_premises_enabled,
+            'detail': 'Enabled' if config.password_protection_on_premises_enabled else 'Disabled',
+            'required': False,
+        },
+    ]
+
+    all_required_pass = all(c['status'] for c in checks if c['required'])
+
+    return {
+        'checks': checks,
+        'all_required_pass': all_required_pass,
+        'synced_at': config.synced_at,
+        'logic': 'NIST SP 800-63B-4 requires passwords to be checked against a blocklist of known compromised passwords. Entra ID Password Protection provides a global banned password list (Microsoft-maintained) and optional custom banned passwords. Enforcement mode must be "Enforce" (not "Audit") to actively block weak passwords.',
     }

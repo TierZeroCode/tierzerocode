@@ -108,6 +108,16 @@ class Command(BaseCommand):
                 'target': '100% for AAL3',
                 'evaluator': 'aal_09',
             },
+            {
+                'control_id': 'PWD-05',
+                'domain': 'Password Blocklist',
+                'statement': 'Verifiers SHALL compare prospective passwords against a blocklist of known commonly used, expected, or compromised passwords. The entire password SHALL be subject to comparison.',
+                'source_reference': 'SP 800-63B-4 § 3.1.1.2',
+                'indicator': 'Password blocklist enforcement enabled across all authentication endpoints',
+                'measurement_method': 'Entra ID Password Protection (custom banned password list + global banned list) configuration audit; on-prem AD Password Protection agent deployment',
+                'target': 'Enabled on all endpoints',
+                'evaluator': 'pwd_05',
+            },
         ]
 
         for ctrl_data in controls:
