@@ -307,3 +307,98 @@ def aal_05_detail():
         'policies': policies_data,
         'logic': 'Every enforced policy (state="enabled") must have a sign-in frequency configured at <= 30 days. Policies without session controls allow indefinite sessions, which violates the NIST requirement for a definite reauthentication timeout. Report-only and disabled policies are shown but not evaluated.',
     }
+
+
+def alm_06():
+    """ALM-06: % of users with ONLY SMS/voice as their MFA method.
+
+    Users who have mobilePhone as their only authentication method and
+    no stronger alternative registered are at risk. NIST restricts
+    PSTN authenticators and requires an alternative be available.
+
+    Target: 0% (declining trend)
+    """
+    total = UserData.objects.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    # Stronger methods — any of these registered means the user is not SMS-only
+    stronger_methods = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+
+    # SMS-only: has phone but no stronger method
+    sms_only = UserData.objects.filter(
+        mobilePhone_authentication_method=True,
+    ).exclude(stronger_methods).distinct().count()
+
+    if sms_only == 0:
+        return ('0 users', 'passing')
+
+    pct = round(sms_only / total * 100, 1)
+    return (f'{sms_only} users ({pct}%)', 'failing')
+
+
+def alm_06_detail():
+    """Return detailed data for ALM-06: users relying solely on SMS/voice."""
+    total = UserData.objects.count()
+    if total == 0:
+        return {'total': 0, 'sms_only_count': 0, 'failing_users': [], 'logic': 'No users synced.'}
+
+    stronger_methods = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+
+    sms_only_users = UserData.objects.filter(
+        mobilePhone_authentication_method=True,
+    ).exclude(stronger_methods).distinct()
+
+    sms_only_count = sms_only_users.count()
+
+    failing = list(sms_only_users.values(
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'lowest_authentication_strength',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+        'securityQuestion_authentication_method',
+    )[:100])
+
+    # Also show users who have phone + a stronger method (compliant)
+    phone_with_stronger = UserData.objects.filter(
+        mobilePhone_authentication_method=True,
+    ).filter(stronger_methods).distinct()
+
+    passing = list(phone_with_stronger.values(
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength',
+        'mobilePhone_authentication_method',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+    )[:100])
+
+    return {
+        'total': total,
+        'sms_only_count': sms_only_count,
+        'phone_with_stronger_count': phone_with_stronger.count(),
+        'failing_count': sms_only_count,
+        'passing_count': phone_with_stronger.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': 'Users with mobilePhone (SMS/voice) as their ONLY authentication method, with no stronger alternative registered (FIDO2, WHfB, MS Authenticator, or software OTP). NIST SP 800-63B-4 restricts PSTN authenticators and requires at least one non-restricted alternative.',
+        'qualifying_methods': 'Any of: FIDO2 key, Passkey (Authenticator), WHfB, MS Authenticator Passwordless, MS Authenticator Push, Software OTP',
+        'disqualifying_methods': 'SMS/voice phone only — no alternative registered',
+    }
