@@ -220,58 +220,66 @@ def aal_04_detail():
 def aal_05():
     """AAL-05: Maximum session lifetime for AAL1 should be <= 30 days.
 
-    Checks all enabled CA policies that have sign-in frequency configured.
-    If any policy enforces a session lifetime > 30 days, or if no policy
-    enforces session lifetime at all, the control fails.
+    Only counts policies with state='enabled' (not 'disabled' or
+    'enabledForReportingButNotEnforced'). Checks sign-in frequency
+    is configured and <= 30 days.
 
     Target: <= 30 days
     """
-    policies = ConditionalAccessPolicy.objects.filter(
+    # Only enforced policies count — report-only does not enforce session limits
+    enforced_with_session = ConditionalAccessPolicy.objects.filter(
         state='enabled',
         sign_in_frequency_enabled=True,
+    ).exclude(
+        sign_in_frequency_value__isnull=True,
     )
 
-    if not policies.exists():
-        # No session lifetime policy configured
-        all_policies = ConditionalAccessPolicy.objects.filter(state='enabled').count()
-        if all_policies == 0:
+    if not enforced_with_session.exists():
+        all_synced = ConditionalAccessPolicy.objects.count()
+        if all_synced == 0:
             return ('-', 'not_measured')
+        enforced_any = ConditionalAccessPolicy.objects.filter(state='enabled').count()
+        if enforced_any == 0:
+            return ('No enforced policies', 'not_measured')
         return ('No session policy', 'failing')
 
     max_days = 0
-    for policy in policies:
+    for policy in enforced_with_session:
         days = policy.sign_in_frequency_days
         if days is not None and days > max_days:
             max_days = days
 
-    if max_days <= 30:
-        status = 'passing'
-    else:
-        status = 'failing'
+    if max_days == 0:
+        return ('No valid frequency', 'failing')
 
-    if max_days == int(max_days):
-        return (f'{int(max_days)} days', status)
-    return (f'{max_days:.1f} days', status)
+    status = 'passing' if max_days <= 30 else 'failing'
+    display = f'{int(max_days)} days' if max_days == int(max_days) else f'{max_days:.1f} days'
+    return (display, status)
 
 
 def aal_05_detail():
-    """Return detailed data for AAL-05: CA policies with session controls."""
-    all_policies = ConditionalAccessPolicy.objects.filter(state='enabled')
-    session_policies = all_policies.filter(sign_in_frequency_enabled=True)
+    """Return detailed data for AAL-05: all CA policies with session controls."""
+    # Show ALL policies (including disabled and report-only) for full visibility
+    all_policies = ConditionalAccessPolicy.objects.all()
+    enforced_policies = all_policies.filter(state='enabled')
+    session_policies = enforced_policies.filter(
+        sign_in_frequency_enabled=True,
+    ).exclude(sign_in_frequency_value__isnull=True)
 
     policies_data = []
     for p in all_policies:
+        days = p.sign_in_frequency_days
         policies_data.append({
             'display_name': p.display_name,
             'state': p.state,
             'sign_in_frequency_enabled': p.sign_in_frequency_enabled,
             'sign_in_frequency_value': p.sign_in_frequency_value,
             'sign_in_frequency_type': p.sign_in_frequency_type,
-            'sign_in_frequency_days': p.sign_in_frequency_days,
+            'sign_in_frequency_days': days,
             'persistent_browser_enabled': p.persistent_browser_enabled,
             'persistent_browser_mode': p.persistent_browser_mode,
             'grant_controls': p.grant_controls,
-            'has_session_control': p.sign_in_frequency_enabled or p.persistent_browser_enabled,
+            'has_session_control': (p.sign_in_frequency_enabled and p.sign_in_frequency_value is not None) or p.persistent_browser_enabled,
         })
 
     max_days = 0
@@ -281,9 +289,10 @@ def aal_05_detail():
             max_days = days
 
     return {
-        'total_enabled_policies': all_policies.count(),
+        'total_all_policies': all_policies.count(),
+        'total_enabled_policies': enforced_policies.count(),
         'session_policies_count': session_policies.count(),
-        'max_session_days': max_days,
+        'max_session_days': max_days if max_days > 0 else None,
         'policies': policies_data,
-        'logic': 'Checks all enabled Conditional Access policies for sign-in frequency settings. AAL1 requires a reauthentication timeout of no more than 30 days. The maximum configured session lifetime across all policies is compared against the 30-day threshold.',
+        'logic': 'Only policies with state "enabled" are evaluated (report-only and disabled policies are shown but do not count). Checks sign-in frequency settings where both isEnabled=True and a value is configured. AAL1 requires reauthentication timeout of no more than 30 days.',
     }
