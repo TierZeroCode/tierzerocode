@@ -402,3 +402,108 @@ def alm_06_detail():
         'qualifying_methods': 'Any of: FIDO2 key, Passkey (Authenticator), WHfB, MS Authenticator Passwordless, MS Authenticator Push, Software OTP',
         'disqualifying_methods': 'SMS/voice phone only — no alternative registered',
     }
+
+
+def aal_09():
+    """AAL-09: % of AAL3 accounts with intent-demonstrating authenticators.
+
+    AAL3 accounts (privileged users: isAdmin or Tier 0/1/Privileged/Admin
+    persona) must have at least one authenticator that requires explicit
+    user action:
+    - FIDO2 key: physical tap (always demonstrates intent)
+    - WHfB: biometric or PIN (always demonstrates intent)
+    - MS Authenticator Push: requires number matching / user action
+    - Software OTP: requires typing a code
+
+    Users with ONLY phone/SMS/email do NOT demonstrate intent.
+
+    Target: 100% for AAL3
+    """
+    privileged_personas = Persona.objects.filter(
+        Q(persona_name__icontains='Tier 0') |
+        Q(persona_name__icontains='Tier 1') |
+        Q(persona_name__icontains='Privileged') |
+        Q(persona_name__icontains='Admin')
+    )
+
+    aal3_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+    ).distinct()
+
+    total = aal3_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    # Intent-demonstrating methods
+    intent_methods = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+
+    with_intent = aal3_users.filter(intent_methods).distinct().count()
+    pct = round(with_intent / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_intent}/{total} ({pct}%)', status)
+
+
+def aal_09_detail():
+    """Return detailed data for AAL-09: AAL3 users and their intent-demonstrating auth."""
+    privileged_personas = Persona.objects.filter(
+        Q(persona_name__icontains='Tier 0') |
+        Q(persona_name__icontains='Tier 1') |
+        Q(persona_name__icontains='Privileged') |
+        Q(persona_name__icontains='Admin')
+    )
+
+    aal3_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+    ).distinct()
+
+    total = aal3_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL3 (privileged) users found.'}
+
+    intent_methods = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+
+    passing_qs = aal3_users.filter(intent_methods).distinct()
+    failing_qs = aal3_users.exclude(intent_methods).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'highest_authentication_strength',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+        'temporaryAccessPass_authentication_method',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': 'AAL3 accounts (isAdmin=True or persona matching Tier 0/Tier 1/Privileged/Admin) must have at least one authenticator that requires explicit user action. FIDO2 keys (physical tap), WHfB (biometric/PIN), MS Authenticator Push (number matching), and software OTP (code entry) all demonstrate intent. Phone/SMS/email do not.',
+        'qualifying_methods': 'FIDO2 key (tap), WHfB (biometric/PIN), MS Authenticator Passwordless, MS Authenticator Push (number matching), Software OTP (code entry)',
+        'disqualifying_methods': 'Phone/SMS, email, and TAP alone do not demonstrate sufficient authentication intent for AAL3',
+    }
