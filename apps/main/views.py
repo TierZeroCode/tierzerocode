@@ -22,7 +22,7 @@ from .integrations.user_integrations.MicrosoftEntraID import (
     getMicrosoftEntraIDGuests, getMicrosoftEntraIDGroups,
     getMicrosoftEntraIDApps, getMicrosoftEntraTenantDetails,
 )
-from .models import Device, DeviceComplianceSettings, Integration, Notification, SignInSummary, UserData, PersonaGroup, Persona
+from .models import Control, ControlFramework, Device, DeviceComplianceSettings, Integration, Notification, SignInSummary, UserData, PersonaGroup, Persona
 from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosoftGraphConnection
 
 ############################################################################################
@@ -571,6 +571,9 @@ def reports(request):
 	active_integrations = Integration.objects.filter(enabled=True).count()
 	sso_enabled = SSOIntegration.objects.filter(enabled=True).exists()
 
+	controls = Control.objects.filter(enabled=True).select_related('framework')
+	frameworks = ControlFramework.objects.all()
+
 	context = {
 		'page': 'reports',
 		'compliance_total': compliance_total,
@@ -586,6 +589,8 @@ def reports(request):
 		'active_integrations': active_integrations,
 		'sso_enabled': sso_enabled,
 		'notifications': Notification.objects.all().order_by('-created_at')[:10],
+		'controls': controls,
+		'frameworks': frameworks,
 	}
 	return render(request, 'main/reports.html', context)
 
