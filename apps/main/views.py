@@ -567,7 +567,7 @@ def reports(request):
 	users_no_mfa = UserData.objects.filter(highest_authentication_strength='None').count() + UserData.objects.filter(highest_authentication_strength__isnull=True).count()
 	users_deprecated_auth = UserData.objects.filter(highest_authentication_strength='Deprecated').count()
 
-	managed_devices = Device.objects.exclude(integrations=None).count()
+	managed_devices = Device.objects.exclude(integration=None).count()
 	active_integrations = Integration.objects.filter(enabled=True).count()
 	sso_enabled = SSOIntegration.objects.filter(enabled=True).exists()
 
