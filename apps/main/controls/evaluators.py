@@ -63,6 +63,97 @@ def alm_02():
     return (f'{pct}%', status)
 
 
+def aal_02():
+    """AAL-02: % of AAL2+ accounts with MFA enforced.
+
+    AAL2 requires a multi-factor authenticator or two separate factors
+    including "something you have." Any approved authenticator beyond
+    password-only qualifies: FIDO2, WHfB, passkey, push, OTP.
+    Phone/SMS counts as MFA (though restricted by ALM-06).
+
+    Users with isMfaRegistered=False or no auth method registered = failing.
+
+    Target: 100%
+    """
+    aal2_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
+    ).distinct()
+
+    total = aal2_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    # Any MFA method registered counts
+    any_mfa = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True) |
+        Q(mobilePhone_authentication_method=True)
+    )
+
+    with_mfa = aal2_users.filter(any_mfa).distinct().count()
+    pct = round(with_mfa / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_mfa}/{total} ({pct}%)', status)
+
+
+def aal_02_detail():
+    """Return detailed data for AAL-02: AAL2+ users and MFA registration status."""
+    aal2_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
+    ).distinct()
+
+    total = aal2_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
+
+    any_mfa = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True) |
+        Q(mobilePhone_authentication_method=True)
+    )
+
+    passing_qs = aal2_users.filter(any_mfa).distinct()
+    failing_qs = aal2_users.exclude(any_mfa).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level', 'isMfaRegistered', 'isMfaCapable',
+        'highest_authentication_strength',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level', 'isMfaRegistered', 'isMfaCapable',
+        'highest_authentication_strength',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': 'AAL2+ users (persona AAL level >= 2 or isAdmin=True) must have at least one MFA method registered. Any approved authenticator qualifies: FIDO2, WHfB, passkey, MS Authenticator (push or passwordless), software OTP, or phone/SMS. Users with NO second factor registered are non-compliant.',
+        'qualifying_methods': 'FIDO2, WHfB, Passkey, MS Authenticator Passwordless, MS Authenticator Push, Software OTP, Phone/SMS (all count as MFA — though phone/SMS is restricted by ALM-06)',
+        'disqualifying_methods': 'No MFA method registered — password-only authentication does not meet AAL2',
+    }
+
+
 def aal_03():
     """AAL-03: % of AAL2+ accounts using phishing-resistant MFA.
 

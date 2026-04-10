@@ -39,6 +39,16 @@ class Command(BaseCommand):
                 'evaluator': 'alm_02',
             },
             {
+                'control_id': 'AAL-02',
+                'domain': 'Multi-Factor Authentication',
+                'statement': 'AAL2 authentication SHALL use either a multi-factor authenticator or a combination of two separate authentication factors, including one physical authenticator ("something you have").',
+                'source_reference': 'SP 800-63B-4 § 2.2.1',
+                'indicator': '% of AAL2 user accounts with MFA enforced using an approved authenticator combination',
+                'measurement_method': 'Entra ID authentication methods registration report / CA authentication strength policy audit',
+                'target': '100%',
+                'evaluator': 'aal_02',
+            },
+            {
                 'control_id': 'AAL-03',
                 'domain': 'Phishing-Resistant Authentication (AAL2)',
                 'statement': 'Verifiers SHALL offer at least one phishing-resistant authentication option at AAL2. Federal agencies SHALL require staff, contractors, and partners to use phishing-resistant authentication.',
