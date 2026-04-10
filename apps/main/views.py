@@ -1669,9 +1669,18 @@ def add_persona(request):
                         messages.error(request, 'Priority must be a valid number.')
                         return redirect(reverse('general-settings') + f'#{current_tab}')
                 
+                aal_level_val = request.POST.get('aal_level', '1')
+                try:
+                    aal_level_int = int(aal_level_val)
+                    if aal_level_int not in (1, 2, 3):
+                        aal_level_int = 1
+                except ValueError:
+                    aal_level_int = 1
+
                 Persona.objects.create(
                     persona_name=persona_name,
-                    priority=priority_int
+                    priority=priority_int,
+                    aal_level=aal_level_int
                 )
                 messages.success(request, f'Persona "{persona_name}" added successfully.')
         except Exception as e:

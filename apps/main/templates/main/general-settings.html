@@ -383,6 +383,14 @@
                                         <label for="priority" class="tz-form-label">Priority</label>
                                         <input type="number" class="tz-form-input" id="priority" name="priority" placeholder="0" min="0" step="1">
                                     </div>
+                                    <div class="w-28 shrink-0">
+                                        <label for="aal_level" class="tz-form-label">AAL Level</label>
+                                        <select class="tz-form-select" id="aal_level" name="aal_level">
+                                            <option value="1">AAL1</option>
+                                            <option value="2">AAL2</option>
+                                            <option value="3">AAL3</option>
+                                        </select>
+                                    </div>
                                     <div class="flex-1">
                                         <label for="persona_name" class="tz-form-label">Persona Name <span class="text-code-red-500">*</span></label>
                                         <input type="text" class="tz-form-input" id="persona_name" name="persona_name" required placeholder="Enter persona name">
@@ -407,6 +415,7 @@
                                     <thead>
                                         <tr class="border-b border-slate-200 dark:border-slate-700">
                                             <th class="text-left py-2 px-3 tz-section-label">Priority</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">AAL Level</th>
                                             <th class="text-left py-2 px-3 tz-section-label">Persona Name</th>
                                             <th class="text-left py-2 px-3 tz-section-label">Created</th>
                                             <th class="text-left py-2 px-3 tz-section-label">Actions</th>
@@ -416,6 +425,11 @@
                                         {% for persona in personas %}
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                                             <td class="py-3 px-3 text-slate-500">{{ persona.priority|default:"—" }}</td>
+                                            <td class="py-3 px-3">
+                                                {% if persona.aal_level == 3 %}<span class="tz-badge tz-badge-danger">AAL3</span>
+                                                {% elif persona.aal_level == 2 %}<span class="tz-badge tz-badge-warning">AAL2</span>
+                                                {% else %}<span class="tz-badge tz-badge-neutral">AAL1</span>{% endif %}
+                                            </td>
                                             <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ persona.persona_name }}</td>
                                             <td class="py-3 px-3 text-slate-500">{{ persona.created_at|date:"M d, Y" }}</td>
                                             <td class="py-3 px-3">
