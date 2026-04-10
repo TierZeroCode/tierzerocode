@@ -92,7 +92,10 @@
         <div id="panel-controls" class="tab-panel hidden">
             <div class="flex items-center justify-between mb-4">
                 <p class="text-sm text-slate-600 dark:text-slate-400">Automated evaluation of security controls against live data.</p>
-                <a href="{% url 'evaluate_controls' %}" class="tz-btn-primary text-xs py-1.5 px-3">Evaluate All</a>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'seed_controls_view' %}" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="return confirm('This will load/update all control definitions. Continue?');">Seed Controls</a>
+                    <a href="{% url 'evaluate_controls' %}" class="tz-btn-primary text-xs py-1.5 px-3">Evaluate All</a>
+                </div>
             </div>
             {% if frameworks %}
             {% for fw in frameworks %}
