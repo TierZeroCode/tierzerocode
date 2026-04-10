@@ -457,9 +457,9 @@ def syncConditionalAccessPolicies(access_token):
                     'session_controls': session_controls if session_controls else None,
                     'sign_in_frequency_value': sign_in_freq.get('value'),
                     'sign_in_frequency_type': sign_in_freq.get('type'),
-                    'sign_in_frequency_enabled': sign_in_freq.get('isEnabled', False),
+                    'sign_in_frequency_enabled': bool(sign_in_freq.get('isEnabled')),
                     'persistent_browser_mode': persistent_browser.get('mode'),
-                    'persistent_browser_enabled': persistent_browser.get('isEnabled', False),
+                    'persistent_browser_enabled': bool(persistent_browser.get('isEnabled')),
                     'raw_policy': policy,
                 },
             )
