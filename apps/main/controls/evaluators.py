@@ -63,6 +63,84 @@ def alm_02():
     return (f'{pct}%', status)
 
 
+def aal_03():
+    """AAL-03: % of AAL2+ accounts using phishing-resistant MFA.
+
+    AAL2 users (persona aal_level >= 2, or isAdmin) must have at least one
+    phishing-resistant authenticator: FIDO2 device-bound key, WHfB, or
+    passkey (device-bound authenticator).
+
+    Target: 100% for staff/contractors/partners
+    """
+    aal2_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
+    ).distinct()
+
+    total = aal2_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    phishing_resistant = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True)
+    )
+
+    with_pr = aal2_users.filter(phishing_resistant).distinct().count()
+    pct = round(with_pr / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_pr}/{total} ({pct}%)', status)
+
+
+def aal_03_detail():
+    """Return detailed data for AAL-03: AAL2+ users and phishing-resistant auth."""
+    aal2_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
+    ).distinct()
+
+    total = aal2_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
+
+    phishing_resistant = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True)
+    )
+
+    passing_qs = aal2_users.filter(phishing_resistant).distinct()
+    failing_qs = aal2_users.exclude(phishing_resistant).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'highest_authentication_strength',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
+        'highest_authentication_strength',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': 'AAL2+ users (persona AAL level >= 2 or isAdmin=True) must have at least one phishing-resistant authenticator registered. FIDO2 device-bound keys, passkeys (Authenticator), and Windows Hello for Business all qualify as phishing-resistant per NIST SP 800-63B-4.',
+        'qualifying_methods': 'FIDO2 device-bound key (passKeyDeviceBound), Passkey via Authenticator (passKeyDeviceBoundAuthenticator), Windows Hello for Business (windowsHelloforBusiness)',
+        'disqualifying_methods': 'Push notifications, software OTP, phone/SMS, and email are NOT phishing-resistant — they are vulnerable to real-time phishing proxies',
+    }
+
+
 def aal_04():
     """AAL-04: % of privileged accounts using hardware-bound phishing-resistant auth.
 

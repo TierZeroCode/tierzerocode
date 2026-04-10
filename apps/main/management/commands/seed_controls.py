@@ -39,6 +39,16 @@ class Command(BaseCommand):
                 'evaluator': 'alm_02',
             },
             {
+                'control_id': 'AAL-03',
+                'domain': 'Phishing-Resistant Authentication (AAL2)',
+                'statement': 'Verifiers SHALL offer at least one phishing-resistant authentication option at AAL2. Federal agencies SHALL require staff, contractors, and partners to use phishing-resistant authentication.',
+                'source_reference': 'SP 800-63B-4 § 2.2.2',
+                'indicator': '% of staff/contractor/partner accounts using phishing-resistant MFA (FIDO2/WHfB/CBA)',
+                'measurement_method': 'Entra ID authentication methods report filtered to phishing-resistant types',
+                'target': '100% for staff/contractors/partners',
+                'evaluator': 'aal_03',
+            },
+            {
                 'control_id': 'AAL-04',
                 'domain': 'Phishing-Resistant Authentication (AAL3)',
                 'statement': 'AAL3 SHALL require a cryptographic authenticator with a non-exportable private key that provides phishing resistance. Syncable authenticators SHALL NOT be used at AAL3.',
