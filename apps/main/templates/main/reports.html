@@ -30,7 +30,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div class="tz-stat-card">
                             <span class="tz-section-label">Compliance Rate</span>
-                            <span class="tz-stat-value">{% widthratio compliance_compliant compliance_total 100 %}%</span>
+                            <span class="tz-stat-value">{% if compliance_total > 0 %}{% widthratio compliance_compliant compliance_total 100 %}%{% else %}N/A{% endif %}</span>
                             <span class="tz-stat-label">{{ compliance_compliant }} / {{ compliance_total }} devices</span>
                         </div>
                         <div class="tz-stat-card">
