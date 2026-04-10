@@ -645,3 +645,95 @@ def aal_09_detail():
         'qualifying_methods': 'FIDO2 key (tap), WHfB (biometric/PIN), MS Authenticator Passwordless, MS Authenticator Push (number matching), Software OTP (code entry)',
         'disqualifying_methods': 'Phone/SMS, email, and TAP alone do not demonstrate sufficient authentication intent for AAL3',
     }
+
+
+def aal_08():
+    """AAL-08: % of AAL2+ users with replay-resistant authenticators.
+
+    Replay-resistant methods use challenge-response or single-use codes
+    that cannot be captured and reused:
+    - FIDO2: challenge-response with nonce (replay-resistant)
+    - WHfB: challenge-response with TPM (replay-resistant)
+    - Passkey: challenge-response (replay-resistant)
+    - MS Authenticator Passwordless: single-use challenge (replay-resistant)
+    - MS Authenticator Push: single-use notification (replay-resistant)
+    - Software OTP (TOTP): time-based single-use codes (replay-resistant)
+    - Phone/SMS: codes can be intercepted and replayed (NOT replay-resistant)
+    - Email: codes can be intercepted (NOT replay-resistant)
+
+    Target: 100%
+    """
+    aal2_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
+    ).distinct()
+
+    total = aal2_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    replay_resistant = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+
+    with_rr = aal2_users.filter(replay_resistant).distinct().count()
+    pct = round(with_rr / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_rr}/{total} ({pct}%)', status)
+
+
+def aal_08_detail():
+    """Return detailed data for AAL-08: AAL2+ users and replay resistance."""
+    aal2_users = UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
+    ).distinct()
+
+    total = aal2_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
+
+    replay_resistant = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(microsoftAuthenticatorPush_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+
+    passing_qs = aal2_users.filter(replay_resistant).distinct()
+    failing_qs = aal2_users.exclude(replay_resistant).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
+        'highest_authentication_strength',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': 'AAL2+ users (persona AAL level >= 2 or isAdmin=True) must have at least one replay-resistant authenticator. Challenge-response methods (FIDO2, WHfB, passkey) and single-use methods (push, TOTP) are replay-resistant. Phone/SMS and email codes can be intercepted and replayed within their validity window, so they are NOT replay-resistant.',
+        'qualifying_methods': 'FIDO2 (challenge-response), WHfB (challenge-response), Passkey (challenge-response), MS Authenticator Passwordless (single-use challenge), MS Authenticator Push (single-use notification), Software OTP/TOTP (time-based single-use)',
+        'disqualifying_methods': 'Phone/SMS codes (interceptable, replayable within validity window), Email codes (interceptable)',
+    }
