@@ -58,6 +58,16 @@ class Command(BaseCommand):
                 'target': '<= 30 days',
                 'evaluator': 'aal_05',
             },
+            {
+                'control_id': 'ALM-06',
+                'domain': 'Restricted Authenticator Management',
+                'statement': 'PSTN (SMS/voice) authenticators are restricted. CSPs SHALL offer at least one alternative authenticator that is not restricted and SHALL provide clear guidance on risks.',
+                'source_reference': 'SP 800-63B-4 § 3.2.9',
+                'indicator': '% of users with ONLY SMS/voice as their MFA method (no alternative registered)',
+                'measurement_method': 'Entra ID authentication methods report filtered to SMS-only users',
+                'target': 'Monitored; declining trend toward 0%',
+                'evaluator': 'alm_06',
+            },
         ]
 
         for ctrl_data in controls:
