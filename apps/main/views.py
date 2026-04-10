@@ -631,6 +631,37 @@ def evaluate_controls_view(request):
 ############################################################################################
 
 @login_required
+def control_detail(request, control_id):
+	"""Show detailed view of a single control with underlying data."""
+	from apps.main.controls import evaluators
+
+	ctrl = Control.objects.select_related('framework').filter(control_id=control_id).first()
+	if not ctrl:
+		from django.http import Http404
+		raise Http404(f'Control {control_id} not found')
+
+	# Get detail data if evaluator exists
+	detail_data = None
+	detail_func_name = f'{ctrl.evaluator}_detail' if ctrl.evaluator else None
+	if detail_func_name:
+		detail_func = getattr(evaluators, detail_func_name, None)
+		if detail_func:
+			try:
+				detail_data = detail_func()
+			except Exception as e:
+				detail_data = {'error': str(e)}
+
+	context = {
+		'page': 'reports',
+		'ctrl': ctrl,
+		'detail': detail_data,
+		'notifications': Notification.objects.all().order_by('-created_at')[:10],
+	}
+	return render(request, 'main/control-detail.html', context)
+
+############################################################################################
+
+@login_required
 def generalSettings(request):
 	from .utils import ComplianceSettingsManager
 	from django.contrib.auth.models import User

@@ -120,7 +120,7 @@
                             {% for ctrl in controls %}
                             {% if ctrl.framework_id == fw.id %}
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100 tabular-nums">{{ ctrl.control_id }}</td>
+                                <td class="py-2.5 px-4 font-medium tabular-nums"><a href="{% url 'control_detail' ctrl.control_id %}" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a></td>
                                 <td class="py-2.5 px-4">
                                     <p class="text-slate-800 dark:text-slate-200 font-medium">{{ ctrl.domain }}</p>
                                     <details class="mt-1">

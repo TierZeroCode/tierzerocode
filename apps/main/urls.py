@@ -12,6 +12,7 @@ urlpatterns = [
     path('user-dashboard/<int:persona_id>', views.personaMetrics, name='persona-metrics'),
     path('reports', views.reports, name='reports'),
     path('reports/evaluate', views.evaluate_controls_view, name='evaluate_controls'),
+    path('reports/control/<str:control_id>', views.control_detail, name='control_detail'),
     
     # ============================================================================
     # Device Management
