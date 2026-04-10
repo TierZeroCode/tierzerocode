@@ -48,6 +48,16 @@ class Command(BaseCommand):
                 'target': '100%',
                 'evaluator': 'aal_04',
             },
+            {
+                'control_id': 'AAL-05',
+                'domain': 'Reauthentication - AAL1',
+                'statement': 'A definite reauthentication overall timeout SHALL be established, SHOULD be no more than 30 days at AAL1.',
+                'source_reference': 'SP 800-63B-4 § 2.1.3',
+                'indicator': 'Maximum session lifetime configured for AAL1 applications',
+                'measurement_method': 'CA session control policy review',
+                'target': '<= 30 days',
+                'evaluator': 'aal_05',
+            },
         ]
 
         for ctrl_data in controls:

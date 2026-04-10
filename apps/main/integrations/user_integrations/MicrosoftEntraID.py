@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.utils.timezone import make_aware
 # Import Models
-from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary
+from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy
 # Import Function Scripts
 from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
@@ -418,6 +418,64 @@ def syncSignInSummary(access_token):
     except Exception as e:
         _sync_log("Microsoft Entra ID", "1507", "Failure", f"Sign-in summary sync error: {str(e)}")
 
+def syncConditionalAccessPolicies(access_token):
+    """Fetch Conditional Access policies from Microsoft Graph. Requires Policy.Read.All permission."""
+    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
+
+    try:
+        url = "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
+        headers = {'Authorization': access_token}
+
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            _sync_log("Microsoft Entra ID", "1508", "Failure",
+                      f"CA policies fetch failed: {response.status_code} - {response.text[:500]}")
+            return
+
+        policies = response.json().get('value', [])
+        synced_ids = []
+
+        for policy in policies:
+            policy_id = policy.get('id')
+            if not policy_id:
+                continue
+
+            session_controls = policy.get('sessionControls') or {}
+            sign_in_freq = session_controls.get('signInFrequency') or {}
+            persistent_browser = session_controls.get('persistentBrowser') or {}
+
+            ConditionalAccessPolicy.objects.update_or_create(
+                policy_id=policy_id,
+                defaults={
+                    'display_name': policy.get('displayName', ''),
+                    'state': policy.get('state', 'disabled'),
+                    'conditions_users': policy.get('conditions', {}).get('users'),
+                    'conditions_applications': policy.get('conditions', {}).get('applications'),
+                    'conditions_platforms': policy.get('conditions', {}).get('platforms'),
+                    'conditions_locations': policy.get('conditions', {}).get('locations'),
+                    'grant_controls': policy.get('grantControls'),
+                    'session_controls': session_controls if session_controls else None,
+                    'sign_in_frequency_value': sign_in_freq.get('value'),
+                    'sign_in_frequency_type': sign_in_freq.get('type'),
+                    'sign_in_frequency_enabled': sign_in_freq.get('isEnabled', False),
+                    'persistent_browser_mode': persistent_browser.get('mode'),
+                    'persistent_browser_enabled': persistent_browser.get('isEnabled', False),
+                    'raw_policy': policy,
+                },
+            )
+            synced_ids.append(policy_id)
+
+        # Remove policies that no longer exist in Entra ID
+        ConditionalAccessPolicy.objects.exclude(policy_id__in=synced_ids).delete()
+
+        _sync_log("Microsoft Entra ID", "1508", "Success",
+                  f"Synced {len(synced_ids)} Conditional Access policies")
+
+    except Exception as e:
+        _sync_log("Microsoft Entra ID", "1509", "Failure",
+                  f"CA policy sync error: {str(e)}")
+
+
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
@@ -439,6 +497,9 @@ def syncMicrosoftEntraIDUser():
 
     # Sync CA+MFA sign-in analysis (requires AuditLog.Read.All)
     syncSignInSummary(access_token)
+
+    # Sync Conditional Access policies (requires Policy.Read.All)
+    syncConditionalAccessPolicies(access_token)
 
     data.last_synced_at = timezone.now()
     data.save()

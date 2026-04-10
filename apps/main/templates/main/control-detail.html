@@ -102,6 +102,55 @@
             </table>
         </div>
         {% endif %}
+
+        <!-- AAL-05 specific: CA policy breakdown -->
+        {% if detail.policies %}
+        <div class="mt-4">
+            <p class="tz-section-label mb-2">Conditional Access Policies ({{ detail.total_enabled_policies }} enabled)</p>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                        <th class="text-left py-2 px-3 tz-section-label">Policy Name</th>
+                        <th class="text-left py-2 px-3 tz-section-label">Sign-in Frequency</th>
+                        <th class="text-left py-2 px-3 tz-section-label">Persistent Browser</th>
+                        <th class="text-left py-2 px-3 tz-section-label">Session Control</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    {% for p in detail.policies %}
+                    <tr class="{% if p.sign_in_frequency_days and p.sign_in_frequency_days > 30 %}bg-code-red-50/30 dark:bg-code-red-500/5{% endif %}">
+                        <td class="py-2 px-3 text-slate-800 dark:text-slate-200 font-medium">{{ p.display_name }}</td>
+                        <td class="py-2 px-3 text-slate-600 dark:text-slate-400">
+                            {% if p.sign_in_frequency_enabled %}
+                                {{ p.sign_in_frequency_value }} {{ p.sign_in_frequency_type }}
+                                {% if p.sign_in_frequency_days and p.sign_in_frequency_days > 30 %}
+                                    <span class="tz-badge tz-badge-danger ml-1">Exceeds 30d</span>
+                                {% else %}
+                                    <span class="tz-badge tz-badge-success ml-1">OK</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-slate-400">Not configured</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 px-3 text-slate-600 dark:text-slate-400">
+                            {% if p.persistent_browser_enabled %}
+                                {{ p.persistent_browser_mode }}
+                            {% else %}
+                                <span class="text-slate-400">Not configured</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 px-3">
+                            {% if p.has_session_control %}<span class="tz-badge tz-badge-info">Active</span>{% else %}<span class="tz-badge tz-badge-neutral">None</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if detail.max_session_days %}
+            <p class="text-xs text-slate-500 mt-2">Maximum configured session lifetime: <span class="font-semibold {% if detail.max_session_days > 30 %}text-code-red-600{% else %}text-code-green-600{% endif %}">{{ detail.max_session_days }} days</span> (target: &le; 30 days)</p>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 
