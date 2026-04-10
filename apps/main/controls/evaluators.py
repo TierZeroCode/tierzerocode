@@ -70,21 +70,12 @@ def aal_04():
     Hardware FIDO2 (passKeyDeviceBound) and WHfB with TPM qualify.
     Syncable passkeys (passKeyDeviceBoundAuthenticator) do NOT qualify.
 
-    Targets privileged users: isAdmin=True OR persona name contains
-    'Tier 0', 'Tier 1', 'Privileged', or 'Admin' (case-insensitive).
+    Targets AAL3 users: isAdmin=True OR persona AAL level >= 3.
 
     Target: 100%
     """
-    # Identify privileged users
-    privileged_personas = Persona.objects.filter(
-        Q(persona_name__icontains='Tier 0') |
-        Q(persona_name__icontains='Tier 1') |
-        Q(persona_name__icontains='Privileged') |
-        Q(persona_name__icontains='Admin')
-    )
-
     privileged_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
     ).distinct()
 
     total = privileged_users.count()
@@ -171,15 +162,8 @@ def alm_02_detail():
 
 def aal_04_detail():
     """Return detailed data for AAL-04: privileged users and their hardware auth status."""
-    privileged_personas = Persona.objects.filter(
-        Q(persona_name__icontains='Tier 0') |
-        Q(persona_name__icontains='Tier 1') |
-        Q(persona_name__icontains='Privileged') |
-        Q(persona_name__icontains='Admin')
-    )
-
     privileged_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
     ).distinct()
 
     total = privileged_users.count()
@@ -211,7 +195,7 @@ def aal_04_detail():
         'failing_count': failing.count(),
         'failing_users': list(failing[:100]),
         'passing_users': list(passing[:100]),
-        'logic': 'Privileged users (isAdmin=True or persona matching Tier 0/Tier 1/Privileged/Admin) must have hardware-bound phishing-resistant authenticators. FIDO2 device-bound keys and Windows Hello for Business qualify. Syncable passkeys do NOT qualify for AAL3.',
+        'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have hardware-bound phishing-resistant authenticators. FIDO2 device-bound keys and Windows Hello for Business qualify. Syncable passkeys do NOT qualify for AAL3.',
         'qualifying_methods': 'Hardware FIDO2 (passKeyDeviceBound) or Windows Hello for Business (windowsHelloforBusiness)',
         'disqualifying_methods': 'Syncable passkeys (passKeyDeviceBoundAuthenticator) do not meet AAL3 requirements.',
     }
@@ -407,9 +391,8 @@ def alm_06_detail():
 def aal_09():
     """AAL-09: % of AAL3 accounts with intent-demonstrating authenticators.
 
-    AAL3 accounts (privileged users: isAdmin or Tier 0/1/Privileged/Admin
-    persona) must have at least one authenticator that requires explicit
-    user action:
+    AAL3 users (isAdmin=True or persona AAL level >= 3) must have at least
+    one authenticator that requires explicit user action:
     - FIDO2 key: physical tap (always demonstrates intent)
     - WHfB: biometric or PIN (always demonstrates intent)
     - MS Authenticator Push: requires number matching / user action
@@ -419,15 +402,8 @@ def aal_09():
 
     Target: 100% for AAL3
     """
-    privileged_personas = Persona.objects.filter(
-        Q(persona_name__icontains='Tier 0') |
-        Q(persona_name__icontains='Tier 1') |
-        Q(persona_name__icontains='Privileged') |
-        Q(persona_name__icontains='Admin')
-    )
-
     aal3_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
     ).distinct()
 
     total = aal3_users.count()
@@ -452,15 +428,8 @@ def aal_09():
 
 def aal_09_detail():
     """Return detailed data for AAL-09: AAL3 users and their intent-demonstrating auth."""
-    privileged_personas = Persona.objects.filter(
-        Q(persona_name__icontains='Tier 0') |
-        Q(persona_name__icontains='Tier 1') |
-        Q(persona_name__icontains='Privileged') |
-        Q(persona_name__icontains='Admin')
-    )
-
     aal3_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__in=privileged_personas)
+        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
     ).distinct()
 
     total = aal3_users.count()
@@ -503,7 +472,7 @@ def aal_09_detail():
         'failing_count': failing_qs.count(),
         'failing_users': failing,
         'passing_users': passing,
-        'logic': 'AAL3 accounts (isAdmin=True or persona matching Tier 0/Tier 1/Privileged/Admin) must have at least one authenticator that requires explicit user action. FIDO2 keys (physical tap), WHfB (biometric/PIN), MS Authenticator Push (number matching), and software OTP (code entry) all demonstrate intent. Phone/SMS/email do not.',
+        'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have at least one authenticator that requires explicit user action. FIDO2 keys (physical tap), WHfB (biometric/PIN), MS Authenticator Push (number matching), and software OTP (code entry) all demonstrate intent. Phone/SMS/email do not.',
         'qualifying_methods': 'FIDO2 key (tap), WHfB (biometric/PIN), MS Authenticator Passwordless, MS Authenticator Push (number matching), Software OTP (code entry)',
         'disqualifying_methods': 'Phone/SMS, email, and TAP alone do not demonstrate sufficient authentication intent for AAL3',
     }

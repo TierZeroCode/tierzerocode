@@ -439,8 +439,15 @@ class TailscaleDeviceData(models.Model):
         return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
 class Persona(models.Model):
+    AAL_LEVEL_CHOICES = (
+        (1, 'AAL1'),
+        (2, 'AAL2'),
+        (3, 'AAL3'),
+    )
     persona_name = models.CharField(max_length=200, null=True)
     priority = models.IntegerField(null=True)
+    aal_level = models.IntegerField(choices=AAL_LEVEL_CHOICES, default=1,
+        help_text='Authentication Assurance Level per NIST SP 800-63')
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
 
