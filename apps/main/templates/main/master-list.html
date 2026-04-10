@@ -97,6 +97,11 @@
             placeholder: "Select Endpoint Type(s)",
             allowClear: true
         });
+        $('#compliance-filter').select2({
+            placeholder: "All",
+            allowClear: true,
+            minimumResultsForSearch: Infinity
+        });
 
         // Server-side DataTables
         var table = $("#datatables-responsive").DataTable({
