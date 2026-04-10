@@ -128,26 +128,47 @@ table.dataTable tbody tr:hover {
 }
 
 /* Dark mode */
+.dark .dataTables_wrapper {
+    color: oklch(0.915 0.012 260);
+}
 .dark .dataTables_filter input,
 .dark .dataTables_length select {
-    background-color: oklch(0.250 0.020 260);
-    border-color: oklch(0.370 0.025 260 / 0.5);
-    color: oklch(0.915 0.012 260);
+    background-color: oklch(0.250 0.020 260) !important;
+    border-color: oklch(0.370 0.025 260 / 0.5) !important;
+    color: oklch(0.915 0.012 260) !important;
 }
 .dark .dataTables_filter input:focus {
-    border-color: oklch(0.555 0.205 255);
+    border-color: oklch(0.555 0.205 255) !important;
     box-shadow: 0 0 0 1px oklch(0.555 0.205 255);
 }
+.dark .dataTables_filter label,
+.dark .dataTables_length label {
+    color: oklch(0.650 0.022 260);
+}
+.dark table.dataTable {
+    border-collapse: collapse !important;
+}
 .dark table.dataTable thead th {
-    color: oklch(0.550 0.022 260);
-    border-bottom-color: oklch(0.370 0.025 260 / 0.5);
+    color: oklch(0.550 0.022 260) !important;
+    border-bottom-color: oklch(0.370 0.025 260 / 0.5) !important;
+    background-color: transparent !important;
 }
 .dark table.dataTable tbody td {
-    color: oklch(0.915 0.012 260);
-    border-bottom-color: oklch(0.250 0.020 260);
+    color: oklch(0.915 0.012 260) !important;
+    border-bottom-color: oklch(0.250 0.020 260) !important;
+    background-color: transparent !important;
+}
+.dark table.dataTable tbody tr {
+    background-color: transparent !important;
 }
 .dark table.dataTable tbody tr:hover {
-    background-color: oklch(0.250 0.020 260);
+    background-color: oklch(0.250 0.020 260) !important;
+}
+.dark table.dataTable tbody tr.odd {
+    background-color: transparent !important;
+}
+.dark table.dataTable tbody tr.even {
+    background-color: transparent !important;
 }
 .dark .dataTables_paginate .paginate_button {
     background: transparent;
