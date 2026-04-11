@@ -529,10 +529,14 @@ def syncTenantSecurityConfig(access_token):
                     password_protection_enabled = str(values.get('EnableBannedPasswordCheck', 'false')).lower() == 'true'
                     password_protection_mode = values.get('BannedPasswordCheckOnPremisesMode', 'Audit')
                     password_protection_on_prem = str(values.get('EnableBannedPasswordCheckOnPremises', 'false')).lower() == 'true'
-                    custom_banned_enabled = str(values.get('EnableCustomBannedPasswords', 'false')).lower() == 'true'
+                    # BannedPasswordList is tab-delimited; custom list is enabled if non-empty
                     raw_list = values.get('BannedPasswordList', '')
                     if raw_list:
-                        custom_banned_list = [p.strip() for p in str(raw_list).split(',') if p.strip()]
+                        custom_banned_list = [p.strip() for p in str(raw_list).split('\t') if p.strip()]
+                        custom_banned_enabled = len(custom_banned_list) > 0
+                    else:
+                        custom_banned_enabled = False
+                        custom_banned_list = None
 
         # Try v1.0 /settings
         response = requests.get("https://graph.microsoft.com/v1.0/settings", headers=headers)
