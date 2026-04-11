@@ -12,6 +12,62 @@ from apps.main.models import UserData, Device, Integration, SignInSummary, Perso
 from apps.authhandler.models import SSOIntegration
 
 
+# ── Reusable query filters ──
+
+def _get_users_by_aal(min_aal):
+    """Get UserData queryset filtered by AAL level. isAdmin always counts as AAL3."""
+    if min_aal <= 1:
+        return UserData.objects.all()
+    return UserData.objects.filter(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=min_aal)
+    ).distinct()
+
+
+# Any MFA method registered (AAL-02 baseline)
+ANY_MFA_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True) |
+    Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+    Q(microsoftAuthenticatorPush_authentication_method=True) |
+    Q(softwareOneTimePasscode_authentication_method=True) |
+    Q(mobilePhone_authentication_method=True)
+)
+
+# Phishing-resistant methods (AAL-03: AAL2+)
+PHISHING_RESISTANT_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True)
+)
+
+# Hardware-bound phishing-resistant only (AAL-04: AAL3)
+HARDWARE_BOUND_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True)
+)
+
+# Replay-resistant methods (AAL-08) and intent-demonstrating (AAL-09) — same set
+REPLAY_RESISTANT_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True) |
+    Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+    Q(microsoftAuthenticatorPush_authentication_method=True) |
+    Q(softwareOneTimePasscode_authentication_method=True)
+)
+
+# Stronger methods (everything except phone/SMS — used by ALM-06)
+STRONGER_THAN_SMS_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True) |
+    Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+    Q(microsoftAuthenticatorPush_authentication_method=True) |
+    Q(softwareOneTimePasscode_authentication_method=True)
+)
+
+
 def alm_01():
     """ALM-01: % of accounts with at least one authenticator registered at enrollment.
 
@@ -22,15 +78,7 @@ def alm_01():
     if total == 0:
         return ('-', 'not_measured')
 
-    with_auth = UserData.objects.filter(
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True) |
-        Q(mobilePhone_authentication_method=True)
-    ).distinct().count()
+    with_auth = UserData.objects.filter(ANY_MFA_Q).distinct().count()
 
     pct = round(with_auth / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
@@ -75,26 +123,13 @@ def aal_02():
 
     Target: 100%
     """
-    aal2_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
-    ).distinct()
+    aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
     if total == 0:
         return ('-', 'not_measured')
 
-    # Any MFA method registered counts
-    any_mfa = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True) |
-        Q(mobilePhone_authentication_method=True)
-    )
-
-    with_mfa = aal2_users.filter(any_mfa).distinct().count()
+    with_mfa = aal2_users.filter(ANY_MFA_Q).distinct().count()
     pct = round(with_mfa / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
     return (f'{with_mfa}/{total} ({pct}%)', status)
@@ -102,26 +137,14 @@ def aal_02():
 
 def aal_02_detail():
     """Return detailed data for AAL-02: AAL2+ users and MFA registration status."""
-    aal2_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
-    ).distinct()
+    aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
 
-    any_mfa = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True) |
-        Q(mobilePhone_authentication_method=True)
-    )
-
-    passing_qs = aal2_users.filter(any_mfa).distinct()
-    failing_qs = aal2_users.exclude(any_mfa).distinct()
+    passing_qs = aal2_users.filter(ANY_MFA_Q).distinct()
+    failing_qs = aal2_users.exclude(ANY_MFA_Q).distinct()
 
     passing = list(passing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -163,21 +186,13 @@ def aal_03():
 
     Target: 100% for staff/contractors/partners
     """
-    aal2_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
-    ).distinct()
+    aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
     if total == 0:
         return ('-', 'not_measured')
 
-    phishing_resistant = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True)
-    )
-
-    with_pr = aal2_users.filter(phishing_resistant).distinct().count()
+    with_pr = aal2_users.filter(PHISHING_RESISTANT_Q).distinct().count()
     pct = round(with_pr / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
     return (f'{with_pr}/{total} ({pct}%)', status)
@@ -185,22 +200,14 @@ def aal_03():
 
 def aal_03_detail():
     """Return detailed data for AAL-03: AAL2+ users and phishing-resistant auth."""
-    aal2_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
-    ).distinct()
+    aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
 
-    phishing_resistant = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True)
-    )
-
-    passing_qs = aal2_users.filter(phishing_resistant).distinct()
-    failing_qs = aal2_users.exclude(phishing_resistant).distinct()
+    passing_qs = aal2_users.filter(PHISHING_RESISTANT_Q).distinct()
+    failing_qs = aal2_users.exclude(PHISHING_RESISTANT_Q).distinct()
 
     passing = list(passing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -243,9 +250,7 @@ def aal_04():
 
     Target: 100%
     """
-    privileged_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
-    ).distinct()
+    privileged_users = _get_users_by_aal(3)
 
     total = privileged_users.count()
     if total == 0:
@@ -253,10 +258,7 @@ def aal_04():
 
     # Hardware-bound phishing-resistant: FIDO2 device-bound OR WHfB
     # Explicitly exclude users who ONLY have syncable passkeys
-    with_hardware_auth = privileged_users.filter(
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True)
-    ).distinct().count()
+    with_hardware_auth = privileged_users.filter(HARDWARE_BOUND_Q).distinct().count()
 
     pct = round(with_hardware_auth / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
@@ -269,17 +271,7 @@ def alm_01_detail():
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_users': [], 'passing_users': []}
 
-    has_auth_q = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True) |
-        Q(mobilePhone_authentication_method=True)
-    )
-
-    passing = UserData.objects.filter(has_auth_q).distinct().values(
+    passing = UserData.objects.filter(ANY_MFA_Q).distinct().values(
         'upn', 'given_name', 'surname', 'highest_authentication_strength',
         'passKeyDeviceBound_authentication_method',
         'passKeyDeviceBoundAuthenticator_authentication_method',
@@ -289,7 +281,7 @@ def alm_01_detail():
         'softwareOneTimePasscode_authentication_method',
         'mobilePhone_authentication_method',
     )
-    failing = UserData.objects.exclude(has_auth_q).values(
+    failing = UserData.objects.exclude(ANY_MFA_Q).values(
         'upn', 'given_name', 'surname', 'highest_authentication_strength',
     )
 
@@ -331,24 +323,20 @@ def alm_02_detail():
 
 def aal_04_detail():
     """Return detailed data for AAL-04: privileged users and their hardware auth status."""
-    privileged_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
-    ).distinct()
+    privileged_users = _get_users_by_aal(3)
 
     total = privileged_users.count()
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No privileged users found.'}
 
-    hw_auth_q = Q(passKeyDeviceBound_authentication_method=True) | Q(windowsHelloforBusiness_authentication_method=True)
-
-    passing = privileged_users.filter(hw_auth_q).distinct().values(
+    passing = privileged_users.filter(HARDWARE_BOUND_Q).distinct().values(
         'upn', 'given_name', 'surname', 'isAdmin',
         'passKeyDeviceBound_authentication_method',
         'passKeyDeviceBoundAuthenticator_authentication_method',
         'windowsHelloforBusiness_authentication_method',
         'persona__persona_name',
     )
-    failing = privileged_users.exclude(hw_auth_q).values(
+    failing = privileged_users.exclude(HARDWARE_BOUND_Q).values(
         'upn', 'given_name', 'surname', 'isAdmin',
         'passKeyDeviceBound_authentication_method',
         'passKeyDeviceBoundAuthenticator_authentication_method',
@@ -475,20 +463,10 @@ def alm_06():
     if total == 0:
         return ('-', 'not_measured')
 
-    # Stronger methods — any of these registered means the user is not SMS-only
-    stronger_methods = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-
     # SMS-only: has phone but no stronger method
     sms_only = UserData.objects.filter(
         mobilePhone_authentication_method=True,
-    ).exclude(stronger_methods).distinct().count()
+    ).exclude(STRONGER_THAN_SMS_Q).distinct().count()
 
     if sms_only == 0:
         return ('0 users', 'passing')
@@ -503,18 +481,9 @@ def alm_06_detail():
     if total == 0:
         return {'total': 0, 'sms_only_count': 0, 'failing_users': [], 'logic': 'No users synced.'}
 
-    stronger_methods = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-
     sms_only_users = UserData.objects.filter(
         mobilePhone_authentication_method=True,
-    ).exclude(stronger_methods).distinct()
+    ).exclude(STRONGER_THAN_SMS_Q).distinct()
 
     sms_only_count = sms_only_users.count()
 
@@ -529,7 +498,7 @@ def alm_06_detail():
     # Also show users who have phone + a stronger method (compliant)
     phone_with_stronger = UserData.objects.filter(
         mobilePhone_authentication_method=True,
-    ).filter(stronger_methods).distinct()
+    ).filter(STRONGER_THAN_SMS_Q).distinct()
 
     passing = list(phone_with_stronger.values(
         'upn', 'given_name', 'surname', 'persona__persona_name',
@@ -571,25 +540,13 @@ def aal_09():
 
     Target: 100% for AAL3
     """
-    aal3_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
-    ).distinct()
+    aal3_users = _get_users_by_aal(3)
 
     total = aal3_users.count()
     if total == 0:
         return ('-', 'not_measured')
 
-    # Intent-demonstrating methods
-    intent_methods = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-
-    with_intent = aal3_users.filter(intent_methods).distinct().count()
+    with_intent = aal3_users.filter(REPLAY_RESISTANT_Q).distinct().count()
     pct = round(with_intent / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
     return (f'{with_intent}/{total} ({pct}%)', status)
@@ -597,25 +554,14 @@ def aal_09():
 
 def aal_09_detail():
     """Return detailed data for AAL-09: AAL3 users and their intent-demonstrating auth."""
-    aal3_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
-    ).distinct()
+    aal3_users = _get_users_by_aal(3)
 
     total = aal3_users.count()
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL3 (privileged) users found.'}
 
-    intent_methods = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-
-    passing_qs = aal3_users.filter(intent_methods).distinct()
-    failing_qs = aal3_users.exclude(intent_methods).distinct()
+    passing_qs = aal3_users.filter(REPLAY_RESISTANT_Q).distinct()
+    failing_qs = aal3_users.exclude(REPLAY_RESISTANT_Q).distinct()
 
     passing = list(passing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -663,24 +609,13 @@ def aal_08():
 
     Target: 100%
     """
-    aal2_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
-    ).distinct()
+    aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
     if total == 0:
         return ('-', 'not_measured')
 
-    replay_resistant = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-
-    with_rr = aal2_users.filter(replay_resistant).distinct().count()
+    with_rr = aal2_users.filter(REPLAY_RESISTANT_Q).distinct().count()
     pct = round(with_rr / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
     return (f'{with_rr}/{total} ({pct}%)', status)
@@ -688,25 +623,14 @@ def aal_08():
 
 def aal_08_detail():
     """Return detailed data for AAL-08: AAL2+ users and replay resistance."""
-    aal2_users = UserData.objects.filter(
-        Q(isAdmin=True) | Q(persona__aal_level__gte=2)
-    ).distinct()
+    aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
 
-    replay_resistant = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(microsoftAuthenticatorPush_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-
-    passing_qs = aal2_users.filter(replay_resistant).distinct()
-    failing_qs = aal2_users.exclude(replay_resistant).distinct()
+    passing_qs = aal2_users.filter(REPLAY_RESISTANT_Q).distinct()
+    failing_qs = aal2_users.exclude(REPLAY_RESISTANT_Q).distinct()
 
     passing = list(passing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
