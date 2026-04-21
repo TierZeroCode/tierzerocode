@@ -19,8 +19,11 @@ class Command(BaseCommand):
 
         # Rename PWD-05 → PWD-10 if the old ID still exists
         Control.objects.filter(control_id='PWD-05').update(control_id='PWD-10')
-        # Rename ALM-02 → ALM-03 if the old ID still exists
-        Control.objects.filter(control_id='ALM-02').update(control_id='ALM-03')
+        # Rename AAL-05 (reauthentication) → AAL-12, but only if AAL-12 doesn't exist yet
+        if not Control.objects.filter(control_id='AAL-12').exists():
+            Control.objects.filter(control_id='AAL-05').update(control_id='AAL-12')
+        # Rename AAL-03 → AAL-05 if the old ID still exists
+        Control.objects.filter(control_id='AAL-03').update(control_id='AAL-05')
 
         controls = [
             {
@@ -64,14 +67,14 @@ class Command(BaseCommand):
                 'evaluator': 'aal_02',
             },
             {
-                'control_id': 'AAL-03',
-                'domain': 'Phishing-Resistant Authentication (AAL2)',
+                'control_id': 'AAL-05',
+                'domain': 'AAL2 Phishing-Resistant Availability',
                 'statement': 'Verifiers SHALL offer at least one phishing-resistant authentication option at AAL2. Federal agencies SHALL require staff, contractors, and partners to use phishing-resistant authentication.',
-                'source_reference': 'SP 800-63B-4 § 2.2.2',
-                'indicator': '% of staff/contractor/partner accounts using phishing-resistant MFA (FIDO2/WHfB/CBA)',
-                'measurement_method': 'Entra ID authentication methods report filtered to phishing-resistant types',
+                'source_reference': '800-63B-4 § 2.2.2',
+                'indicator': '% of staff/contractor/partner accounts using phishing-resistant MFA',
+                'measurement_method': 'Entra ID auth methods report filtered to FIDO2/WHfB/CBA; CA authentication strength policies',
                 'target': '100% for staff/contractors/partners',
-                'evaluator': 'aal_03',
+                'evaluator': 'aal_05',
             },
             {
                 'control_id': 'AAL-04',
@@ -84,14 +87,14 @@ class Command(BaseCommand):
                 'evaluator': 'aal_04',
             },
             {
-                'control_id': 'AAL-05',
+                'control_id': 'AAL-12',
                 'domain': 'Reauthentication - AAL1',
                 'statement': 'A definite reauthentication overall timeout SHALL be established, SHOULD be no more than 30 days at AAL1.',
                 'source_reference': 'SP 800-63B-4 § 2.1.3',
                 'indicator': 'Maximum session lifetime configured for AAL1 applications',
                 'measurement_method': 'CA session control policy review',
                 'target': '<= 30 days',
-                'evaluator': 'aal_05',
+                'evaluator': 'aal_12',
             },
             {
                 'control_id': 'ALM-06',

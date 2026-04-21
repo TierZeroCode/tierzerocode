@@ -178,8 +178,8 @@ def aal_02_detail():
     }
 
 
-def aal_03():
-    """AAL-03: % of AAL2+ accounts using phishing-resistant MFA.
+def aal_05():
+    """AAL-05: % of AAL2+ accounts using phishing-resistant MFA.
 
     AAL2 users (persona aal_level >= 2, or isAdmin) must have at least one
     phishing-resistant authenticator: FIDO2 device-bound key, WHfB, or
@@ -199,8 +199,8 @@ def aal_03():
     return (f'{with_pr}/{total} ({pct}%)', status)
 
 
-def aal_03_detail():
-    """Return detailed data for AAL-03: AAL2+ users and phishing-resistant auth."""
+def aal_05_detail():
+    """Return detailed data for AAL-05: AAL2+ users and phishing-resistant auth."""
     aal2_users = _get_users_by_aal(2)
 
     total = aal2_users.count()
@@ -434,8 +434,8 @@ def aal_04_detail():
     }
 
 
-def aal_05():
-    """AAL-05: ALL enforced CA policies must have a session lifetime <= 30 days.
+def aal_12():
+    """AAL-12: ALL enforced CA policies must have a session lifetime <= 30 days.
 
     Every enforced policy (state='enabled') must have sign-in frequency
     configured. Policies without session controls allow indefinite sessions,
@@ -478,8 +478,8 @@ def aal_05():
     return (f'{display} max ({total_enforced}/{total_enforced})', 'passing')
 
 
-def aal_05_detail():
-    """Return detailed data for AAL-05: all CA policies with session controls."""
+def aal_12_detail():
+    """Return detailed data for AAL-12: all CA policies with session controls."""
     all_policies = ConditionalAccessPolicy.objects.all()
     enforced_policies = all_policies.filter(state='enabled')
 
