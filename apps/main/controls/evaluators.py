@@ -324,37 +324,73 @@ def aal_02_detail():
     }
 
 
+def _phishing_resistant_ca_policies():
+    """Return enabled CA policies that enforce phishing-resistant authentication strength.
+
+    Entra ID's built-in 'Phishing-resistant MFA' authentication strength has
+    id '00000000-0000-0000-0000-000000000004' and covers WHfB, FIDO2, and CBA.
+    Also catches custom strength policies whose displayName contains 'phishing'.
+    """
+    enabled_policies = ConditionalAccessPolicy.objects.filter(state='enabled')
+    pr_policies = []
+    for policy in enabled_policies:
+        gc = policy.grant_controls or {}
+        strength = gc.get('authenticationStrength') or {}
+        strength_id = strength.get('id', '')
+        strength_name = strength.get('displayName', '')
+        if (strength_id == '00000000-0000-0000-0000-000000000004' or
+                'phishing' in strength_name.lower()):
+            pr_policies.append({
+                'display_name': policy.display_name,
+                'state': policy.state,
+                'strength_name': strength_name or 'Phishing-resistant MFA',
+                'allowed_combinations': strength.get('allowedCombinations', []),
+            })
+    return pr_policies
+
+
 def aal_05():
     """AAL-05: % of AAL2+ accounts using phishing-resistant MFA.
 
-    AAL2 users (persona aal_level >= 2, or isAdmin) must have at least one
-    phishing-resistant authenticator: FIDO2 device-bound key, WHfB, or
-    passkey (device-bound authenticator).
+    Two-dimensional measurement per 800-63B-4 § 2.2.2:
+    1. User registration: % of AAL2+ users with at least one phishing-resistant
+       authenticator registered (FIDO2 device-bound key, WHfB, Authenticator passkey).
+    2. Policy enforcement: at least one enabled CA policy requires phishing-resistant
+       authentication strength (Entra ID built-in or custom).
+
+    Both must hold for the control to pass: registration without enforcement means users
+    can still fall back to weaker methods.
 
     Target: 100% for staff/contractors/partners
     """
     aal2_users = _get_users_by_aal(2)
-
     total = aal2_users.count()
     if total == 0:
         return ('-', 'not_measured')
 
     with_pr = aal2_users.filter(PHISHING_RESISTANT_Q).distinct().count()
     pct = round(with_pr / total * 100)
-    status = 'passing' if pct >= 100 else 'failing'
-    return (f'{with_pr}/{total} ({pct}%)', status)
+
+    pr_policies = _phishing_resistant_ca_policies()
+    policy_enforced = len(pr_policies) > 0
+
+    status = 'passing' if (pct >= 100 and policy_enforced) else 'failing'
+    policy_label = f'{len(pr_policies)} CA polic{"y" if len(pr_policies) == 1 else "ies"} enforc{"es" if len(pr_policies) == 1 else "e"}'
+    return (f'{with_pr}/{total} ({pct}%) — {policy_label}', status)
 
 
 def aal_05_detail():
     """Return detailed data for AAL-05: AAL2+ users and phishing-resistant auth."""
     aal2_users = _get_users_by_aal(2)
-
     total = aal2_users.count()
     if total == 0:
         return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
 
     passing_qs = aal2_users.filter(PHISHING_RESISTANT_Q).distinct()
     failing_qs = aal2_users.exclude(PHISHING_RESISTANT_Q).distinct()
+
+    pr_policies = _phishing_resistant_ca_policies()
+    policy_enforced = len(pr_policies) > 0
 
     passing = list(passing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -374,14 +410,28 @@ def aal_05_detail():
         'mobilePhone_authentication_method',
     )[:100])
 
+    policy_note = (
+        f'{len(pr_policies)} enabled CA polic{"y" if len(pr_policies) == 1 else "ies"} enforce phishing-resistant authentication strength.'
+        if policy_enforced else
+        'No enabled CA policies enforce phishing-resistant authentication strength — users with the methods registered can still authenticate with weaker factors.'
+    )
+
     return {
         'total': total,
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
         'failing_users': failing,
         'passing_users': passing,
-        'logic': 'AAL2+ users (persona AAL level >= 2 or isAdmin=True) must have at least one phishing-resistant authenticator registered. FIDO2 device-bound keys, passkeys (Authenticator), and Windows Hello for Business all qualify as phishing-resistant per NIST SP 800-63B-4.',
-        'qualifying_methods': 'FIDO2 device-bound key (passKeyDeviceBound), Passkey via Authenticator (passKeyDeviceBoundAuthenticator), Windows Hello for Business (windowsHelloforBusiness)',
+        'ca_policies': pr_policies,
+        'policy_enforced': policy_enforced,
+        'logic': (
+            'AAL2+ users (persona AAL level >= 2 or isAdmin=True) must have at least one phishing-resistant '
+            'authenticator registered AND at least one CA policy must enforce phishing-resistant authentication strength. '
+            'FIDO2 device-bound keys, Authenticator passkeys, and Windows Hello for Business qualify at AAL2. '
+            'CBA (x509/smart card) also qualifies but is not yet tracked at the individual user level. '
+            + policy_note
+        ),
+        'qualifying_methods': 'FIDO2 device-bound key (passKeyDeviceBound), Passkey via Authenticator (passKeyDeviceBoundAuthenticator), Windows Hello for Business (windowsHelloforBusiness), CBA/x509 (policy-level only)',
         'disqualifying_methods': 'Push notifications, software OTP, phone/SMS, and email are NOT phishing-resistant — they are vulnerable to real-time phishing proxies',
     }
 
