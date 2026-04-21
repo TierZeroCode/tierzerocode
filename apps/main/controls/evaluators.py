@@ -663,8 +663,8 @@ def aal_08_detail():
     }
 
 
-def pwd_05():
-    """PWD-05: Password blocklist enforcement.
+def pwd_10():
+    """PWD-10: Password blocklist enforcement.
 
     Checks that Entra ID Password Protection is enabled with:
     1. Global banned password list enabled (EnableBannedPasswordCheck)
@@ -699,8 +699,8 @@ def pwd_05():
     return (' + '.join(status_parts), 'passing')
 
 
-def pwd_05_detail():
-    """Return detailed data for PWD-05: password protection configuration."""
+def pwd_10_detail():
+    """Return detailed data for PWD-10: password protection configuration."""
     config = TenantSecurityConfig.objects.first()
     if not config:
         return {
@@ -742,4 +742,50 @@ def pwd_05_detail():
         'all_required_pass': all_required_pass,
         'synced_at': config.synced_at,
         'logic': 'NIST SP 800-63B-4 requires passwords to be checked against a blocklist of known compromised passwords. Entra ID Password Protection provides a global banned password list (Microsoft-maintained) and optional custom banned passwords. Enforcement mode must be "Enforce" (not "Audit") to actively block weak passwords.',
+    }
+
+
+def pwd_08():
+    """PWD-08: No KBA for Passwords — count of users with security questions registered.
+
+    NIST 800-63B-4 § 3.1.1.2(8) prohibits knowledge-based authentication
+    (security questions) in password flows. Measures the number of users in
+    Entra ID who have the securityQuestion authentication method registered.
+
+    Target: 0
+    """
+    total = UserData.objects.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    with_kba = UserData.objects.filter(securityQuestion_authentication_method=True).count()
+
+    if with_kba == 0:
+        return ('0', 'passing')
+    return (str(with_kba), 'failing')
+
+
+def pwd_08_detail():
+    """Return detailed data for PWD-08: users with security questions registered."""
+    total = UserData.objects.count()
+    if total == 0:
+        return {'total': 0, 'kba_count': 0, 'failing_users': [], 'logic': 'No users synced.'}
+
+    kba_users = UserData.objects.filter(securityQuestion_authentication_method=True)
+    kba_count = kba_users.count()
+
+    failing = list(kba_users.values(
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'securityQuestion_authentication_method',
+    )[:100])
+
+    return {
+        'total': total,
+        'kba_count': kba_count,
+        'failing_count': kba_count,
+        'passing_count': total - kba_count,
+        'failing_users': failing,
+        'logic': 'NIST 800-63B-4 § 3.1.1.2(8) prohibits verifiers from prompting subscribers to use knowledge-based authentication (security questions) when choosing passwords. Any user with the securityQuestion authentication method registered represents a non-compliant application or SSPR configuration.',
+        'qualifying_methods': 'No security questions registered',
+        'disqualifying_methods': 'securityQuestion authentication method registered',
     }
