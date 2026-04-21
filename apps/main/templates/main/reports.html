@@ -90,16 +90,60 @@
 
         <!-- Controls Monitoring Tab -->
         <div id="panel-controls" class="tab-panel hidden">
-            <div class="flex items-center justify-between mb-4">
+
+            <!-- Top bar: description + actions -->
+            <div class="flex items-center justify-between mb-3">
                 <p class="text-sm text-slate-600 dark:text-slate-400">Automated evaluation of security controls against live data.</p>
                 <div class="flex items-center gap-2">
                     <a href="{% url 'seed_controls_view' %}" class="tz-btn-secondary text-xs py-1.5 px-3" onclick="return confirm('This will load/update all control definitions. Continue?');">Seed Controls</a>
                     <a href="{% url 'evaluate_controls' %}" class="tz-btn-primary text-xs py-1.5 px-3">Evaluate All</a>
                 </div>
             </div>
+
             {% if frameworks %}
+
+            <!-- Filter bar -->
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50 rounded">
+
+                <!-- Search -->
+                <div class="relative">
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                    </svg>
+                    <input id="ctrl-search" type="text" placeholder="Search controls…" autocomplete="off"
+                        class="tz-form-input pl-8 w-44 text-xs py-1">
+                </div>
+
+                <div class="w-px h-5 bg-slate-200 dark:bg-slate-700 self-center"></div>
+
+                <!-- Status pills -->
+                <div class="flex items-center gap-1.5">
+                    <span class="tz-section-label">Status</span>
+                    <div class="flex gap-1" id="ctrl-status-filters">
+                        <button class="ctrl-pill ctrl-pill-active" data-group="status" data-value="all">All</button>
+                        <button class="ctrl-pill ctrl-pill-passing" data-group="status" data-value="passing">Passing</button>
+                        <button class="ctrl-pill ctrl-pill-failing" data-group="status" data-value="failing">Failing</button>
+                        <button class="ctrl-pill ctrl-pill-neutral" data-group="status" data-value="not_measured">Not Measured</button>
+                    </div>
+                </div>
+
+                <div class="w-px h-5 bg-slate-200 dark:bg-slate-700 self-center"></div>
+
+                <!-- Type pills — populated by JS from rendered rows -->
+                <div class="flex items-center gap-1.5">
+                    <span class="tz-section-label">Type</span>
+                    <div class="flex gap-1" id="ctrl-type-filters">
+                        <button class="ctrl-pill ctrl-pill-active" data-group="type" data-value="all">All</button>
+                        <!-- populated by initControlFilters() -->
+                    </div>
+                </div>
+
+                <!-- Result count -->
+                <span class="ml-auto text-[11px] tabular-nums text-slate-400 dark:text-slate-500" id="ctrl-count"></span>
+            </div>
+
             {% for fw in frameworks %}
-            <div class="tz-card mb-5">
+            <div class="tz-card mb-5" data-ctrl-framework="{{ fw.id }}">
                 <div class="tz-card-header flex items-center justify-between">
                     <div>
                         <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ fw.name }}</h2>
@@ -120,9 +164,12 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                            {% for ctrl in controls %}
-                            {% if ctrl.framework_id == fw.id %}
-                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                            {% for ctrl in controls %}{% if ctrl.framework_id == fw.id %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                                data-ctrl-row
+                                data-status="{{ ctrl.status|default:'not_measured' }}"
+                                data-type="{{ ctrl.control_id|slice:':3' }}"
+                                data-search="{{ ctrl.control_id|lower }} {{ ctrl.domain|lower }} {{ ctrl.statement|lower }}">
                                 <td class="py-2.5 px-4 font-medium tabular-nums"><a href="{% url 'control_detail' ctrl.control_id %}" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a></td>
                                 <td class="py-2.5 px-4">
                                     <p class="text-slate-800 dark:text-slate-200 font-medium">{{ ctrl.domain }}</p>
@@ -145,13 +192,16 @@
                                 </td>
                                 <td class="py-2.5 px-4 text-[11px] text-slate-400">{% if ctrl.updated_at %}{{ ctrl.updated_at|timesince }} ago{% else %}-{% endif %}</td>
                             </tr>
-                            {% endif %}
-                            {% endfor %}
+                            {% endif %}{% endfor %}
+                            <tr id="ctrl-no-results-{{ fw.id }}" class="hidden">
+                                <td colspan="7" class="py-8 px-4 text-center text-sm text-slate-400 dark:text-slate-500">No controls match the current filters.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
             {% endfor %}
+
             {% else %}
             <div class="tz-card">
                 <div class="tz-card-body">
@@ -217,30 +267,165 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function switchReportTab(tabName) {
-    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
-    document.querySelectorAll('[data-tab]').forEach(function(b) {
-        b.className = b.className.replace('tz-nav-item-active', 'tz-nav-item');
-    });
-    var panel = document.getElementById('panel-' + tabName);
-    if (panel) panel.classList.remove('hidden');
-    document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(function(b) {
-        b.className = b.className.replace('tz-nav-item', 'tz-nav-item-active');
-    });
-    if (history.pushState) history.pushState(null, null, window.location.pathname + '#' + tabName);
+<style>
+.ctrl-pill {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    border: 1px solid; cursor: pointer; transition: background 0.1s, color 0.1s, border-color 0.1s;
+    border-color: rgb(203 213 225); color: rgb(100 116 139);
+    background: transparent;
 }
+.dark .ctrl-pill { border-color: rgb(71 85 105); color: rgb(148 163 184); }
+.ctrl-pill:hover { border-color: rgb(148 163 184); color: rgb(51 65 85); background: rgb(248 250 252); }
+.dark .ctrl-pill:hover { border-color: rgb(100 116 139); color: rgb(226 232 240); background: rgba(71,85,105,0.3); }
 
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-tab]').forEach(function(btn) {
-        btn.addEventListener('click', function() { switchReportTab(this.dataset.tab); });
-    });
-    var hash = window.location.hash;
-    if (hash && hash.length > 1) {
-        switchReportTab(hash.replace('#', ''));
-    } else {
-        switchReportTab('ciso');
+/* Active states per semantic colour */
+.ctrl-pill-active   { border-color: rgb(37 99 235) !important; background: rgb(239 246 255) !important; color: rgb(29 78 216) !important; }
+.dark .ctrl-pill-active  { background: rgba(59,130,246,0.12) !important; color: rgb(96 165 250) !important; border-color: rgb(59 130 246) !important; }
+.ctrl-pill-passing  { border-color: rgb(22 163 74) !important; background: rgb(240 253 244) !important; color: rgb(21 128 61) !important; }
+.dark .ctrl-pill-passing { background: rgba(34,197,94,0.1) !important; color: rgb(74 222 128) !important; border-color: rgb(34 197 94) !important; }
+.ctrl-pill-failing  { border-color: rgb(220 38 38) !important; background: rgb(254 242 242) !important; color: rgb(185 28 28) !important; }
+.dark .ctrl-pill-failing { background: rgba(239,68,68,0.1) !important; color: rgb(252 165 165) !important; border-color: rgb(239 68 68) !important; }
+.ctrl-pill-neutral  { border-color: rgb(100 116 139) !important; background: rgb(241 245 249) !important; color: rgb(71 85 105) !important; }
+.dark .ctrl-pill-neutral { background: rgba(100,116,139,0.15) !important; color: rgb(148 163 184) !important; border-color: rgb(100 116 139) !important; }
+</style>
+<script>
+(function() {
+    var activeStatus = 'all';
+    var activeType   = 'all';
+    var searchVal    = '';
+
+    /* Derive unique type prefixes from rendered rows and build type pill buttons */
+    function initControlFilters() {
+        var rows = document.querySelectorAll('[data-ctrl-row]');
+        var seen = {};
+        rows.forEach(function(r) {
+            var t = r.dataset.type;
+            if (t) seen[t] = true;
+        });
+        var types = Object.keys(seen).sort();
+        var container = document.getElementById('ctrl-type-filters');
+        if (!container) return;
+        types.forEach(function(t) {
+            var btn = document.createElement('button');
+            btn.className = 'ctrl-pill';
+            btn.dataset.group = 'type';
+            btn.dataset.value = t;
+            btn.textContent = t;
+            container.appendChild(btn);
+        });
+        container.addEventListener('click', onPillClick);
+
+        var statusContainer = document.getElementById('ctrl-status-filters');
+        if (statusContainer) statusContainer.addEventListener('click', onPillClick);
+
+        var search = document.getElementById('ctrl-search');
+        if (search) {
+            search.addEventListener('input', function() {
+                searchVal = this.value.trim().toLowerCase();
+                applyFilters();
+            });
+        }
+
+        applyFilters();
     }
-});
+
+    function onPillClick(e) {
+        var btn = e.target.closest('[data-group]');
+        if (!btn) return;
+        var group = btn.dataset.group;
+        var value = btn.dataset.value;
+        if (group === 'status') activeStatus = value;
+        if (group === 'type')   activeType   = value;
+        updatePillUI(btn.closest('[id]'), value);
+        applyFilters();
+    }
+
+    function updatePillUI(container, activeValue) {
+        if (!container) return;
+        container.querySelectorAll('[data-group]').forEach(function(pill) {
+            /* Strip any active/semantic classes */
+            ['ctrl-pill-active','ctrl-pill-passing','ctrl-pill-failing','ctrl-pill-neutral'].forEach(function(c) {
+                pill.classList.remove(c);
+            });
+            if (pill.dataset.value === activeValue) {
+                var cls = 'ctrl-pill-active';
+                if (activeValue === 'passing')     cls = 'ctrl-pill-passing';
+                if (activeValue === 'failing')     cls = 'ctrl-pill-failing';
+                if (activeValue === 'not_measured') cls = 'ctrl-pill-neutral';
+                pill.classList.add(cls);
+            }
+        });
+    }
+
+    function applyFilters() {
+        var rows = document.querySelectorAll('[data-ctrl-row]');
+        var total = rows.length;
+        var visible = 0;
+
+        /* Track per-framework visibility for empty-state rows */
+        var fwVisible = {};
+
+        rows.forEach(function(row) {
+            var status = row.dataset.status || 'not_measured';
+            var type   = row.dataset.type   || '';
+            var search = row.dataset.search || '';
+
+            var show = (activeStatus === 'all' || status === activeStatus)
+                    && (activeType   === 'all' || type   === activeType)
+                    && (!searchVal   || search.indexOf(searchVal) !== -1);
+
+            row.classList.toggle('hidden', !show);
+            if (show) {
+                visible++;
+                /* Determine framework from table's ancestor */
+                var fw = row.closest('[data-ctrl-framework]');
+                if (fw) fwVisible[fw.dataset.ctrlFramework] = (fwVisible[fw.dataset.ctrlFramework] || 0) + 1;
+            }
+        });
+
+        /* Show/hide per-framework "no results" rows */
+        document.querySelectorAll('[data-ctrl-framework]').forEach(function(fw) {
+            var fwId = fw.dataset.ctrlFramework;
+            var noRes = document.getElementById('ctrl-no-results-' + fwId);
+            if (noRes) noRes.classList.toggle('hidden', (fwVisible[fwId] || 0) > 0);
+        });
+
+        /* Update count badge */
+        var countEl = document.getElementById('ctrl-count');
+        if (countEl) {
+            countEl.textContent = visible === total
+                ? total + ' controls'
+                : visible + ' of ' + total + ' controls';
+        }
+    }
+
+    /* ── Tab switching ── */
+    function switchReportTab(tabName) {
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
+        document.querySelectorAll('[data-tab]').forEach(function(b) {
+            b.className = b.className.replace('tz-nav-item-active', 'tz-nav-item');
+        });
+        var panel = document.getElementById('panel-' + tabName);
+        if (panel) panel.classList.remove('hidden');
+        document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(function(b) {
+            b.className = b.className.replace('tz-nav-item', 'tz-nav-item-active');
+        });
+        if (history.pushState) history.pushState(null, null, window.location.pathname + '#' + tabName);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[data-tab]').forEach(function(btn) {
+            btn.addEventListener('click', function() { switchReportTab(this.dataset.tab); });
+        });
+        var hash = window.location.hash;
+        if (hash && hash.length > 1) {
+            switchReportTab(hash.replace('#', ''));
+        } else {
+            switchReportTab('ciso');
+        }
+        initControlFilters();
+    });
+})();
 </script>
 {% endblock %}
