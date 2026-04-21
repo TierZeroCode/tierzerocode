@@ -19,6 +19,8 @@ class Command(BaseCommand):
 
         # Rename PWD-05 → PWD-10 if the old ID still exists
         Control.objects.filter(control_id='PWD-05').update(control_id='PWD-10')
+        # Rename ALM-02 → ALM-03 if the old ID still exists
+        Control.objects.filter(control_id='ALM-02').update(control_id='ALM-03')
 
         controls = [
             {
@@ -32,14 +34,14 @@ class Command(BaseCommand):
                 'evaluator': 'alm_01',
             },
             {
-                'control_id': 'ALM-02',
+                'control_id': 'ALM-03',
                 'domain': 'Post-Enrollment Binding',
                 'statement': 'Binding of additional authenticators after enrollment SHALL require authentication at the AAL (or IAL for identity proofing) at which the new authenticator will be used.',
                 'source_reference': 'SP 800-63B-4 § 4.1.2',
                 'indicator': '% of MFA registration events that required prior authentication at AAL2 or higher',
                 'measurement_method': 'Entra ID MFA registration policy (require MFA to register MFA); CA policy for security info registration',
                 'target': '100%',
-                'evaluator': 'alm_02',
+                'evaluator': 'alm_03',
             },
             {
                 'control_id': 'AAL-02',

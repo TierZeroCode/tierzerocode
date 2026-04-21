@@ -85,7 +85,7 @@ def alm_01():
     return (f'{pct}%', status)
 
 
-def alm_02():
+def alm_03():
     """ALM-02: % of MFA registration events that required prior AAL2+ auth.
 
     This cannot be directly measured from stored data — it requires
@@ -304,7 +304,7 @@ def alm_01_detail():
     }
 
 
-def alm_02_detail():
+def alm_03_detail():
     """Return detailed data for ALM-02."""
     summary = SignInSummary.objects.first()
     if not summary:
