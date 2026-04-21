@@ -9,7 +9,7 @@ The function name must match the Control.evaluator field value.
 """
 from django.db.models import Q, Case, When, IntegerField, Value
 from django.db.models.functions import Coalesce
-from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy, TenantSecurityConfig
+from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
 from apps.authhandler.models import SSOIntegration
 
 
@@ -108,7 +108,11 @@ def aal_03():
     Measurement: flags users who have registered for MFA but whose ONLY
     registered methods are email OTP and/or security questions — indicating
     the user's second factor falls outside the approved type list.
-    Password-only users are inherently compliant (memorized secret = AAL1 OK).
+
+    Policy gate: if email OTP is disabled at the tenant auth methods policy level,
+    user registrations using it are inert — the user cannot actually authenticate
+    with email OTP regardless of what's registered. The control passes if email OTP
+    is disabled at the policy level (assuming no other weak-only registrations remain).
 
     Target: 100%
     """
@@ -116,7 +120,23 @@ def aal_03():
     if total == 0:
         return ('-', 'not_measured')
 
+    policy = TenantAuthMethodsPolicy.objects.filter(id=1).first()
+    email_otp_policy_enabled = policy.email_otp_enabled if policy else True
+
     weak_only = UserData.objects.filter(AAL1_WEAK_ONLY_Q).count()
+
+    # If email OTP is disabled at policy level, registered email methods are inert.
+    # Re-count: only users whose sole weak method is email OTP (not securityQuestion) benefit.
+    if not email_otp_policy_enabled:
+        # Users who are weak-only because of email OTP alone are now effectively compliant.
+        # Weak-only due to security questions still fail (securityQuestion has no policy disable).
+        email_only_weak = UserData.objects.filter(
+            AAL1_WEAK_ONLY_Q,
+            email_authentication_method=True,
+            securityQuestion_authentication_method=False,
+        ).count()
+        weak_only = weak_only - email_only_weak
+
     compliant = total - weak_only
     pct = round(compliant / total * 100)
     status = 'passing' if weak_only == 0 else 'failing'
@@ -133,8 +153,18 @@ def aal_03_detail():
             'logic': 'No users with MFA registered found.',
         }
 
+    policy = TenantAuthMethodsPolicy.objects.filter(id=1).first()
+    email_otp_policy_enabled = policy.email_otp_enabled if policy else True
+
     passing_qs = UserData.objects.filter(isMfaRegistered=True).filter(AAL1_STANDARD_Q).distinct()
     failing_qs = UserData.objects.filter(AAL1_WEAK_ONLY_Q).distinct()
+
+    # If email OTP is policy-disabled, email-only weak registrations are inert
+    if not email_otp_policy_enabled:
+        failing_qs = failing_qs.exclude(
+            email_authentication_method=True,
+            securityQuestion_authentication_method=False,
+        )
 
     passing = list(passing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -154,18 +184,30 @@ def aal_03_detail():
         'highest_authentication_strength',
     )[:100])
 
+    policy_note = ''
+    if policy:
+        if not email_otp_policy_enabled:
+            policy_note = ' Email OTP is DISABLED at the tenant policy level — users with email OTP registered cannot use it to authenticate.'
+        else:
+            policy_note = ' Email OTP is enabled at the tenant policy level.'
+
     return {
         'total': total,
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
         'failing_users': failing,
         'passing_users': passing,
+        'policy': {
+            'email_otp_enabled': email_otp_policy_enabled,
+            'synced_at': policy.synced_at.isoformat() if policy else None,
+        },
         'logic': (
             'Users registered for MFA are checked for at least one NIST-recognized authenticator type '
             '(FIDO2, WHfB, passkey, MS Authenticator push/passwordless, software OTP, or phone/SMS). '
             'Email OTP and security questions are not formally categorized as NIST authenticator types '
-            'under 800-63B-4 § 2.1.1 and do not satisfy the AAL1 requirement on their own. '
-            'Password-only users are implicitly compliant (memorized secret is an approved AAL1 type) '
+            'under 800-63B-4 § 2.1.1 and do not satisfy the AAL1 requirement on their own.'
+            + policy_note +
+            ' Password-only users are implicitly compliant (memorized secret is an approved AAL1 type) '
             'and are excluded from this check.'
         ),
         'qualifying_methods': 'Password (implicit), FIDO2, WHfB, Passkey, MS Authenticator Passwordless/Push, Software OTP, Phone/SMS',
@@ -1175,10 +1217,13 @@ def pwd_08():
     """PWD-08: No KBA for Passwords — count of users with security questions registered.
 
     NIST 800-63B-4 § 3.1.1.2(8) prohibits knowledge-based authentication
-    (security questions) in password flows. Measures the number of users in
-    Entra ID who have the securityQuestion authentication method registered.
+    (security questions) in password flows. Measures:
+    1. Number of users with the securityQuestion auth method registered (user-level).
+    2. Whether SSPR security questions are enabled at the tenant policy level — if yes,
+       the control fails even if 0 users currently have them registered, because the
+       configuration allows new registrations.
 
-    Target: 0
+    Target: 0 users registered + SSPR security questions disabled
     """
     total = UserData.objects.count()
     if total == 0:
@@ -1186,9 +1231,16 @@ def pwd_08():
 
     with_kba = UserData.objects.filter(securityQuestion_authentication_method=True).count()
 
-    if with_kba == 0:
-        return ('0', 'passing')
-    return (str(with_kba), 'failing')
+    policy = TenantAuthMethodsPolicy.objects.filter(id=1).first()
+    sspr_sq_enabled = policy.sspr_security_questions_enabled if policy else None
+
+    # Fail if users have it registered OR if SSPR policy allows security questions
+    if with_kba > 0 or sspr_sq_enabled:
+        label = str(with_kba)
+        if sspr_sq_enabled:
+            label += ' (SSPR policy: security questions enabled)'
+        return (label, 'failing')
+    return ('0', 'passing')
 
 
 def pwd_08_detail():
@@ -1200,10 +1252,25 @@ def pwd_08_detail():
     kba_users = UserData.objects.filter(securityQuestion_authentication_method=True)
     kba_count = kba_users.count()
 
+    policy = TenantAuthMethodsPolicy.objects.filter(id=1).first()
+    sspr_sq_enabled = policy.sspr_security_questions_enabled if policy else None
+    sspr_state = policy.sspr_state if policy else None
+    sspr_allowed_methods = policy.sspr_allowed_methods if policy else []
+
     failing = list(kba_users.values(
         'upn', 'given_name', 'surname', 'persona__persona_name',
         'highest_authentication_strength', 'securityQuestion_authentication_method',
     )[:100])
+
+    policy_note = ''
+    if policy:
+        if sspr_sq_enabled:
+            policy_note = (
+                f' SSPR policy has security questions ENABLED (state: {sspr_state}) — '
+                'this allows new users to register security questions even if none currently have them.'
+            )
+        else:
+            policy_note = f' SSPR policy has security questions DISABLED (state: {sspr_state}).'
 
     return {
         'total': total,
@@ -1211,9 +1278,21 @@ def pwd_08_detail():
         'failing_count': kba_count,
         'passing_count': total - kba_count,
         'failing_users': failing,
-        'logic': 'NIST 800-63B-4 § 3.1.1.2(8) prohibits verifiers from prompting subscribers to use knowledge-based authentication (security questions) when choosing passwords. Any user with the securityQuestion authentication method registered represents a non-compliant application or SSPR configuration.',
-        'qualifying_methods': 'No security questions registered',
-        'disqualifying_methods': 'securityQuestion authentication method registered',
+        'policy': {
+            'sspr_security_questions_enabled': sspr_sq_enabled,
+            'sspr_state': sspr_state,
+            'sspr_allowed_methods': sspr_allowed_methods,
+            'synced_at': policy.synced_at.isoformat() if policy else None,
+        },
+        'logic': (
+            'NIST 800-63B-4 § 3.1.1.2(8) prohibits verifiers from prompting subscribers to use '
+            'knowledge-based authentication (security questions) when choosing passwords. '
+            'This control checks both user registrations (individual) and the SSPR tenant policy (systemic). '
+            'A non-compliant SSPR policy fails the control even if 0 users currently have security questions registered.'
+            + policy_note
+        ),
+        'qualifying_methods': 'No security questions registered + SSPR policy disables security questions',
+        'disqualifying_methods': 'securityQuestion auth method registered (user-level) or SSPR policy allows security questions (policy-level)',
     }
 
 

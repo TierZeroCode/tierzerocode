@@ -657,3 +657,42 @@ class TenantSecurityConfig(models.Model):
     class Meta:
         verbose_name = "Tenant Security Config"
         verbose_name_plural = "Tenant Security Configs"
+
+
+class TenantAuthMethodsPolicy(models.Model):
+    """Stores tenant-level authentication methods policy synced from Microsoft Graph.
+
+    Populated by:
+      GET /v1.0/policies/authenticationMethodsPolicy  — per-method enabled/disabled state
+      GET /beta/policies/selfServicePasswordReset      — SSPR config including security questions
+    """
+    # Auth methods policy (/v1.0/policies/authenticationMethodsPolicy)
+    email_otp_enabled = models.BooleanField(default=True)
+    fido2_enabled = models.BooleanField(default=True)
+    microsoft_authenticator_enabled = models.BooleanField(default=True)
+    sms_enabled = models.BooleanField(default=True)
+    software_oath_enabled = models.BooleanField(default=True)
+    temporary_access_pass_enabled = models.BooleanField(default=False)
+    x509_certificate_enabled = models.BooleanField(default=False)
+    windows_hello_business_enabled = models.BooleanField(default=True)
+    passkey_enabled = models.BooleanField(default=True)
+
+    # SSPR policy (/beta/policies/selfServicePasswordReset)
+    sspr_state = models.CharField(max_length=20, null=True, blank=True)  # enabled, disabled, enabledForSomeUsers
+    sspr_security_questions_enabled = models.BooleanField(default=False)
+    sspr_methods_required = models.IntegerField(null=True, blank=True)
+    sspr_allowed_methods = models.JSONField(default=list)
+
+    # Raw API responses for audit trail
+    raw_auth_methods = models.JSONField(default=dict)
+    raw_sspr = models.JSONField(default=dict)
+
+    synced_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return f"Auth Methods Policy (synced {self.synced_at})"
+
+    class Meta:
+        verbose_name = "Tenant Auth Methods Policy"
+        verbose_name_plural = "Tenant Auth Methods Policies"

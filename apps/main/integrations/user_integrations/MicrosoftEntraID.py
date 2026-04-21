@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.utils.timezone import make_aware
 # Import Models
-from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy, TenantSecurityConfig
+from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
 # Import Function Scripts
 from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
@@ -590,6 +590,95 @@ def syncTenantSecurityConfig(access_token):
                   f"Tenant security config sync error: {str(e)}")
 
 
+def syncAuthMethodsPolicy(access_token):
+    """Fetch authentication methods policy and SSPR config from Microsoft Graph.
+
+    Calls:
+      GET /v1.0/policies/authenticationMethodsPolicy  — per-method enabled state
+      GET /beta/policies/selfServicePasswordReset      — SSPR config + security questions
+
+    Requires Policy.Read.All permission.
+    """
+    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
+
+    try:
+        headers = {'Authorization': access_token}
+
+        # --- Auth Methods Policy ---
+        amp_response = requests.get(
+            "https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy",
+            headers=headers,
+        )
+        raw_auth_methods = {}
+        method_states = {}
+
+        if amp_response.status_code == 200:
+            raw_auth_methods = amp_response.json()
+            for method in raw_auth_methods.get('authenticationMethodConfigurations', []):
+                method_id = method.get('id', '').lower()
+                state = method.get('state', 'disabled').lower()
+                method_states[method_id] = (state == 'enabled')
+
+        email_otp_enabled = method_states.get('email', True)
+        fido2_enabled = method_states.get('fido2', True)
+        microsoft_authenticator_enabled = method_states.get('microsoftauthenticator', True)
+        sms_enabled = method_states.get('sms', True)
+        software_oath_enabled = method_states.get('softwareoath', True)
+        temporary_access_pass_enabled = method_states.get('temporaryaccesspass', False)
+        x509_certificate_enabled = method_states.get('x509certificate', False)
+        windows_hello_business_enabled = method_states.get('windowshelloforbusiness', True)
+        passkey_enabled = method_states.get('passkey', True)
+
+        # --- SSPR Policy ---
+        sspr_response = requests.get(
+            "https://graph.microsoft.com/beta/policies/selfServicePasswordReset",
+            headers=headers,
+        )
+        raw_sspr = {}
+        sspr_state = None
+        sspr_security_questions_enabled = False
+        sspr_methods_required = None
+        sspr_allowed_methods = []
+
+        if sspr_response.status_code == 200:
+            raw_sspr = sspr_response.json()
+            sspr_state = raw_sspr.get('selfServicePasswordResetEnabled', None)
+            auth_methods_cfg = raw_sspr.get('authenticationMethods', {})
+            sspr_allowed_methods = auth_methods_cfg.get('authenticationMethodTypes', [])
+            sspr_methods_required = auth_methods_cfg.get('numberOfMethodsRequired', None)
+            sspr_security_questions_enabled = 'securityQuestion' in sspr_allowed_methods
+
+        TenantAuthMethodsPolicy.objects.update_or_create(
+            id=1,
+            defaults={
+                'email_otp_enabled': email_otp_enabled,
+                'fido2_enabled': fido2_enabled,
+                'microsoft_authenticator_enabled': microsoft_authenticator_enabled,
+                'sms_enabled': sms_enabled,
+                'software_oath_enabled': software_oath_enabled,
+                'temporary_access_pass_enabled': temporary_access_pass_enabled,
+                'x509_certificate_enabled': x509_certificate_enabled,
+                'windows_hello_business_enabled': windows_hello_business_enabled,
+                'passkey_enabled': passkey_enabled,
+                'sspr_state': sspr_state,
+                'sspr_security_questions_enabled': sspr_security_questions_enabled,
+                'sspr_methods_required': sspr_methods_required,
+                'sspr_allowed_methods': sspr_allowed_methods,
+                'raw_auth_methods': raw_auth_methods,
+                'raw_sspr': raw_sspr,
+            },
+        )
+
+        _sync_log("Microsoft Entra ID", "1512", "Success",
+                  f"Auth methods policy synced: email_otp={email_otp_enabled}, "
+                  f"sspr_security_questions={sspr_security_questions_enabled}, "
+                  f"sspr_state={sspr_state}")
+
+    except Exception as e:
+        _sync_log("Microsoft Entra ID", "1513", "Failure",
+                  f"Auth methods policy sync error: {str(e)}")
+
+
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
@@ -617,6 +706,9 @@ def syncMicrosoftEntraIDUser():
 
     # Sync tenant security configuration (requires Directory.Read.All)
     syncTenantSecurityConfig(access_token)
+
+    # Sync authentication methods policy and SSPR config (requires Policy.Read.All)
+    syncAuthMethodsPolicy(access_token)
 
     data.last_synced_at = timezone.now()
     data.save()
