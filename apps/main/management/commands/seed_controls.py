@@ -24,6 +24,8 @@ class Command(BaseCommand):
             Control.objects.filter(control_id='AAL-05').update(control_id='AAL-12')
         # Rename AAL-03 → AAL-05 if the old ID still exists
         Control.objects.filter(control_id='AAL-03').update(control_id='AAL-05')
+        # Rename AAL-08 → AAL-06
+        Control.objects.filter(control_id='AAL-08').update(control_id='AAL-06')
 
         controls = [
             {
@@ -107,14 +109,14 @@ class Command(BaseCommand):
                 'evaluator': 'alm_06',
             },
             {
-                'control_id': 'AAL-08',
-                'domain': 'Replay Resistance',
+                'control_id': 'AAL-06',
+                'domain': 'AAL2/AAL3 Replay Resistance',
                 'statement': 'At least one authenticator used at AAL2 SHALL be replay-resistant. AAL3 SHALL use replay-resistant authentication protocols.',
                 'source_reference': 'SP 800-63B-4 § 2.2.2, 2.3.2',
                 'indicator': '% of AAL2/AAL3 authentication flows using replay-resistant authenticators',
                 'measurement_method': 'Authentication method audit (FIDO2, WHfB, certificate-based are replay-resistant; OTP and push are replay-resistant if single-use)',
                 'target': '100%',
-                'evaluator': 'aal_08',
+                'evaluator': 'aal_06',
             },
             {
                 'control_id': 'AAL-09',

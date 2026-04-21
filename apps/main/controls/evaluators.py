@@ -669,7 +669,7 @@ def aal_09_detail():
     }
 
 
-def aal_08():
+def aal_06():
     """AAL-08: % of AAL2+ users with replay-resistant authenticators.
 
     Replay-resistant methods use challenge-response or single-use codes
@@ -697,7 +697,7 @@ def aal_08():
     return (f'{with_rr}/{total} ({pct}%)', status)
 
 
-def aal_08_detail():
+def aal_06_detail():
     """Return detailed data for AAL-08: AAL2+ users and replay resistance."""
     aal2_users = _get_users_by_aal(2)
 
