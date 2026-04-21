@@ -7,7 +7,8 @@ Each function takes no arguments and returns a tuple of (current_value, status).
 
 The function name must match the Control.evaluator field value.
 """
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField, Value
+from django.db.models.functions import Coalesce
 from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy, TenantSecurityConfig
 from apps.authhandler.models import SSOIntegration
 
@@ -301,6 +302,81 @@ def alm_01_detail():
             ('softwareOneTimePasscode_authentication_method', 'Software OTP'),
             ('mobilePhone_authentication_method', 'Mobile Phone'),
         ],
+    }
+
+
+_ALL_AUTH_FIELDS = [
+    'passKeyDeviceBound_authentication_method',
+    'passKeyDeviceBoundAuthenticator_authentication_method',
+    'windowsHelloforBusiness_authentication_method',
+    'microsoftAuthenticatorPasswordless_authentication_method',
+    'microsoftAuthenticatorPush_authentication_method',
+    'softwareOneTimePasscode_authentication_method',
+    'temporaryAccessPass_authentication_method',
+    'mobilePhone_authentication_method',
+    'email_authentication_method',
+    'securityQuestion_authentication_method',
+]
+
+
+def _annotate_method_count(qs):
+    """Annotate queryset with a count of True auth method fields per user."""
+    expr = Value(0, output_field=IntegerField())
+    for field in _ALL_AUTH_FIELDS:
+        expr = expr + Case(When(**{field: True}, then=1), default=0, output_field=IntegerField())
+    return qs.annotate(method_count=expr)
+
+
+def alm_02():
+    """ALM-02: % of accounts with >= 2 registered authentication methods.
+
+    NIST 800-63B-4 § 4.1.2.1: CSPs SHOULD encourage subscribers to maintain
+    at least two separate means of authentication.
+
+    Target: >90%
+    """
+    total = UserData.objects.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    with_two = _annotate_method_count(UserData.objects.all()).filter(method_count__gte=2).count()
+    pct = round(with_two / total * 100)
+    status = 'passing' if pct > 90 else 'failing'
+    return (f'{with_two}/{total} ({pct}%)', status)
+
+
+def alm_02_detail():
+    """Return detailed data for ALM-02: accounts with >= 2 auth methods."""
+    total = UserData.objects.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No users synced.'}
+
+    annotated = _annotate_method_count(UserData.objects.all())
+    passing_qs = annotated.filter(method_count__gte=2)
+    failing_qs = annotated.filter(method_count__lt=2)
+
+    common_fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'isMfaRegistered',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': list(failing_qs.values(*common_fields)[:100]),
+        'passing_users': list(passing_qs.values(*common_fields)[:100]),
+        'logic': 'NIST 800-63B-4 § 4.1.2.1: CSPs SHALL permit and SHOULD encourage binding of multiple authenticators. This measures accounts with at least 2 distinct authentication methods registered. Target: >90%.',
+        'qualifying_methods': 'All 10 Entra ID auth method types count: FIDO2, Passkey, WHfB, MS Authenticator (passwordless), MS Authenticator (push), Software OTP, Temporary Access Pass, Mobile Phone, Email, Security Questions',
+        'threshold': '>90%',
     }
 
 

@@ -34,6 +34,16 @@ class Command(BaseCommand):
                 'evaluator': 'alm_01',
             },
             {
+                'control_id': 'ALM-02',
+                'domain': 'Multiple Authenticator Support',
+                'statement': 'CSPs SHALL permit binding of multiple authenticators to a subscriber account. SHOULD encourage subscribers to maintain at least two separate means of authentication.',
+                'source_reference': '800-63B-4 § 4.1.2.1',
+                'indicator': '% of accounts with ≥2 registered auth methods',
+                'measurement_method': 'Entra ID auth methods registration report',
+                'target': '>90%',
+                'evaluator': 'alm_02',
+            },
+            {
                 'control_id': 'ALM-03',
                 'domain': 'Post-Enrollment Binding',
                 'statement': 'Binding of additional authenticators after enrollment SHALL require authentication at the AAL (or IAL for identity proofing) at which the new authenticator will be used.',
