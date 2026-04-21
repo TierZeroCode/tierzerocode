@@ -4,14 +4,15 @@
 {% block extra_css %}
 <style>
 .ctrl-gauge { display: block; }
-.ctrl-gauge .gauge-track { stroke: oklch(0.915 0.012 260); }
-html.dark .ctrl-gauge .gauge-track { stroke: oklch(0.295 0.025 260); }
+.ctrl-gauge .gauge-track   { stroke: oklch(0.915 0.012 260 / 0.7); }
+html.dark .ctrl-gauge .gauge-track { stroke: oklch(0.295 0.025 260 / 0.8); }
 .ctrl-gauge .gauge-fill-passing { stroke: oklch(0.680 0.180 155); }
 .ctrl-gauge .gauge-fill-failing { stroke: oklch(0.630 0.215 25); }
 .ctrl-gauge .gauge-fill-warning { stroke: oklch(0.780 0.170 85); }
-.ctrl-gauge .gauge-fill-none    { stroke: oklch(0.650 0.022 260); }
-.ctrl-gauge .gauge-needle { stroke: oklch(0.370 0.025 260); fill: oklch(0.370 0.025 260); }
-html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklch(0.650 0.022 260); }
+.ctrl-gauge .gauge-pivot   { fill: oklch(0.550 0.022 260 / 0.5); }
+html.dark .ctrl-gauge .gauge-pivot { fill: oklch(0.650 0.022 260 / 0.6); }
+.ctrl-gauge .gauge-needle  { stroke: oklch(0.370 0.025 260); }
+html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
 </style>
 {% endblock %}
 
@@ -355,48 +356,42 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklc
     }
 
     function makeGaugeSVG(pct, status, target) {
-        var cx = 60, cy = 54, r = 40;
-        var tx1 = cx - r, ty1 = cy;
-        var tx2 = cx + r, ty2 = cy;
-        var trackPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 0 1 ' + tx2 + ',' + ty2;
+        /* cx/cy = center pivot, r = radius. Arc goes from left (0%) to right (100%)
+           through the top. In SVG y-down coords the correct endpoint formula is:
+             x = cx + r·cos(π − p·π)
+             y = cy − r·sin(π − p·π)   ← negative sin because y-axis is inverted */
+        var cx = 60, cy = 58, r = 44;
+        var lx = cx - r, ly = cy; /* left  = (16, 58) */
+        var rx = cx + r, ry = cy; /* right = (104, 58) */
 
-        var fillPath = '', fillClass = 'gauge-fill-none';
-        if (pct !== null) {
-            var fillAngle = Math.PI - pct * Math.PI;
-            var fx = (cx + r * Math.cos(fillAngle)).toFixed(2);
-            var fy = (cy + r * Math.sin(fillAngle)).toFixed(2);
-            var largeArc = pct > 0.5 ? 1 : 0;
-            fillPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + fx + ',' + fy;
-            var isCountTarget = target && target.trim() === '0';
-            if (isCountTarget) {
-                fillClass = status === 'passing' ? 'gauge-fill-passing' : 'gauge-fill-failing';
-            } else {
-                fillClass = status === 'passing' ? 'gauge-fill-passing' : pct >= 0.75 ? 'gauge-fill-warning' : 'gauge-fill-failing';
-            }
+        var sw = 10; /* stroke width */
+
+        var svg = '<svg class="ctrl-gauge" width="120" height="68" viewBox="0 0 120 68" fill="none">';
+
+        /* Background track — full top semicircle, sweep=1 (clockwise in SVG y-down = goes upward) */
+        svg += '<path class="gauge-track" d="M ' + lx + ',' + ly + ' A ' + r + ',' + r + ' 0 0 1 ' + rx + ',' + ry + '" stroke-width="' + sw + '" stroke-linecap="round" fill="none"/>';
+
+        /* Fill arc */
+        if (pct !== null && pct > 0.005) {
+            var angle = Math.PI - pct * Math.PI;
+            var fx = (cx + r * Math.cos(angle)).toFixed(2);
+            var fy = (cy - r * Math.sin(angle)).toFixed(2); /* negative sin = correct top arc */
+            var la = pct > 0.5 ? 1 : 0;
+            var fillClass = status === 'passing' ? 'gauge-fill-passing'
+                          : pct >= 0.75 ? 'gauge-fill-warning'
+                          : 'gauge-fill-failing';
+            svg += '<path class="' + fillClass + '" d="M ' + lx + ',' + ly + ' A ' + r + ',' + r + ' 0 ' + la + ' 1 ' + fx + ',' + fy + '" stroke-width="' + sw + '" stroke-linecap="round" fill="none"/>';
+
+            /* Needle — thin line from center to current value position */
+            var nl = r - 14;
+            var nx = (cx + nl * Math.cos(angle)).toFixed(2);
+            var ny = (cy - nl * Math.sin(angle)).toFixed(2);
+            svg += '<line class="gauge-needle" x1="' + cx + '" y1="' + cy + '" x2="' + nx + '" y2="' + ny + '" stroke-width="1.5" stroke-linecap="round"/>';
         }
 
-        var needleAngle = pct !== null ? Math.PI - pct * Math.PI : Math.PI / 2;
-        var nl = r - 8;
-        var nx = (cx + nl * Math.cos(needleAngle)).toFixed(2);
-        var ny = (cy + nl * Math.sin(needleAngle)).toFixed(2);
+        /* Pivot dot */
+        svg += '<circle class="gauge-pivot" cx="' + cx + '" cy="' + cy + '" r="3.5" stroke="none"/>';
 
-        /* Zone arcs: red 0–40%, amber 40–75%, green 75–100% */
-        function arcSeg(fromPct, toPct, cls) {
-            var a1 = Math.PI - fromPct * Math.PI, a2 = Math.PI - toPct * Math.PI;
-            var x1 = (cx + r * Math.cos(a1)).toFixed(2), y1 = (cy + r * Math.sin(a1)).toFixed(2);
-            var x2 = (cx + r * Math.cos(a2)).toFixed(2), y2 = (cy + r * Math.sin(a2)).toFixed(2);
-            var la = (toPct - fromPct) > 0.5 ? 1 : 0;
-            return '<path class="' + cls + '" d="M ' + x1 + ',' + y1 + ' A ' + r + ',' + r + ' 0 ' + la + ' 1 ' + x2 + ',' + y2 + '" stroke-width="8" stroke-linecap="butt" fill="none" opacity="0.18"/>';
-        }
-
-        var svg = '<svg class="ctrl-gauge" width="120" height="68" viewBox="0 0 120 68" fill="none" xmlns="http://www.w3.org/2000/svg">';
-        svg += arcSeg(0, 0.4, 'gauge-fill-failing');
-        svg += arcSeg(0.4, 0.75, 'gauge-fill-warning');
-        svg += arcSeg(0.75, 1.0, 'gauge-fill-passing');
-        svg += '<path class="gauge-track" d="' + trackPath + '" stroke-width="8" stroke-linecap="butt" fill="none" opacity="0.25"/>';
-        if (fillPath) svg += '<path class="' + fillClass + '" d="' + fillPath + '" stroke-width="8" stroke-linecap="butt" fill="none"/>';
-        svg += '<line class="gauge-needle" x1="' + cx + '" y1="' + cy + '" x2="' + nx + '" y2="' + ny + '" stroke-width="2" stroke-linecap="round"/>';
-        svg += '<circle cx="' + cx + '" cy="' + cy + '" r="4" class="gauge-needle" stroke="none"/>';
         svg += '</svg>';
         return svg;
     }
