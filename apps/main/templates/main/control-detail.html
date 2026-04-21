@@ -1,6 +1,20 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+.ctrl-gauge { display: block; }
+.ctrl-gauge .gauge-track { stroke: oklch(0.915 0.012 260); }
+html.dark .ctrl-gauge .gauge-track { stroke: oklch(0.295 0.025 260); }
+.ctrl-gauge .gauge-fill-passing { stroke: oklch(0.680 0.180 155); }
+.ctrl-gauge .gauge-fill-failing { stroke: oklch(0.630 0.215 25); }
+.ctrl-gauge .gauge-fill-warning { stroke: oklch(0.780 0.170 85); }
+.ctrl-gauge .gauge-fill-none    { stroke: oklch(0.650 0.022 260); }
+.ctrl-gauge .gauge-needle { stroke: oklch(0.370 0.025 260); fill: oklch(0.370 0.025 260); }
+html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklch(0.650 0.022 260); }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <!-- Breadcrumb -->
@@ -46,6 +60,25 @@
                 <dd class="text-sm text-slate-800 dark:text-slate-200">{{ ctrl.measurement_method|default:"-" }}</dd>
             </div>
         </dl>
+    </div>
+</div>
+
+<!-- Gauge -->
+<div class="tz-card mb-5 flex items-center gap-6 px-5 py-4">
+    <span id="ctrl-gauge-slot"
+        data-current="{{ ctrl.current_value|default:'' }}"
+        data-target="{{ ctrl.target|default:'' }}"
+        data-status="{{ ctrl.status|default:'not_measured' }}">
+    </span>
+    <div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Current state</p>
+        <p class="text-sm font-semibold
+            {% if ctrl.status == 'passing' %}text-code-green-600 dark:text-code-green-400
+            {% elif ctrl.status == 'failing' %}text-code-red-600 dark:text-code-red-400
+            {% else %}text-slate-500 dark:text-slate-400{% endif %}">
+            {{ ctrl.current_value|default:"Not measured" }}
+        </p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Target: {{ ctrl.target }}</p>
     </div>
 </div>
 
@@ -298,4 +331,82 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function parseGaugePct(current, target, status) {
+        if (status === 'not_measured' || !current || current === '-') return null;
+        var pctMatch = current.match(/\((\d+(?:\.\d+)?)%\)/);
+        if (pctMatch) return parseFloat(pctMatch[1]) / 100;
+        var pctDirect = current.match(/^(\d+(?:\.\d+)?)%$/);
+        if (pctDirect) return parseFloat(pctDirect[1]) / 100;
+        if (target && target.trim() === '0') {
+            var n = parseInt(current, 10);
+            if (!isNaN(n)) return n === 0 ? 1.0 : Math.min(n / 10, 1.0);
+        }
+        var fracMatch = current.match(/^(\d+)\s*\/\s*(\d+)/);
+        if (fracMatch) {
+            var num = parseInt(fracMatch[1], 10), den = parseInt(fracMatch[2], 10);
+            if (den > 0) return num / den;
+        }
+        return null;
+    }
+
+    function makeGaugeSVG(pct, status, target) {
+        var cx = 60, cy = 54, r = 40;
+        var tx1 = cx - r, ty1 = cy;
+        var tx2 = cx + r, ty2 = cy;
+        var trackPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 0 1 ' + tx2 + ',' + ty2;
+
+        var fillPath = '', fillClass = 'gauge-fill-none';
+        if (pct !== null) {
+            var fillAngle = Math.PI - pct * Math.PI;
+            var fx = (cx + r * Math.cos(fillAngle)).toFixed(2);
+            var fy = (cy + r * Math.sin(fillAngle)).toFixed(2);
+            var largeArc = pct > 0.5 ? 1 : 0;
+            fillPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + fx + ',' + fy;
+            var isCountTarget = target && target.trim() === '0';
+            if (isCountTarget) {
+                fillClass = status === 'passing' ? 'gauge-fill-passing' : 'gauge-fill-failing';
+            } else {
+                fillClass = status === 'passing' ? 'gauge-fill-passing' : pct >= 0.75 ? 'gauge-fill-warning' : 'gauge-fill-failing';
+            }
+        }
+
+        var needleAngle = pct !== null ? Math.PI - pct * Math.PI : Math.PI / 2;
+        var nl = r - 8;
+        var nx = (cx + nl * Math.cos(needleAngle)).toFixed(2);
+        var ny = (cy + nl * Math.sin(needleAngle)).toFixed(2);
+
+        /* Zone arcs: red 0–40%, amber 40–75%, green 75–100% */
+        function arcSeg(fromPct, toPct, cls) {
+            var a1 = Math.PI - fromPct * Math.PI, a2 = Math.PI - toPct * Math.PI;
+            var x1 = (cx + r * Math.cos(a1)).toFixed(2), y1 = (cy + r * Math.sin(a1)).toFixed(2);
+            var x2 = (cx + r * Math.cos(a2)).toFixed(2), y2 = (cy + r * Math.sin(a2)).toFixed(2);
+            var la = (toPct - fromPct) > 0.5 ? 1 : 0;
+            return '<path class="' + cls + '" d="M ' + x1 + ',' + y1 + ' A ' + r + ',' + r + ' 0 ' + la + ' 1 ' + x2 + ',' + y2 + '" stroke-width="8" stroke-linecap="butt" fill="none" opacity="0.18"/>';
+        }
+
+        var svg = '<svg class="ctrl-gauge" width="120" height="68" viewBox="0 0 120 68" fill="none" xmlns="http://www.w3.org/2000/svg">';
+        svg += arcSeg(0, 0.4, 'gauge-fill-failing');
+        svg += arcSeg(0.4, 0.75, 'gauge-fill-warning');
+        svg += arcSeg(0.75, 1.0, 'gauge-fill-passing');
+        svg += '<path class="gauge-track" d="' + trackPath + '" stroke-width="8" stroke-linecap="butt" fill="none" opacity="0.25"/>';
+        if (fillPath) svg += '<path class="' + fillClass + '" d="' + fillPath + '" stroke-width="8" stroke-linecap="butt" fill="none"/>';
+        svg += '<line class="gauge-needle" x1="' + cx + '" y1="' + cy + '" x2="' + nx + '" y2="' + ny + '" stroke-width="2" stroke-linecap="round"/>';
+        svg += '<circle cx="' + cx + '" cy="' + cy + '" r="4" class="gauge-needle" stroke="none"/>';
+        svg += '</svg>';
+        return svg;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var slot = document.getElementById('ctrl-gauge-slot');
+        if (!slot) return;
+        var pct = parseGaugePct(slot.dataset.current, slot.dataset.target, slot.dataset.status);
+        slot.innerHTML = makeGaugeSVG(pct, slot.dataset.status, slot.dataset.target);
+    });
+})();
+</script>
 {% endblock %}

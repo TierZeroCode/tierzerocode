@@ -135,17 +135,6 @@ html.dark .ctrl-modal-header { border-color: oklch(0.295 0.025 260); }
     border-top: 1px solid oklch(0.935 0.010 260);
 }
 html.dark .ctrl-modal-footer { border-color: oklch(0.295 0.025 260); }
-
-/* ── Control gauges ── */
-.ctrl-gauge { display: block; }
-.ctrl-gauge .gauge-track { stroke: oklch(0.915 0.012 260); }  /* slate-200 */
-html.dark .ctrl-gauge .gauge-track { stroke: oklch(0.295 0.025 260); }  /* slate-800 */
-.ctrl-gauge .gauge-fill-passing { stroke: oklch(0.680 0.180 155); }  /* green */
-.ctrl-gauge .gauge-fill-failing { stroke: oklch(0.630 0.215 25); }   /* red */
-.ctrl-gauge .gauge-fill-warning { stroke: oklch(0.780 0.170 85); }   /* amber */
-.ctrl-gauge .gauge-fill-none    { stroke: oklch(0.650 0.022 260); }  /* slate-400 */
-.ctrl-gauge .gauge-needle { stroke: oklch(0.370 0.025 260); fill: oklch(0.370 0.025 260); }  /* slate-700 */
-html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklch(0.650 0.022 260); }  /* slate-400 */
 </style>
 {% endblock %}
 
@@ -310,7 +299,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklc
                                 </th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Reference</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Target</th>
-                                <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Current</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Current</th>
                                 <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="5" style="width:5rem;">
                                     <span class="ctrl-sort-label">Status</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
                                 </th>
@@ -344,7 +333,6 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklc
                                     <span class="ctrl-target-display font-medium text-slate-900 dark:text-slate-100 text-sm">{{ ctrl.target }}</span>
                                 </td>
                                 <td class="py-2.5 px-4">
-                                    <span class="ctrl-gauge-slot" data-current="{{ ctrl.current_value|default:'' }}" data-target="{{ ctrl.target|default:'' }}" data-status="{{ ctrl.status|default:'not_measured' }}"></span>
                                     <span class="tabular-nums font-medium text-slate-900 dark:text-slate-100 text-sm ctrl-value-display">{% if ctrl.use_manual and ctrl.manual_value %}{{ ctrl.manual_value }}{% else %}{{ ctrl.current_value|default:"-" }}{% endif %}</span>
                                     {% if ctrl.use_manual %}<span class="ctrl-manual-badge ml-1" title="{{ ctrl.manual_notes|default:'Manual override active' }}">M</span>{% endif %}
                                 </td>
@@ -666,118 +654,6 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklc
     }
 
     /* ── Gauges ── */
-    /*
-     * Renders a small SVG speedometer next to each control's current value.
-     * Parses pct from strings like "95/100 (95%)", "95%", or count-vs-zero targets ("0", "3").
-     * Returns 0–1 fill ratio, or null for not_measured.
-     */
-    function parseGaugePct(current, target, status) {
-        if (status === 'not_measured' || !current || current === '-') return null;
-
-        /* Extract explicit percentage: "N/M (P%)" or "P%" */
-        var pctMatch = current.match(/\((\d+(?:\.\d+)?)%\)/);
-        if (pctMatch) return parseFloat(pctMatch[1]) / 100;
-
-        var pctDirect = current.match(/^(\d+(?:\.\d+)?)%$/);
-        if (pctDirect) return parseFloat(pctDirect[1]) / 100;
-
-        /* Count-vs-zero target: target is "0", value is a number */
-        if (target && target.trim() === '0') {
-            var n = parseInt(current, 10);
-            if (!isNaN(n)) {
-                /* 0 = fully passing (fill 100%), any positive = failing, cap visual at 100% */
-                return n === 0 ? 1.0 : Math.min(n / 10, 1.0);
-            }
-        }
-
-        /* Fraction "N/M" */
-        var fracMatch = current.match(/^(\d+)\s*\/\s*(\d+)/);
-        if (fracMatch) {
-            var num = parseInt(fracMatch[1], 10);
-            var den = parseInt(fracMatch[2], 10);
-            if (den > 0) return num / den;
-        }
-
-        return null;
-    }
-
-    function makeGaugeSVG(pct, status, target) {
-        /*
-         * Semicircle gauge: sweep from 180° (left) to 0° (right), bottom arc.
-         * SVG coords: center (24,22), radius 16, viewBox "0 0 48 26".
-         * Arc path: M (cx-r),(cy) A r,r 0 largeArc 1 (ex),(ey)
-         * "sweep-flag=1" draws clockwise (left→right along bottom).
-         */
-        var cx = 24, cy = 22, r = 16;
-        var startAngle = Math.PI;   /* 180° — left */
-        var endAngle   = 0;         /* 0°   — right */
-
-        /* Track (full arc) */
-        var tx1 = cx + r * Math.cos(startAngle);
-        var ty1 = cy + r * Math.sin(startAngle);
-        var tx2 = cx + r * Math.cos(endAngle);
-        var ty2 = cy + r * Math.sin(endAngle);
-        var trackPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 0 1 ' + tx2 + ',' + ty2;
-
-        /* Gauge fill arc */
-        var fillPath = '';
-        var fillClass = 'gauge-fill-none';
-
-        if (pct !== null) {
-            /* Angle from left (180°) sweeping right; pct=1 reaches 0° */
-            var fillAngle = startAngle - pct * Math.PI;  /* goes from π down to 0 */
-            var fx = cx + r * Math.cos(fillAngle);
-            var fy = cy + r * Math.sin(fillAngle);
-            var largeArc = pct > 0.5 ? 1 : 0;
-            fillPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + fx.toFixed(2) + ',' + fy.toFixed(2);
-
-            /* Color: for count-vs-zero targets invert logic (lower=better) */
-            var isCountTarget = target && target.trim() === '0';
-            if (isCountTarget) {
-                fillClass = (status === 'passing') ? 'gauge-fill-passing' : 'gauge-fill-failing';
-            } else {
-                if (status === 'passing') {
-                    fillClass = 'gauge-fill-passing';
-                } else if (pct >= 0.75) {
-                    fillClass = 'gauge-fill-warning';
-                } else {
-                    fillClass = 'gauge-fill-failing';
-                }
-            }
-        }
-
-        /* Needle from center to current position (or pointing down if null) */
-        var needleAngle = (pct !== null) ? (startAngle - pct * Math.PI) : (Math.PI / 2);
-        var needleLen = r - 4;
-        var nx = cx + needleLen * Math.cos(needleAngle);
-        var ny = cy + needleLen * Math.sin(needleAngle);
-
-        var svg = '<svg class="ctrl-gauge" width="48" height="26" viewBox="0 0 48 26" fill="none" xmlns="http://www.w3.org/2000/svg">'
-            + '<path class="gauge-track" d="' + trackPath + '" stroke-width="3.5" stroke-linecap="round" fill="none"/>';
-
-        if (fillPath) {
-            svg += '<path class="' + fillClass + '" d="' + fillPath + '" stroke-width="3.5" stroke-linecap="round" fill="none"/>';
-        }
-
-        /* Needle */
-        svg += '<line class="gauge-needle" x1="' + cx + '" y1="' + cy + '" x2="' + nx.toFixed(2) + '" y2="' + ny.toFixed(2) + '" stroke-width="1.5" stroke-linecap="round"/>';
-        /* Center dot */
-        svg += '<circle cx="' + cx + '" cy="' + cy + '" r="2" class="gauge-needle" stroke="none"/>';
-
-        svg += '</svg>';
-        return svg;
-    }
-
-    function initGauges() {
-        document.querySelectorAll('.ctrl-gauge-slot').forEach(function (slot) {
-            var current = slot.dataset.current || '';
-            var target  = slot.dataset.target  || '';
-            var status  = slot.dataset.status  || 'not_measured';
-            var pct = parseGaugePct(current, target, status);
-            slot.innerHTML = makeGaugeSVG(pct, status, target);
-        });
-    }
-
     /* ── Control edit modal ── */
     function initControlEdit() {
         var modal      = document.getElementById('ctrl-edit-modal');
@@ -934,7 +810,6 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklc
         var hash = window.location.hash;
         switchReportTab((hash && hash.length > 1) ? hash.replace('#', '') : 'ciso');
         initControlFilters();
-        initGauges();
         initControlEdit();
     });
 })();
