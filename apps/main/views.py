@@ -1306,17 +1306,6 @@ def create_backup(request):
 		('compliance_settings', DeviceComplianceSettings),
 		('personas', Persona),
 		('persona_groups', PersonaGroup),
-		('devices', Device),
-		('user_data', UserData),
-		('signin_summary', SignInSummary),
-		('cloudflare_devices', CloudflareZeroTrustDeviceData),
-		('crowdstrike_devices', CrowdStrikeFalconDeviceData),
-		('entra_devices', MicrosoftEntraIDDeviceData),
-		('intune_devices', MicrosoftIntuneDeviceData),
-		('sophos_devices', SophosCentralDeviceData),
-		('defender_devices', MicrosoftDefenderforEndpointDeviceData),
-		('qualys_devices', QualysDevice),
-		('tailscale_devices', TailscaleDeviceData),
 	]
 
 	backup_data = {
@@ -1328,8 +1317,12 @@ def create_backup(request):
 		'data': {}
 	}
 
+	integration_fields = ('integration_type', 'enabled', 'tenant_id', 'client_id', 'integration_context', 'device_ownership_filter')
 	for key, model in models_to_backup:
-		backup_data['data'][key] = json.loads(serializers.serialize('json', model.objects.all()))
+		if model is Integration:
+			backup_data['data'][key] = json.loads(serializers.serialize('json', model.objects.all(), fields=integration_fields))
+		else:
+			backup_data['data'][key] = json.loads(serializers.serialize('json', model.objects.all()))
 
 	# Log the backup event
 	createLog('BACKUP', 'Backup', 'Create', 'Success',
@@ -1396,17 +1389,6 @@ def restore_backup(request):
 		('compliance_settings', DeviceComplianceSettings),
 		('personas', Persona),
 		('persona_groups', PersonaGroup),
-		('devices', Device),
-		('user_data', UserData),
-		('signin_summary', SignInSummary),
-		('cloudflare_devices', CloudflareZeroTrustDeviceData),
-		('crowdstrike_devices', CrowdStrikeFalconDeviceData),
-		('entra_devices', MicrosoftEntraIDDeviceData),
-		('intune_devices', MicrosoftIntuneDeviceData),
-		('sophos_devices', SophosCentralDeviceData),
-		('defender_devices', MicrosoftDefenderforEndpointDeviceData),
-		('qualys_devices', QualysDevice),
-		('tailscale_devices', TailscaleDeviceData),
 	]
 
 	restore_mode = request.POST.get('restore_mode', 'merge')

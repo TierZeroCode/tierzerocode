@@ -51,10 +51,13 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.microsoft',
     'import_export',
-    # 'django_tasks', # Django tasks
-    'django_rq', # Django RQ
-    'django_tasks_rq', # Django Tasks RQ backend
 ]
+
+if not os.environ.get("DJANGO_DEV"):
+    INSTALLED_APPS += [
+        'django_rq',
+        'django_tasks_rq',
+    ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -68,6 +71,7 @@ MIDDLEWARE = [
     'apps.main.middleware.ModelVerificationMiddleware', # Custom middleware to verify the required models exist and redirects to setup if needed
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF = 'tierzerocode.urls'
@@ -346,3 +350,24 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/identity/login'
+# Content Security Policy (report-only mode — observe before enforcing)
+CSP_REPORT_ONLY = True
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = (
+    "'self'",
+    "https://cdn.jsdelivr.net",
+    "https://cdn.plot.ly",
+    "https://code.jquery.com",
+    "https://cdnjs.cloudflare.com",
+    "https://cdn.datatables.net",
+)
+CSP_STYLE_SRC = (
+    "'self'",
+    "'unsafe-inline'",
+    "https://cdnjs.cloudflare.com",
+    "https://cdn.datatables.net",
+)
+CSP_IMG_SRC = ("'self'", "data:",)
+CSP_FONT_SRC = ("'self'",)
+CSP_CONNECT_SRC = ("'self'",)
+CSP_FRAME_ANCESTORS = ("'none'",)

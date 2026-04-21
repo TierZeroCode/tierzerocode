@@ -17,6 +17,9 @@ class Command(BaseCommand):
         action = 'Created' if created else 'Updated'
         self.stdout.write(f'{action} framework: {framework}')
 
+        # Rename PWD-05 → PWD-10 if the old ID still exists
+        Control.objects.filter(control_id='PWD-05').update(control_id='PWD-10')
+
         controls = [
             {
                 'control_id': 'ALM-01',
@@ -109,14 +112,24 @@ class Command(BaseCommand):
                 'evaluator': 'aal_09',
             },
             {
-                'control_id': 'PWD-05',
+                'control_id': 'PWD-10',
                 'domain': 'Password Blocklist',
-                'statement': 'Verifiers SHALL compare prospective passwords against a blocklist of known commonly used, expected, or compromised passwords. The entire password SHALL be subject to comparison.',
-                'source_reference': 'SP 800-63B-4 § 3.1.1.2',
-                'indicator': 'Password blocklist enforcement enabled across all authentication endpoints',
+                'statement': 'Verifiers SHALL compare prospective passwords against a blocklist of commonly used, expected, or compromised passwords. The entire password SHALL be checked.',
+                'source_reference': '800-63B-4 § 3.1.1.2',
+                'indicator': 'Password blocklist enforcement active on all endpoints',
                 'measurement_method': 'Entra ID Password Protection (custom banned password list + global banned list) configuration audit; on-prem AD Password Protection agent deployment',
                 'target': 'Enabled on all endpoints',
-                'evaluator': 'pwd_05',
+                'evaluator': 'pwd_10',
+            },
+            {
+                'control_id': 'PWD-08',
+                'domain': 'No KBA for Passwords',
+                'statement': 'Verifiers SHALL NOT prompt subscribers to use knowledge-based authentication (security questions) when choosing passwords.',
+                'source_reference': '800-63B-4 § 3.1.1.2(8)',
+                'indicator': 'Number of applications using security questions in password flows',
+                'measurement_method': 'Application auth configuration review; Entra ID SSPR method audit',
+                'target': '0',
+                'evaluator': 'pwd_08',
             },
         ]
 
