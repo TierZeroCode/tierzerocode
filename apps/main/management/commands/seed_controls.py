@@ -26,6 +26,9 @@ class Command(BaseCommand):
         Control.objects.filter(control_id='AAL-03').update(control_id='AAL-05')
         # Rename AAL-08 → AAL-06
         Control.objects.filter(control_id='AAL-08').update(control_id='AAL-06')
+        # Rename AAL-09 → AAL-11 (frees AAL-09 for new control)
+        if not Control.objects.filter(control_id='AAL-11').exists():
+            Control.objects.filter(control_id='AAL-09').update(control_id='AAL-11')
 
         controls = [
             {
@@ -120,13 +123,23 @@ class Command(BaseCommand):
             },
             {
                 'control_id': 'AAL-09',
-                'domain': 'Authentication Intent',
-                'statement': 'AAL2 SHOULD demonstrate authentication intent. AAL3 SHALL demonstrate authentication intent from at least one authenticator.',
-                'source_reference': 'SP 800-63B-4 § 2.2.2, 2.3.2',
-                'indicator': '% of AAL3 accounts configured with authenticators that require explicit user action (tap, biometric, PIN)',
-                'measurement_method': 'Entra ID authentication methods review for T0/T1; verify number matching enabled for push notifications',
-                'target': '100% for AAL3',
+                'domain': 'AAL3 No Syncable Authenticators',
+                'statement': 'Syncable authenticators (passkeys synced across devices) SHALL NOT be used at AAL3.',
+                'source_reference': '800-63B-4 § 2.3.2',
+                'indicator': 'Number of AAL3 accounts with syncable passkeys registered',
+                'measurement_method': 'Entra ID passkey sync policy; FIDO2 key registration audit for T0/T1',
+                'target': '0',
                 'evaluator': 'aal_09',
+            },
+            {
+                'control_id': 'AAL-11',
+                'domain': 'AAL3 Authentication Intent Required',
+                'statement': 'All authentication and reauthentication processes at AAL3 SHALL demonstrate authentication intent from at least one authenticator.',
+                'source_reference': '800-63B-4 § 2.3.2',
+                'indicator': '% of AAL3 auth events requiring explicit user action',
+                'measurement_method': 'Entra ID authentication methods review for T0/T1; verify number matching enabled for push notifications and no passwordless without user gesture',
+                'target': '100%',
+                'evaluator': 'aal_11',
             },
             {
                 'control_id': 'PWD-10',

@@ -603,7 +603,57 @@ def alm_06_detail():
 
 
 def aal_09():
-    """AAL-09: % of AAL3 accounts with intent-demonstrating authenticators.
+    """AAL-09: Number of AAL3 accounts with syncable passkeys registered.
+
+    NIST 800-63B-4 § 2.3.2: syncable authenticators SHALL NOT be used at AAL3.
+    passKeyDeviceBoundAuthenticator = MS Authenticator passkeys that sync across
+    devices via cloud backup — these are syncable and disqualify AAL3.
+    passKeyDeviceBound = hardware-bound FIDO2 key — NOT syncable, allowed at AAL3.
+
+    Target: 0
+    """
+    aal3_users = _get_users_by_aal(3)
+    total = aal3_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    SYNCABLE_Q = Q(passKeyDeviceBoundAuthenticator_authentication_method=True)
+    with_syncable = aal3_users.filter(SYNCABLE_Q).count()
+    status = 'passing' if with_syncable == 0 else 'failing'
+    return (str(with_syncable), status)
+
+
+def aal_09_detail():
+    """Return detailed data for AAL-09: AAL3 users with syncable passkeys."""
+    aal3_users = _get_users_by_aal(3)
+    total = aal3_users.count()
+    if total == 0:
+        return {'total': 0, 'failing_count': 0, 'failing_users': [], 'passing_count': 0, 'logic': 'No AAL3 (privileged) users found.'}
+
+    SYNCABLE_Q = Q(passKeyDeviceBoundAuthenticator_authentication_method=True)
+    failing_qs = aal3_users.filter(SYNCABLE_Q)
+    passing_qs = aal3_users.exclude(SYNCABLE_Q)
+
+    common = ('upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+              'passKeyDeviceBound_authentication_method',
+              'passKeyDeviceBoundAuthenticator_authentication_method',
+              'windowsHelloforBusiness_authentication_method')
+
+    return {
+        'total': total,
+        'failing_count': failing_qs.count(),
+        'passing_count': passing_qs.count(),
+        'failing_users': list(failing_qs.values(*common)[:100]),
+        'passing_users': list(passing_qs.values(*common)[:100]),
+        'logic': 'NIST 800-63B-4 § 2.3.2: syncable authenticators SHALL NOT be used at AAL3. MS Authenticator passkeys (passKeyDeviceBoundAuthenticator) sync across devices via cloud backup and are disqualified. Hardware-bound FIDO2 keys (passKeyDeviceBound) and WHfB with TPM are not syncable and are permitted.',
+        'disqualifying_methods': 'passKeyDeviceBoundAuthenticator (syncs via MS Authenticator cloud backup)',
+        'qualifying_replacements': 'passKeyDeviceBound (hardware FIDO2 key), windowsHelloforBusiness (TPM-bound)',
+        'threshold': '0 — any AAL3 account with a syncable passkey is non-compliant',
+    }
+
+
+def aal_11():
+    """AAL-11: % of AAL3 accounts with intent-demonstrating authenticators.
 
     AAL3 users (isAdmin=True or persona AAL level >= 3) must have at least
     one authenticator that requires explicit user action:
@@ -628,8 +678,8 @@ def aal_09():
     return (f'{with_intent}/{total} ({pct}%)', status)
 
 
-def aal_09_detail():
-    """Return detailed data for AAL-09: AAL3 users and their intent-demonstrating auth."""
+def aal_11_detail():
+    """Return detailed data for AAL-11: AAL3 users and their intent-demonstrating auth."""
     aal3_users = _get_users_by_aal(3)
 
     total = aal3_users.count()
