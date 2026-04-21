@@ -154,12 +154,18 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-slate-200 dark:border-slate-700/50">
-                                <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Control</th>
-                                <th class="text-left py-2 px-4 tz-section-label">Domain</th>
+                                <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="0" style="width:5rem;">
+                                    <span class="ctrl-sort-label">Control</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
+                                </th>
+                                <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="1">
+                                    <span class="ctrl-sort-label">Domain</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
+                                </th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Reference</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Target</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Current</th>
-                                <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Status</th>
+                                <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="5" style="width:5rem;">
+                                    <span class="ctrl-sort-label">Status</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
+                                </th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Evaluated</th>
                             </tr>
                         </thead>
@@ -268,162 +274,280 @@
 
 {% block extra_js %}
 <style>
+/* ── Filter pills — use Tailwind CSS custom properties for dark-mode correctness ── */
 .ctrl-pill {
-    display: inline-flex; align-items: center;
-    padding: 2px 9px; border-radius: 4px; font-size: 11px; font-weight: 500;
-    border: 1px solid; cursor: pointer; transition: background 0.1s, color 0.1s, border-color 0.1s;
-    border-color: rgb(203 213 225); color: rgb(100 116 139);
-    background: transparent;
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    border: 1px solid var(--color-slate-200); color: var(--color-slate-500);
+    background: transparent; cursor: pointer; white-space: nowrap;
+    transition: background 120ms, color 120ms, border-color 120ms;
+    line-height: 1.6;
 }
-.dark .ctrl-pill { border-color: rgb(71 85 105); color: rgb(148 163 184); }
-.ctrl-pill:hover { border-color: rgb(148 163 184); color: rgb(51 65 85); background: rgb(248 250 252); }
-.dark .ctrl-pill:hover { border-color: rgb(100 116 139); color: rgb(226 232 240); background: rgba(71,85,105,0.3); }
+:where(.dark, .dark *) .ctrl-pill {
+    border-color: var(--color-slate-700); color: var(--color-slate-400);
+}
+.ctrl-pill:hover {
+    border-color: var(--color-slate-300); color: var(--color-slate-700);
+    background: var(--color-slate-100);
+}
+:where(.dark, .dark *) .ctrl-pill:hover {
+    border-color: var(--color-slate-600); color: var(--color-slate-200);
+    background: color-mix(in oklch, var(--color-slate-700) 40%, transparent);
+}
 
-/* Active states per semantic colour */
-.ctrl-pill-active   { border-color: rgb(37 99 235) !important; background: rgb(239 246 255) !important; color: rgb(29 78 216) !important; }
-.dark .ctrl-pill-active  { background: rgba(59,130,246,0.12) !important; color: rgb(96 165 250) !important; border-color: rgb(59 130 246) !important; }
-.ctrl-pill-passing  { border-color: rgb(22 163 74) !important; background: rgb(240 253 244) !important; color: rgb(21 128 61) !important; }
-.dark .ctrl-pill-passing { background: rgba(34,197,94,0.1) !important; color: rgb(74 222 128) !important; border-color: rgb(34 197 94) !important; }
-.ctrl-pill-failing  { border-color: rgb(220 38 38) !important; background: rgb(254 242 242) !important; color: rgb(185 28 28) !important; }
-.dark .ctrl-pill-failing { background: rgba(239,68,68,0.1) !important; color: rgb(252 165 165) !important; border-color: rgb(239 68 68) !important; }
-.ctrl-pill-neutral  { border-color: rgb(100 116 139) !important; background: rgb(241 245 249) !important; color: rgb(71 85 105) !important; }
-.dark .ctrl-pill-neutral { background: rgba(100,116,139,0.15) !important; color: rgb(148 163 184) !important; border-color: rgb(100 116 139) !important; }
+/* Active: neutral/blue (All button) */
+.ctrl-pill[data-active="1"] {
+    border-color: var(--color-code-blue-500);
+    background: color-mix(in oklch, var(--color-code-blue-500) 10%, transparent);
+    color: var(--color-code-blue-600);
+}
+:where(.dark, .dark *) .ctrl-pill[data-active="1"] {
+    border-color: var(--color-code-blue-400);
+    background: color-mix(in oklch, var(--color-code-blue-500) 15%, transparent);
+    color: var(--color-code-blue-400);
+}
+/* Active: passing/green */
+.ctrl-pill[data-active="passing"] {
+    border-color: var(--color-code-green-500);
+    background: color-mix(in oklch, var(--color-code-green-500) 10%, transparent);
+    color: var(--color-code-green-700);
+}
+:where(.dark, .dark *) .ctrl-pill[data-active="passing"] {
+    border-color: var(--color-code-green-500);
+    background: color-mix(in oklch, var(--color-code-green-500) 15%, transparent);
+    color: var(--color-code-green-400);
+}
+/* Active: failing/red */
+.ctrl-pill[data-active="failing"] {
+    border-color: var(--color-code-red-500);
+    background: color-mix(in oklch, var(--color-code-red-500) 10%, transparent);
+    color: var(--color-code-red-600);
+}
+:where(.dark, .dark *) .ctrl-pill[data-active="failing"] {
+    border-color: var(--color-code-red-500);
+    background: color-mix(in oklch, var(--color-code-red-500) 15%, transparent);
+    color: var(--color-code-red-400);
+}
+/* Active: not_measured/slate */
+.ctrl-pill[data-active="not_measured"] {
+    border-color: var(--color-slate-400);
+    background: var(--color-slate-100);
+    color: var(--color-slate-600);
+}
+:where(.dark, .dark *) .ctrl-pill[data-active="not_measured"] {
+    border-color: var(--color-slate-500);
+    background: color-mix(in oklch, var(--color-slate-600) 20%, transparent);
+    color: var(--color-slate-300);
+}
+/* Active: type pills (same as "all" blue) */
+.ctrl-pill[data-active="type"] {
+    border-color: var(--color-code-blue-500);
+    background: color-mix(in oklch, var(--color-code-blue-500) 10%, transparent);
+    color: var(--color-code-blue-600);
+}
+:where(.dark, .dark *) .ctrl-pill[data-active="type"] {
+    border-color: var(--color-code-blue-400);
+    background: color-mix(in oklch, var(--color-code-blue-500) 15%, transparent);
+    color: var(--color-code-blue-400);
+}
+
+/* ── Sortable column headers ── */
+.ctrl-sort-th {
+    cursor: pointer; user-select: none;
+    white-space: nowrap;
+}
+.ctrl-sort-th:hover .ctrl-sort-icon { opacity: 0.6 !important; }
+.ctrl-sort-th[data-dir="asc"]  .ctrl-sort-icon::after { content: "↑"; opacity: 1 !important; }
+.ctrl-sort-th[data-dir="desc"] .ctrl-sort-icon::after { content: "↓"; opacity: 1 !important; }
+.ctrl-sort-th[data-dir="asc"]  .ctrl-sort-icon,
+.ctrl-sort-th[data-dir="desc"] .ctrl-sort-icon { opacity: 1 !important; color: var(--color-code-blue-500); }
 </style>
 <script>
-(function() {
+(function () {
     var activeStatus = 'all';
     var activeType   = 'all';
     var searchVal    = '';
 
-    /* Derive unique type prefixes from rendered rows and build type pill buttons */
-    function initControlFilters() {
-        var rows = document.querySelectorAll('[data-ctrl-row]');
-        var seen = {};
-        rows.forEach(function(r) {
-            var t = r.dataset.type;
-            if (t) seen[t] = true;
-        });
-        var types = Object.keys(seen).sort();
-        var container = document.getElementById('ctrl-type-filters');
+    /* ── Pill helpers ── */
+    function setPillActive(container, value) {
         if (!container) return;
-        types.forEach(function(t) {
-            var btn = document.createElement('button');
-            btn.className = 'ctrl-pill';
-            btn.dataset.group = 'type';
-            btn.dataset.value = t;
-            btn.textContent = t;
-            container.appendChild(btn);
+        container.querySelectorAll('.ctrl-pill').forEach(function (p) {
+            delete p.dataset.active;
         });
-        container.addEventListener('click', onPillClick);
-
-        var statusContainer = document.getElementById('ctrl-status-filters');
-        if (statusContainer) statusContainer.addEventListener('click', onPillClick);
-
-        var search = document.getElementById('ctrl-search');
-        if (search) {
-            search.addEventListener('input', function() {
-                searchVal = this.value.trim().toLowerCase();
-                applyFilters();
-            });
+        var active = container.querySelector('[data-value="' + value + '"]');
+        if (!active) return;
+        /* "All" pills and type pills use generic active marker; status pills use value */
+        if (value === 'all') {
+            active.dataset.active = '1';
+        } else if (container.id === 'ctrl-type-filters') {
+            active.dataset.active = 'type';
+        } else {
+            active.dataset.active = value;   /* 'passing' | 'failing' | 'not_measured' */
         }
-
-        applyFilters();
     }
 
-    function onPillClick(e) {
-        var btn = e.target.closest('[data-group]');
-        if (!btn) return;
-        var group = btn.dataset.group;
-        var value = btn.dataset.value;
-        if (group === 'status') activeStatus = value;
-        if (group === 'type')   activeType   = value;
-        updatePillUI(btn.closest('[id]'), value);
-        applyFilters();
-    }
-
-    function updatePillUI(container, activeValue) {
-        if (!container) return;
-        container.querySelectorAll('[data-group]').forEach(function(pill) {
-            /* Strip any active/semantic classes */
-            ['ctrl-pill-active','ctrl-pill-passing','ctrl-pill-failing','ctrl-pill-neutral'].forEach(function(c) {
-                pill.classList.remove(c);
-            });
-            if (pill.dataset.value === activeValue) {
-                var cls = 'ctrl-pill-active';
-                if (activeValue === 'passing')     cls = 'ctrl-pill-passing';
-                if (activeValue === 'failing')     cls = 'ctrl-pill-failing';
-                if (activeValue === 'not_measured') cls = 'ctrl-pill-neutral';
-                pill.classList.add(cls);
-            }
-        });
-    }
-
+    /* ── Filter ── */
     function applyFilters() {
-        var rows = document.querySelectorAll('[data-ctrl-row]');
+        var rows  = document.querySelectorAll('[data-ctrl-row]');
         var total = rows.length;
         var visible = 0;
-
-        /* Track per-framework visibility for empty-state rows */
         var fwVisible = {};
 
-        rows.forEach(function(row) {
+        rows.forEach(function (row) {
             var status = row.dataset.status || 'not_measured';
             var type   = row.dataset.type   || '';
             var search = row.dataset.search || '';
-
-            var show = (activeStatus === 'all' || status === activeStatus)
-                    && (activeType   === 'all' || type   === activeType)
-                    && (!searchVal   || search.indexOf(searchVal) !== -1);
-
+            var show   = (activeStatus === 'all' || status === activeStatus)
+                      && (activeType   === 'all' || type   === activeType)
+                      && (!searchVal   || search.indexOf(searchVal) !== -1);
             row.classList.toggle('hidden', !show);
             if (show) {
                 visible++;
-                /* Determine framework from table's ancestor */
                 var fw = row.closest('[data-ctrl-framework]');
                 if (fw) fwVisible[fw.dataset.ctrlFramework] = (fwVisible[fw.dataset.ctrlFramework] || 0) + 1;
             }
         });
 
-        /* Show/hide per-framework "no results" rows */
-        document.querySelectorAll('[data-ctrl-framework]').forEach(function(fw) {
-            var fwId = fw.dataset.ctrlFramework;
-            var noRes = document.getElementById('ctrl-no-results-' + fwId);
-            if (noRes) noRes.classList.toggle('hidden', (fwVisible[fwId] || 0) > 0);
+        document.querySelectorAll('[data-ctrl-framework]').forEach(function (fw) {
+            var id   = fw.dataset.ctrlFramework;
+            var noRes = document.getElementById('ctrl-no-results-' + id);
+            if (noRes) noRes.classList.toggle('hidden', (fwVisible[id] || 0) > 0);
         });
 
-        /* Update count badge */
         var countEl = document.getElementById('ctrl-count');
         if (countEl) {
             countEl.textContent = visible === total
-                ? total + ' controls'
-                : visible + ' of ' + total + ' controls';
+                ? total + ' controls'
+                : visible + ' of ' + total + ' controls';
         }
+    }
+
+    /* ── Sort ── */
+    /* Natural sort for control IDs like "AAL-02", "ALM-11" */
+    function ctrlIdKey(text) {
+        var m = text.trim().match(/^([A-Z]+)-(\d+)/i);
+        return m ? m[1].toUpperCase() + String(m[2]).padStart(6, '0') : text.toLowerCase();
+    }
+    /* Status sort order */
+    var STATUS_ORDER = { 'passing': 0, 'failing': 1, 'not measured': 2 };
+    function statusKey(text) {
+        var t = text.trim().toLowerCase();
+        return STATUS_ORDER[t] !== undefined ? STATUS_ORDER[t] : 9;
+    }
+
+    function sortTable(th) {
+        var col    = parseInt(th.dataset.col, 10);
+        var curDir = th.dataset.dir || 'none';
+        var newDir = (curDir === 'asc') ? 'desc' : 'asc';
+
+        /* Reset all sort headers */
+        document.querySelectorAll('.ctrl-sort-th').forEach(function (h) {
+            delete h.dataset.dir;
+            var icon = h.querySelector('.ctrl-sort-icon');
+            if (icon) { icon.textContent = '↕'; icon.style.opacity = '0.3'; }
+        });
+
+        th.dataset.dir = newDir;
+        var icon = th.querySelector('.ctrl-sort-icon');
+        if (icon) { icon.textContent = newDir === 'asc' ? '↑' : '↓'; icon.style.opacity = '1'; }
+
+        /* Collect all data rows (exclude no-results sentinels) and sort */
+        document.querySelectorAll('[data-ctrl-framework]').forEach(function (fwEl) {
+            var tbody = fwEl.querySelector('tbody');
+            if (!tbody) return;
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('[data-ctrl-row]'));
+            rows.sort(function (a, b) {
+                var aText = (a.cells[col] ? a.cells[col].textContent : '').trim();
+                var bText = (b.cells[col] ? b.cells[col].textContent : '').trim();
+                var aKey, bKey;
+                if (col === 0) { aKey = ctrlIdKey(aText); bKey = ctrlIdKey(bText); }
+                else if (col === 5) { aKey = statusKey(aText); bKey = statusKey(bText); return newDir === 'asc' ? aKey - bKey : bKey - aKey; }
+                else { aKey = aText.toLowerCase(); bKey = bText.toLowerCase(); }
+                if (aKey < bKey) return newDir === 'asc' ? -1 : 1;
+                if (aKey > bKey) return newDir === 'asc' ?  1 : -1;
+                return 0;
+            });
+            /* Re-insert sorted rows before the sentinel */
+            var sentinel = document.getElementById('ctrl-no-results-' + fwEl.dataset.ctrlFramework);
+            rows.forEach(function (r) { tbody.insertBefore(r, sentinel || null); });
+        });
+    }
+
+    /* ── Init ── */
+    function initControlFilters() {
+        /* Build type pills from rendered rows */
+        var rows = document.querySelectorAll('[data-ctrl-row]');
+        var seen = {};
+        rows.forEach(function (r) { if (r.dataset.type) seen[r.dataset.type] = true; });
+        var types = Object.keys(seen).sort();
+        var typeContainer = document.getElementById('ctrl-type-filters');
+        if (typeContainer) {
+            types.forEach(function (t) {
+                var btn = document.createElement('button');
+                btn.className = 'ctrl-pill';
+                btn.dataset.group = 'type';
+                btn.dataset.value = t;
+                btn.textContent = t;
+                typeContainer.appendChild(btn);
+            });
+            typeContainer.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-value]');
+                if (!btn) return;
+                activeType = btn.dataset.value;
+                setPillActive(typeContainer, activeType);
+                applyFilters();
+            });
+            setPillActive(typeContainer, 'all');
+        }
+
+        var statusContainer = document.getElementById('ctrl-status-filters');
+        if (statusContainer) {
+            statusContainer.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-value]');
+                if (!btn) return;
+                activeStatus = btn.dataset.value;
+                setPillActive(statusContainer, activeStatus);
+                applyFilters();
+            });
+            setPillActive(statusContainer, 'all');
+        }
+
+        var search = document.getElementById('ctrl-search');
+        if (search) {
+            search.addEventListener('input', function () {
+                searchVal = this.value.trim().toLowerCase();
+                applyFilters();
+            });
+        }
+
+        /* Sort headers */
+        document.querySelectorAll('.ctrl-sort-th').forEach(function (th) {
+            th.addEventListener('click', function () { sortTable(this); });
+        });
+
+        applyFilters();
     }
 
     /* ── Tab switching ── */
     function switchReportTab(tabName) {
-        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.add('hidden'); });
-        document.querySelectorAll('[data-tab]').forEach(function(b) {
+        document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
+        document.querySelectorAll('[data-tab]').forEach(function (b) {
             b.className = b.className.replace('tz-nav-item-active', 'tz-nav-item');
         });
         var panel = document.getElementById('panel-' + tabName);
         if (panel) panel.classList.remove('hidden');
-        document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(function(b) {
+        document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(function (b) {
             b.className = b.className.replace('tz-nav-item', 'tz-nav-item-active');
         });
         if (history.pushState) history.pushState(null, null, window.location.pathname + '#' + tabName);
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('[data-tab]').forEach(function(btn) {
-            btn.addEventListener('click', function() { switchReportTab(this.dataset.tab); });
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-tab]').forEach(function (btn) {
+            btn.addEventListener('click', function () { switchReportTab(this.dataset.tab); });
         });
         var hash = window.location.hash;
-        if (hash && hash.length > 1) {
-            switchReportTab(hash.replace('#', ''));
-        } else {
-            switchReportTab('ciso');
-        }
+        switchReportTab((hash && hash.length > 1) ? hash.replace('#', '') : 'ciso');
         initControlFilters();
     });
 })();
