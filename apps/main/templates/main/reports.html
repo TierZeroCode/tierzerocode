@@ -1,6 +1,96 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+/* ── Controls filter pills ── */
+.ctrl-pill {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px; border-radius: 3px; font-size: 11px; font-weight: 500;
+    border: 1px solid oklch(0.915 0.012 260); /* slate-200 */
+    color: oklch(0.550 0.022 260); /* slate-500 */
+    background: transparent; cursor: pointer; white-space: nowrap;
+    transition: background 100ms, color 100ms, border-color 100ms;
+    line-height: 1.65;
+}
+html.dark .ctrl-pill {
+    border-color: oklch(0.370 0.025 260); /* slate-700 */
+    color: oklch(0.650 0.022 260); /* slate-400 */
+}
+.ctrl-pill:hover {
+    border-color: oklch(0.855 0.018 260); /* slate-300 */
+    color: oklch(0.370 0.025 260); /* slate-700 */
+    background: oklch(0.965 0.007 260); /* slate-100 */
+}
+html.dark .ctrl-pill:hover {
+    border-color: oklch(0.450 0.025 260); /* slate-600 */
+    color: oklch(0.915 0.012 260); /* slate-200 */
+    background: oklch(0.370 0.025 260 / 0.35);
+}
+
+/* Active: All / type (blue) */
+.ctrl-pill[data-active="1"],
+.ctrl-pill[data-active="type"] {
+    border-color: oklch(0.630 0.195 255); /* code-blue-500 */
+    background: oklch(0.970 0.014 255); /* code-blue-50 */
+    color: oklch(0.555 0.205 255); /* code-blue-600 */
+}
+html.dark .ctrl-pill[data-active="1"],
+html.dark .ctrl-pill[data-active="type"] {
+    border-color: oklch(0.720 0.155 255); /* code-blue-400 */
+    background: oklch(0.630 0.195 255 / 0.13);
+    color: oklch(0.720 0.155 255);
+}
+
+/* Active: passing (green) */
+.ctrl-pill[data-active="passing"] {
+    border-color: oklch(0.680 0.180 155); /* code-green-500 */
+    background: oklch(0.970 0.018 155); /* code-green-50 */
+    color: oklch(0.580 0.155 155); /* code-green-600 */
+}
+html.dark .ctrl-pill[data-active="passing"] {
+    border-color: oklch(0.750 0.165 155); /* code-green-400 */
+    background: oklch(0.680 0.180 155 / 0.13);
+    color: oklch(0.750 0.165 155);
+}
+
+/* Active: failing (red) */
+.ctrl-pill[data-active="failing"] {
+    border-color: oklch(0.630 0.215 25); /* code-red-500 */
+    background: oklch(0.970 0.012 25); /* code-red-50 */
+    color: oklch(0.555 0.215 25); /* code-red-600 */
+}
+html.dark .ctrl-pill[data-active="failing"] {
+    border-color: oklch(0.680 0.175 25); /* code-red-400 */
+    background: oklch(0.630 0.215 25 / 0.13);
+    color: oklch(0.680 0.175 25);
+}
+
+/* Active: not_measured (slate) */
+.ctrl-pill[data-active="not_measured"] {
+    border-color: oklch(0.650 0.022 260); /* slate-400 */
+    background: oklch(0.965 0.007 260); /* slate-100 */
+    color: oklch(0.450 0.025 260); /* slate-600 */
+}
+html.dark .ctrl-pill[data-active="not_measured"] {
+    border-color: oklch(0.550 0.022 260); /* slate-500 */
+    background: oklch(0.550 0.022 260 / 0.18);
+    color: oklch(0.855 0.018 260); /* slate-300 */
+}
+
+/* ── Sortable column headers ── */
+.ctrl-sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
+.ctrl-sort-th:hover .ctrl-sort-icon { opacity: 0.7 !important; }
+.ctrl-sort-th[data-dir] .ctrl-sort-icon {
+    opacity: 1 !important;
+    color: oklch(0.630 0.195 255); /* code-blue-500 */
+}
+html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
+    color: oklch(0.720 0.155 255); /* code-blue-400 */
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
 <h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100 mb-5">Reports</h1>
@@ -120,10 +210,10 @@
                 <div class="flex items-center gap-1.5">
                     <span class="tz-section-label">Status</span>
                     <div class="flex gap-1" id="ctrl-status-filters">
-                        <button class="ctrl-pill ctrl-pill-active" data-group="status" data-value="all">All</button>
-                        <button class="ctrl-pill ctrl-pill-passing" data-group="status" data-value="passing">Passing</button>
-                        <button class="ctrl-pill ctrl-pill-failing" data-group="status" data-value="failing">Failing</button>
-                        <button class="ctrl-pill ctrl-pill-neutral" data-group="status" data-value="not_measured">Not Measured</button>
+                        <button class="ctrl-pill" data-group="status" data-value="all">All</button>
+                        <button class="ctrl-pill" data-group="status" data-value="passing">Passing</button>
+                        <button class="ctrl-pill" data-group="status" data-value="failing">Failing</button>
+                        <button class="ctrl-pill" data-group="status" data-value="not_measured">Not Measured</button>
                     </div>
                 </div>
 
@@ -133,7 +223,7 @@
                 <div class="flex items-center gap-1.5">
                     <span class="tz-section-label">Type</span>
                     <div class="flex gap-1" id="ctrl-type-filters">
-                        <button class="ctrl-pill ctrl-pill-active" data-group="type" data-value="all">All</button>
+                        <button class="ctrl-pill" data-group="type" data-value="all">All</button>
                         <!-- populated by initControlFilters() -->
                     </div>
                 </div>
@@ -273,95 +363,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<style>
-/* ── Filter pills — use Tailwind CSS custom properties for dark-mode correctness ── */
-.ctrl-pill {
-    display: inline-flex; align-items: center; gap: 3px;
-    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
-    border: 1px solid var(--color-slate-200); color: var(--color-slate-500);
-    background: transparent; cursor: pointer; white-space: nowrap;
-    transition: background 120ms, color 120ms, border-color 120ms;
-    line-height: 1.6;
-}
-:where(.dark, .dark *) .ctrl-pill {
-    border-color: var(--color-slate-700); color: var(--color-slate-400);
-}
-.ctrl-pill:hover {
-    border-color: var(--color-slate-300); color: var(--color-slate-700);
-    background: var(--color-slate-100);
-}
-:where(.dark, .dark *) .ctrl-pill:hover {
-    border-color: var(--color-slate-600); color: var(--color-slate-200);
-    background: color-mix(in oklch, var(--color-slate-700) 40%, transparent);
-}
-
-/* Active: neutral/blue (All button) */
-.ctrl-pill[data-active="1"] {
-    border-color: var(--color-code-blue-500);
-    background: color-mix(in oklch, var(--color-code-blue-500) 10%, transparent);
-    color: var(--color-code-blue-600);
-}
-:where(.dark, .dark *) .ctrl-pill[data-active="1"] {
-    border-color: var(--color-code-blue-400);
-    background: color-mix(in oklch, var(--color-code-blue-500) 15%, transparent);
-    color: var(--color-code-blue-400);
-}
-/* Active: passing/green */
-.ctrl-pill[data-active="passing"] {
-    border-color: var(--color-code-green-500);
-    background: color-mix(in oklch, var(--color-code-green-500) 10%, transparent);
-    color: var(--color-code-green-700);
-}
-:where(.dark, .dark *) .ctrl-pill[data-active="passing"] {
-    border-color: var(--color-code-green-500);
-    background: color-mix(in oklch, var(--color-code-green-500) 15%, transparent);
-    color: var(--color-code-green-400);
-}
-/* Active: failing/red */
-.ctrl-pill[data-active="failing"] {
-    border-color: var(--color-code-red-500);
-    background: color-mix(in oklch, var(--color-code-red-500) 10%, transparent);
-    color: var(--color-code-red-600);
-}
-:where(.dark, .dark *) .ctrl-pill[data-active="failing"] {
-    border-color: var(--color-code-red-500);
-    background: color-mix(in oklch, var(--color-code-red-500) 15%, transparent);
-    color: var(--color-code-red-400);
-}
-/* Active: not_measured/slate */
-.ctrl-pill[data-active="not_measured"] {
-    border-color: var(--color-slate-400);
-    background: var(--color-slate-100);
-    color: var(--color-slate-600);
-}
-:where(.dark, .dark *) .ctrl-pill[data-active="not_measured"] {
-    border-color: var(--color-slate-500);
-    background: color-mix(in oklch, var(--color-slate-600) 20%, transparent);
-    color: var(--color-slate-300);
-}
-/* Active: type pills (same as "all" blue) */
-.ctrl-pill[data-active="type"] {
-    border-color: var(--color-code-blue-500);
-    background: color-mix(in oklch, var(--color-code-blue-500) 10%, transparent);
-    color: var(--color-code-blue-600);
-}
-:where(.dark, .dark *) .ctrl-pill[data-active="type"] {
-    border-color: var(--color-code-blue-400);
-    background: color-mix(in oklch, var(--color-code-blue-500) 15%, transparent);
-    color: var(--color-code-blue-400);
-}
-
-/* ── Sortable column headers ── */
-.ctrl-sort-th {
-    cursor: pointer; user-select: none;
-    white-space: nowrap;
-}
-.ctrl-sort-th:hover .ctrl-sort-icon { opacity: 0.6 !important; }
-.ctrl-sort-th[data-dir="asc"]  .ctrl-sort-icon::after { content: "↑"; opacity: 1 !important; }
-.ctrl-sort-th[data-dir="desc"] .ctrl-sort-icon::after { content: "↓"; opacity: 1 !important; }
-.ctrl-sort-th[data-dir="asc"]  .ctrl-sort-icon,
-.ctrl-sort-th[data-dir="desc"] .ctrl-sort-icon { opacity: 1 !important; color: var(--color-code-blue-500); }
-</style>
 <script>
 (function () {
     var activeStatus = 'all';
