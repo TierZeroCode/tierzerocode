@@ -68,6 +68,110 @@ STRONGER_THAN_SMS_Q = (
     Q(softwareOneTimePasscode_authentication_method=True)
 )
 
+# NIST-standard authenticators for AAL1 (excludes email OTP and security questions,
+# which are not formally categorized as NIST authenticator types at AAL1).
+# Any user who has registered for MFA but has ONLY email/KBA is flagged.
+AAL1_STANDARD_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True) |
+    Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+    Q(microsoftAuthenticatorPush_authentication_method=True) |
+    Q(softwareOneTimePasscode_authentication_method=True) |
+    Q(mobilePhone_authentication_method=True)
+)
+
+# Users registered for MFA but whose only registered methods are email OTP
+# and/or security questions — not formal NIST authenticator types.
+AAL1_WEAK_ONLY_Q = (
+    Q(isMfaRegistered=True) &
+    ~Q(passKeyDeviceBound_authentication_method=True) &
+    ~Q(passKeyDeviceBoundAuthenticator_authentication_method=True) &
+    ~Q(windowsHelloforBusiness_authentication_method=True) &
+    ~Q(microsoftAuthenticatorPasswordless_authentication_method=True) &
+    ~Q(microsoftAuthenticatorPush_authentication_method=True) &
+    ~Q(softwareOneTimePasscode_authentication_method=True) &
+    ~Q(mobilePhone_authentication_method=True) &
+    (Q(email_authentication_method=True) | Q(securityQuestion_authentication_method=True))
+)
+
+
+def aal_03():
+    """AAL-03: % of users with at least one NIST-approved AAL1 authenticator type.
+
+    NIST 800-63B-4 § 2.1.1 permits these authenticator types at AAL1:
+    memorized secret (password), look-up secret, OOB device, SF/MF OTP,
+    SF/MF crypto device. Email OTP and security questions are not formally
+    categorized NIST authenticator types and do not satisfy the requirement
+    on their own.
+
+    Measurement: flags users who have registered for MFA but whose ONLY
+    registered methods are email OTP and/or security questions — indicating
+    the user's second factor falls outside the approved type list.
+    Password-only users are inherently compliant (memorized secret = AAL1 OK).
+
+    Target: 100%
+    """
+    total = UserData.objects.filter(isMfaRegistered=True).count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    weak_only = UserData.objects.filter(AAL1_WEAK_ONLY_Q).count()
+    compliant = total - weak_only
+    pct = round(compliant / total * 100)
+    status = 'passing' if weak_only == 0 else 'failing'
+    return (f'{compliant}/{total} ({pct}%)', status)
+
+
+def aal_03_detail():
+    """Return detailed data for AAL-03: AAL1 authenticator type compliance."""
+    total = UserData.objects.filter(isMfaRegistered=True).count()
+    if total == 0:
+        return {
+            'total': 0, 'passing_count': 0, 'failing_count': 0,
+            'failing_users': [], 'passing_users': [],
+            'logic': 'No users with MFA registered found.',
+        }
+
+    passing_qs = UserData.objects.filter(isMfaRegistered=True).filter(AAL1_STANDARD_Q).distinct()
+    failing_qs = UserData.objects.filter(AAL1_WEAK_ONLY_Q).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'email_authentication_method',
+        'securityQuestion_authentication_method',
+        'highest_authentication_strength',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': (
+            'Users registered for MFA are checked for at least one NIST-recognized authenticator type '
+            '(FIDO2, WHfB, passkey, MS Authenticator push/passwordless, software OTP, or phone/SMS). '
+            'Email OTP and security questions are not formally categorized as NIST authenticator types '
+            'under 800-63B-4 § 2.1.1 and do not satisfy the AAL1 requirement on their own. '
+            'Password-only users are implicitly compliant (memorized secret is an approved AAL1 type) '
+            'and are excluded from this check.'
+        ),
+        'qualifying_methods': 'Password (implicit), FIDO2, WHfB, Passkey, MS Authenticator Passwordless/Push, Software OTP, Phone/SMS',
+        'disqualifying_methods': 'Email OTP and security questions as sole registered second factors (not NIST authenticator types)',
+    }
+
 
 def alm_01():
     """ALM-01: % of accounts with at least one authenticator registered at enrollment.
@@ -264,6 +368,124 @@ def aal_04():
     pct = round(with_hardware_auth / total * 100)
     status = 'passing' if pct >= 100 else 'failing'
     return (f'{with_hardware_auth}/{total} ({pct}%)', status)
+
+
+def aal_04_detail():
+    """Return detailed data for AAL-04: AAL3 users and hardware-bound auth."""
+    privileged_users = _get_users_by_aal(3)
+
+    total = privileged_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL3 (privileged) users found.'}
+
+    passing_qs = privileged_users.filter(HARDWARE_BOUND_Q).distinct()
+    failing_qs = privileged_users.exclude(HARDWARE_BOUND_Q).distinct()
+
+    common_fields = (
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'highest_authentication_strength',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': list(failing_qs.values(*common_fields)[:100]),
+        'passing_users': list(passing_qs.values(*common_fields)[:100]),
+        'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have at least one hardware-bound, non-exportable authenticator. Hardware FIDO2 security keys and WHfB (with TPM) are hardware-bound. Syncable passkeys (MS Authenticator) are software-backed and do not qualify.',
+        'qualifying_methods': 'passKeyDeviceBound (hardware FIDO2 security key with SE/TPM), windowsHelloforBusiness (TPM 2.0 bound)',
+        'disqualifying_methods': 'passKeyDeviceBoundAuthenticator (device-bound but software keychain — syncable), MS Authenticator push, OTP, phone/SMS',
+    }
+
+
+def phr_04():
+    """PHR-04: % of AAL3 users with hardware-protected, non-exportable key authenticators.
+
+    NIST 800-63B-4 § 3.2.13: the authenticator SHALL be a separate piece of hardware
+    or an embedded processor (SE, TEE, or TPM) that provides a protected execution
+    environment. The authenticator SHALL prohibit export of the authentication secret
+    to the host processor.
+
+    In Entra ID:
+    - passKeyDeviceBound (hardware FIDO2): private key generated in SE/TPM,
+      certified via attestation, never leaves hardware — compliant.
+    - windowsHelloforBusiness: private key bound to TPM 2.0, non-exportable — compliant.
+    - passKeyDeviceBoundAuthenticator (MS Authenticator passkey): stored in software
+      keychain, backed up to cloud — keys are device-bound but NOT hardware-isolated;
+      not compliant with § 3.2.13.
+    - All software authenticators (OTP, push, phone): exportable — not compliant.
+
+    Target: 100% for T0/T1
+    """
+    aal3_users = _get_users_by_aal(3)
+
+    total = aal3_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    with_hw = aal3_users.filter(HARDWARE_BOUND_Q).distinct().count()
+    pct = round(with_hw / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_hw}/{total} ({pct}%)', status)
+
+
+def phr_04_detail():
+    """Return detailed data for PHR-04: AAL3 users and non-exportable key compliance."""
+    aal3_users = _get_users_by_aal(3)
+
+    total = aal3_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL3 (T0/T1) users found.'}
+
+    passing_qs = aal3_users.filter(HARDWARE_BOUND_Q).distinct()
+    failing_qs = aal3_users.exclude(HARDWARE_BOUND_Q).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'passKeyDeviceBound_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'highest_authentication_strength',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+        'highest_authentication_strength',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': (
+            'NIST 800-63B-4 § 3.2.13 requires AAL3 authenticators to use a separate hardware module '
+            '(SE, TEE, or TPM) that prevents export of the private key to the host processor. '
+            'Hardware FIDO2 security keys generate and store private keys inside a certified SE/TPM — '
+            'the key never leaves the device. WHfB private keys are bound to the platform TPM 2.0 '
+            'and cannot be exported. MS Authenticator passkeys (passKeyDeviceBoundAuthenticator) are '
+            'device-bound but backed up to iCloud/Google cloud — the private key material is exportable '
+            'and does not meet the hardware isolation requirement. All software authenticators are disqualified.'
+        ),
+        'qualifying_methods': (
+            'passKeyDeviceBound: hardware FIDO2 key (YubiKey, Feitian, etc.) with SE/TPM attestation; '
+            'windowsHelloforBusiness: WHfB with TPM 2.0 chip (non-exportable by TPM design)'
+        ),
+        'disqualifying_methods': (
+            'passKeyDeviceBoundAuthenticator: MS Authenticator passkey (software keychain, cloud-backed); '
+            'all push/OTP/phone/SMS methods (software, exportable)'
+        ),
+        'attestation_note': 'Full compliance verification requires FIDO2 attestation certificate review and TPM 2.0 inventory — user registration data is a proxy indicator.',
+    }
 
 
 def alm_01_detail():
@@ -719,6 +941,84 @@ def aal_11_detail():
     }
 
 
+def aal_07():
+    """AAL-07: % of AAL2 accounts with intent-demonstrating authenticators.
+
+    NIST 800-63B-4 § 2.2.2: authentication at AAL2 SHOULD demonstrate intent
+    from at least one authenticator. Intent-demonstrating methods require an
+    explicit user action beyond passive possession:
+    - FIDO2 key: physical tap (always demonstrates intent)
+    - WHfB: biometric or PIN entry (always demonstrates intent)
+    - MS Authenticator Passwordless: user must approve on device
+    - MS Authenticator Push: number matching requires active code entry
+    - Software OTP (TOTP): user must type the code
+
+    Phone/SMS, email, and TAP do not require active user intent.
+
+    Target: 100%
+    """
+    aal2_users = _get_users_by_aal(2)
+
+    total = aal2_users.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    with_intent = aal2_users.filter(REPLAY_RESISTANT_Q).distinct().count()
+    pct = round(with_intent / total * 100)
+    status = 'passing' if pct >= 100 else 'failing'
+    return (f'{with_intent}/{total} ({pct}%)', status)
+
+
+def aal_07_detail():
+    """Return detailed data for AAL-07: AAL2 users and intent-demonstrating auth."""
+    aal2_users = _get_users_by_aal(2)
+
+    total = aal2_users.count()
+    if total == 0:
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
+
+    passing_qs = aal2_users.filter(REPLAY_RESISTANT_Q).distinct()
+    failing_qs = aal2_users.exclude(REPLAY_RESISTANT_Q).distinct()
+
+    passing = list(passing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+    )[:100])
+
+    failing = list(failing_qs.values(
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
+        'highest_authentication_strength',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+        'temporaryAccessPass_authentication_method',
+    )[:100])
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'failing_users': failing,
+        'passing_users': passing,
+        'logic': (
+            'AAL2 users (persona AAL level >= 2 or isAdmin=True) should have at least one authenticator '
+            'that requires explicit user action. FIDO2 keys (physical tap), WHfB (biometric/PIN), '
+            'MS Authenticator Passwordless, MS Authenticator Push (number matching), and software OTP '
+            '(code entry) all demonstrate intent. Phone/SMS codes and email OTP arrive passively and '
+            'do not require an active user decision beyond receiving them.'
+        ),
+        'qualifying_methods': 'FIDO2 key (tap), WHfB (biometric/PIN), MS Authenticator Passwordless, MS Authenticator Push (number matching), Software OTP (code entry)',
+        'disqualifying_methods': 'Phone/SMS, email OTP, and Temporary Access Pass alone do not demonstrate authentication intent',
+        'nist_strength': 'SHOULD requirement (§ 2.2.2) — treated as a target; any gap is flagged as failing',
+    }
+
+
 def aal_06():
     """AAL-08: % of AAL2+ users with replay-resistant authenticators.
 
@@ -915,3 +1215,22 @@ def pwd_08_detail():
         'qualifying_methods': 'No security questions registered',
         'disqualifying_methods': 'securityQuestion authentication method registered',
     }
+
+
+def alm_11():
+    """ALM-11: Recovery code lifetimes configured per NIST delivery-method thresholds.
+
+    NIST 800-63B-4 § 4.2.1.2 sets maximum validity periods by delivery channel:
+    - Postal (US): 21 days
+    - Postal (international): 30 days
+    - SMS/voice: 10 minutes
+    - Email: 24 hours
+
+    This control cannot be automatically evaluated from Entra ID or device data —
+    it requires a manual review of SSPR configuration, application recovery flows,
+    and any out-of-band delivery pipelines. Set use_manual=True on this control
+    and record the result of a periodic configuration review in manual_notes.
+
+    Returns not_measured until a manual review result is recorded.
+    """
+    return ('-', 'not_measured')

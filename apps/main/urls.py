@@ -15,6 +15,7 @@ urlpatterns = [
     path('reports/seed', views.seed_controls_view, name='seed_controls_view'),
     path('reports/control/<str:control_id>', views.control_detail, name='control_detail'),
     path('reports/control/<str:control_id>/export', views.control_export_noncompliant, name='control_export_noncompliant'),
+    path('reports/control/<str:control_id>/update', views.update_control_view, name='update_control'),
     
     # ============================================================================
     # Device Management

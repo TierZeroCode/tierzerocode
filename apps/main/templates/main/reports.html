@@ -88,6 +88,64 @@ html.dark .ctrl-pill[data-active="not_measured"] {
 html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
     color: oklch(0.720 0.155 255); /* code-blue-400 */
 }
+
+/* ── Manual override badge ── */
+.ctrl-manual-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 2px; font-size: 9px; font-weight: 700;
+    background: oklch(0.780 0.170 85 / 0.18); color: oklch(0.580 0.155 85);
+    border: 1px solid oklch(0.780 0.170 85 / 0.4);
+    vertical-align: middle; cursor: default;
+}
+html.dark .ctrl-manual-badge {
+    background: oklch(0.780 0.170 85 / 0.12);
+    color: oklch(0.820 0.155 85);
+    border-color: oklch(0.780 0.170 85 / 0.35);
+}
+
+/* ── Control edit modal ── */
+.ctrl-modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background: oklch(0.100 0.010 260 / 0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem;
+}
+.ctrl-modal-backdrop.hidden { display: none; }
+.ctrl-modal-panel {
+    background: oklch(1 0 0); border: 1px solid oklch(0.915 0.012 260);
+    border-radius: 6px; box-shadow: 0 8px 32px oklch(0.100 0.010 260 / 0.18);
+    width: 100%; max-width: 28rem;
+    display: flex; flex-direction: column;
+}
+html.dark .ctrl-modal-panel {
+    background: oklch(0.215 0.015 260);
+    border-color: oklch(0.295 0.025 260);
+    box-shadow: 0 8px 32px oklch(0.050 0.010 260 / 0.5);
+}
+.ctrl-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.875rem 1rem 0.75rem;
+    border-bottom: 1px solid oklch(0.935 0.010 260);
+}
+html.dark .ctrl-modal-header { border-color: oklch(0.295 0.025 260); }
+.ctrl-modal-body { padding: 1rem; }
+.ctrl-modal-footer {
+    display: flex; justify-content: flex-end; gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid oklch(0.935 0.010 260);
+}
+html.dark .ctrl-modal-footer { border-color: oklch(0.295 0.025 260); }
+
+/* ── Control gauges ── */
+.ctrl-gauge { display: block; }
+.ctrl-gauge .gauge-track { stroke: oklch(0.915 0.012 260); }  /* slate-200 */
+html.dark .ctrl-gauge .gauge-track { stroke: oklch(0.295 0.025 260); }  /* slate-800 */
+.ctrl-gauge .gauge-fill-passing { stroke: oklch(0.680 0.180 155); }  /* green */
+.ctrl-gauge .gauge-fill-failing { stroke: oklch(0.630 0.215 25); }   /* red */
+.ctrl-gauge .gauge-fill-warning { stroke: oklch(0.780 0.170 85); }   /* amber */
+.ctrl-gauge .gauge-fill-none    { stroke: oklch(0.650 0.022 260); }  /* slate-400 */
+.ctrl-gauge .gauge-needle { stroke: oklch(0.370 0.025 260); fill: oklch(0.370 0.025 260); }  /* slate-700 */
+html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.650 0.022 260); fill: oklch(0.650 0.022 260); }  /* slate-400 */
 </style>
 {% endblock %}
 
@@ -252,17 +310,20 @@ html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
                                 </th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Reference</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Target</th>
-                                <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Current</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Current</th>
                                 <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="5" style="width:5rem;">
                                     <span class="ctrl-sort-label">Status</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
                                 </th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Evaluated</th>
+                                <th class="py-2 px-2" style="width:2rem;"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                             {% for ctrl in controls %}{% if ctrl.framework_id == fw.id %}
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30"
                                 data-ctrl-row
+                                data-ctrl-id="{{ ctrl.control_id }}"
+                                data-use-manual="{{ ctrl.use_manual|yesno:'1,0' }}"
                                 data-status="{{ ctrl.status|default:'not_measured' }}"
                                 data-type="{{ ctrl.control_id|slice:':3' }}"
                                 data-search="{{ ctrl.control_id|lower }} {{ ctrl.domain|lower }} {{ ctrl.statement|lower }}">
@@ -279,18 +340,41 @@ html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
                                     </details>
                                 </td>
                                 <td class="py-2.5 px-4 text-xs text-slate-500">{{ ctrl.source_reference|default:"-" }}</td>
-                                <td class="py-2.5 px-4 tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ ctrl.target }}</td>
-                                <td class="py-2.5 px-4 tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ ctrl.current_value|default:"-" }}</td>
+                                <td class="py-2.5 px-4 ctrl-target-cell" data-ctrl-target="{{ ctrl.target }}">
+                                    <span class="ctrl-target-display font-medium text-slate-900 dark:text-slate-100 text-sm">{{ ctrl.target }}</span>
+                                </td>
                                 <td class="py-2.5 px-4">
+                                    <span class="ctrl-gauge-slot" data-current="{{ ctrl.current_value|default:'' }}" data-target="{{ ctrl.target|default:'' }}" data-status="{{ ctrl.status|default:'not_measured' }}"></span>
+                                    <span class="tabular-nums font-medium text-slate-900 dark:text-slate-100 text-sm ctrl-value-display">{% if ctrl.use_manual and ctrl.manual_value %}{{ ctrl.manual_value }}{% else %}{{ ctrl.current_value|default:"-" }}{% endif %}</span>
+                                    {% if ctrl.use_manual %}<span class="ctrl-manual-badge ml-1" title="{{ ctrl.manual_notes|default:'Manual override active' }}">M</span>{% endif %}
+                                </td>
+                                <td class="py-2.5 px-4 ctrl-status-cell">
                                     {% if ctrl.status == 'passing' %}<span class="tz-badge tz-badge-success">Passing</span>
                                     {% elif ctrl.status == 'failing' %}<span class="tz-badge tz-badge-danger">Failing</span>
                                     {% else %}<span class="tz-badge tz-badge-neutral">Not Measured</span>{% endif %}
                                 </td>
                                 <td class="py-2.5 px-4 text-[11px] text-slate-400">{% if ctrl.updated_at %}{{ ctrl.updated_at|timesince }} ago{% else %}-{% endif %}</td>
+                                <td class="py-2.5 px-2 text-center">
+                                    {% if request.user.is_superuser %}
+                                    <button class="ctrl-edit-btn text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400 transition-colors"
+                                        data-ctrl-id="{{ ctrl.control_id }}"
+                                        data-target="{{ ctrl.target }}"
+                                        data-use-manual="{{ ctrl.use_manual|yesno:'1,0' }}"
+                                        data-manual-status="{{ ctrl.manual_status|default:'' }}"
+                                        data-manual-value="{{ ctrl.manual_value|default:'' }}"
+                                        data-manual-notes="{{ ctrl.manual_notes|default:'' }}"
+                                        title="Edit control settings"
+                                        aria-label="Edit {{ ctrl.control_id }}">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endif %}{% endfor %}
                             <tr id="ctrl-no-results-{{ fw.id }}" class="hidden">
-                                <td colspan="7" class="py-8 px-4 text-center text-sm text-slate-400 dark:text-slate-500">No controls match the current filters.</td>
+                                <td colspan="8" class="py-8 px-4 text-center text-sm text-slate-400 dark:text-slate-500">No controls match the current filters.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -361,6 +445,58 @@ html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
 </div>
 
 {% endblock %}
+
+<!-- Control Edit Modal -->
+<div id="ctrl-edit-modal" class="ctrl-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="ctrl-modal-title">
+    <div class="ctrl-modal-panel">
+        <div class="ctrl-modal-header">
+            <h3 id="ctrl-modal-title" class="text-sm font-semibold text-slate-800 dark:text-slate-200">Edit Control — <span id="ctrl-modal-id"></span></h3>
+            <button id="ctrl-modal-close" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="ctrl-modal-body space-y-4">
+            <!-- Target -->
+            <div>
+                <label class="tz-section-label block mb-1" for="ctrl-modal-target">Target</label>
+                <input id="ctrl-modal-target" type="text" class="tz-form-input w-full text-sm" placeholder="e.g. 100%, ≤30 days, 0">
+                <p class="text-[11px] text-slate-400 mt-1">The compliance threshold used to display pass/fail in the gauge.</p>
+            </div>
+            <!-- Manual override toggle -->
+            <div class="flex items-start gap-3 py-2 border-t border-slate-100 dark:border-slate-700/50">
+                <input id="ctrl-modal-use-manual" type="checkbox" class="mt-0.5 rounded border-slate-300 dark:border-slate-600">
+                <div>
+                    <label for="ctrl-modal-use-manual" class="text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer">Manual override</label>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Bypass the automated evaluator. Use this for controls that require manual review (e.g. configuration audits, off-system evidence).</p>
+                </div>
+            </div>
+            <!-- Manual fields — shown only when override is on -->
+            <div id="ctrl-modal-manual-fields" class="space-y-3 hidden">
+                <div>
+                    <label class="tz-section-label block mb-1" for="ctrl-modal-manual-status">Status</label>
+                    <select id="ctrl-modal-manual-status" class="tz-form-input w-full text-sm">
+                        <option value="not_measured">Not Measured</option>
+                        <option value="passing">Passing</option>
+                        <option value="failing">Failing</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="tz-section-label block mb-1" for="ctrl-modal-manual-value">Current value</label>
+                    <input id="ctrl-modal-manual-value" type="text" class="tz-form-input w-full text-sm" placeholder="e.g. Configured, Reviewed 2026-04-21">
+                </div>
+                <div>
+                    <label class="tz-section-label block mb-1" for="ctrl-modal-manual-notes">Evidence / notes</label>
+                    <textarea id="ctrl-modal-manual-notes" rows="3" class="tz-form-input w-full text-sm resize-none" placeholder="Describe the review performed, evidence gathered, or rationale for this status."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="ctrl-modal-footer">
+            <button id="ctrl-modal-cancel" class="tz-btn-secondary text-xs py-1.5 px-3">Cancel</button>
+            <button id="ctrl-modal-save" class="tz-btn-primary text-xs py-1.5 px-3">Save</button>
+        </div>
+        <p id="ctrl-modal-error" class="hidden text-xs text-code-red-600 dark:text-code-red-400 px-4 pb-3"></p>
+    </div>
+</div>
 
 {% block extra_js %}
 <script>
@@ -529,6 +665,254 @@ html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
         applyFilters();
     }
 
+    /* ── Gauges ── */
+    /*
+     * Renders a small SVG speedometer next to each control's current value.
+     * Parses pct from strings like "95/100 (95%)", "95%", or count-vs-zero targets ("0", "3").
+     * Returns 0–1 fill ratio, or null for not_measured.
+     */
+    function parseGaugePct(current, target, status) {
+        if (status === 'not_measured' || !current || current === '-') return null;
+
+        /* Extract explicit percentage: "N/M (P%)" or "P%" */
+        var pctMatch = current.match(/\((\d+(?:\.\d+)?)%\)/);
+        if (pctMatch) return parseFloat(pctMatch[1]) / 100;
+
+        var pctDirect = current.match(/^(\d+(?:\.\d+)?)%$/);
+        if (pctDirect) return parseFloat(pctDirect[1]) / 100;
+
+        /* Count-vs-zero target: target is "0", value is a number */
+        if (target && target.trim() === '0') {
+            var n = parseInt(current, 10);
+            if (!isNaN(n)) {
+                /* 0 = fully passing (fill 100%), any positive = failing, cap visual at 100% */
+                return n === 0 ? 1.0 : Math.min(n / 10, 1.0);
+            }
+        }
+
+        /* Fraction "N/M" */
+        var fracMatch = current.match(/^(\d+)\s*\/\s*(\d+)/);
+        if (fracMatch) {
+            var num = parseInt(fracMatch[1], 10);
+            var den = parseInt(fracMatch[2], 10);
+            if (den > 0) return num / den;
+        }
+
+        return null;
+    }
+
+    function makeGaugeSVG(pct, status, target) {
+        /*
+         * Semicircle gauge: sweep from 180° (left) to 0° (right), bottom arc.
+         * SVG coords: center (24,22), radius 16, viewBox "0 0 48 26".
+         * Arc path: M (cx-r),(cy) A r,r 0 largeArc 1 (ex),(ey)
+         * "sweep-flag=1" draws clockwise (left→right along bottom).
+         */
+        var cx = 24, cy = 22, r = 16;
+        var startAngle = Math.PI;   /* 180° — left */
+        var endAngle   = 0;         /* 0°   — right */
+
+        /* Track (full arc) */
+        var tx1 = cx + r * Math.cos(startAngle);
+        var ty1 = cy + r * Math.sin(startAngle);
+        var tx2 = cx + r * Math.cos(endAngle);
+        var ty2 = cy + r * Math.sin(endAngle);
+        var trackPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 0 1 ' + tx2 + ',' + ty2;
+
+        /* Gauge fill arc */
+        var fillPath = '';
+        var fillClass = 'gauge-fill-none';
+
+        if (pct !== null) {
+            /* Angle from left (180°) sweeping right; pct=1 reaches 0° */
+            var fillAngle = startAngle - pct * Math.PI;  /* goes from π down to 0 */
+            var fx = cx + r * Math.cos(fillAngle);
+            var fy = cy + r * Math.sin(fillAngle);
+            var largeArc = pct > 0.5 ? 1 : 0;
+            fillPath = 'M ' + tx1 + ',' + ty1 + ' A ' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + fx.toFixed(2) + ',' + fy.toFixed(2);
+
+            /* Color: for count-vs-zero targets invert logic (lower=better) */
+            var isCountTarget = target && target.trim() === '0';
+            if (isCountTarget) {
+                fillClass = (status === 'passing') ? 'gauge-fill-passing' : 'gauge-fill-failing';
+            } else {
+                if (status === 'passing') {
+                    fillClass = 'gauge-fill-passing';
+                } else if (pct >= 0.75) {
+                    fillClass = 'gauge-fill-warning';
+                } else {
+                    fillClass = 'gauge-fill-failing';
+                }
+            }
+        }
+
+        /* Needle from center to current position (or pointing down if null) */
+        var needleAngle = (pct !== null) ? (startAngle - pct * Math.PI) : (Math.PI / 2);
+        var needleLen = r - 4;
+        var nx = cx + needleLen * Math.cos(needleAngle);
+        var ny = cy + needleLen * Math.sin(needleAngle);
+
+        var svg = '<svg class="ctrl-gauge" width="48" height="26" viewBox="0 0 48 26" fill="none" xmlns="http://www.w3.org/2000/svg">'
+            + '<path class="gauge-track" d="' + trackPath + '" stroke-width="3.5" stroke-linecap="round" fill="none"/>';
+
+        if (fillPath) {
+            svg += '<path class="' + fillClass + '" d="' + fillPath + '" stroke-width="3.5" stroke-linecap="round" fill="none"/>';
+        }
+
+        /* Needle */
+        svg += '<line class="gauge-needle" x1="' + cx + '" y1="' + cy + '" x2="' + nx.toFixed(2) + '" y2="' + ny.toFixed(2) + '" stroke-width="1.5" stroke-linecap="round"/>';
+        /* Center dot */
+        svg += '<circle cx="' + cx + '" cy="' + cy + '" r="2" class="gauge-needle" stroke="none"/>';
+
+        svg += '</svg>';
+        return svg;
+    }
+
+    function initGauges() {
+        document.querySelectorAll('.ctrl-gauge-slot').forEach(function (slot) {
+            var current = slot.dataset.current || '';
+            var target  = slot.dataset.target  || '';
+            var status  = slot.dataset.status  || 'not_measured';
+            var pct = parseGaugePct(current, target, status);
+            slot.innerHTML = makeGaugeSVG(pct, status, target);
+        });
+    }
+
+    /* ── Control edit modal ── */
+    function initControlEdit() {
+        var modal      = document.getElementById('ctrl-edit-modal');
+        var modalId    = document.getElementById('ctrl-modal-id');
+        var inputTarget       = document.getElementById('ctrl-modal-target');
+        var inputUseManual    = document.getElementById('ctrl-modal-use-manual');
+        var manualFields      = document.getElementById('ctrl-modal-manual-fields');
+        var inputManualStatus = document.getElementById('ctrl-modal-manual-status');
+        var inputManualValue  = document.getElementById('ctrl-modal-manual-value');
+        var inputManualNotes  = document.getElementById('ctrl-modal-manual-notes');
+        var btnSave    = document.getElementById('ctrl-modal-save');
+        var btnCancel  = document.getElementById('ctrl-modal-cancel');
+        var btnClose   = document.getElementById('ctrl-modal-close');
+        var errEl      = document.getElementById('ctrl-modal-error');
+        var currentCtrlId = null;
+        var currentRow = null;
+
+        if (!modal) return;
+
+        function openModal(btn) {
+            currentCtrlId = btn.dataset.ctrlId;
+            currentRow    = btn.closest('[data-ctrl-row]');
+            modalId.textContent = currentCtrlId;
+            inputTarget.value = btn.dataset.target || '';
+            var useManual = btn.dataset.useManual === '1';
+            inputUseManual.checked = useManual;
+            manualFields.classList.toggle('hidden', !useManual);
+            inputManualStatus.value = btn.dataset.manualStatus || 'not_measured';
+            inputManualValue.value  = btn.dataset.manualValue  || '';
+            inputManualNotes.value  = btn.dataset.manualNotes  || '';
+            errEl.classList.add('hidden');
+            errEl.textContent = '';
+            modal.classList.remove('hidden');
+            inputTarget.focus();
+        }
+
+        function closeModal() { modal.classList.add('hidden'); currentCtrlId = null; currentRow = null; }
+
+        inputUseManual.addEventListener('change', function () {
+            manualFields.classList.toggle('hidden', !this.checked);
+        });
+
+        document.querySelectorAll('.ctrl-edit-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { openModal(this); });
+        });
+        btnCancel.addEventListener('click', closeModal);
+        btnClose.addEventListener('click', closeModal);
+        modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+        btnSave.addEventListener('click', function () {
+            if (!currentCtrlId) return;
+            errEl.classList.add('hidden');
+            btnSave.disabled = true;
+            btnSave.textContent = 'Saving…';
+
+            var payload = {
+                target:        inputTarget.value.trim(),
+                use_manual:    inputUseManual.checked,
+                manual_status: inputManualStatus.value,
+                manual_value:  inputManualValue.value.trim(),
+                manual_notes:  inputManualNotes.value.trim(),
+            };
+
+            var csrfToken = document.cookie.split(';').map(function (c) { return c.trim(); })
+                .filter(function (c) { return c.startsWith('csrftoken='); })
+                .map(function (c) { return c.split('=')[1]; })[0] || '';
+
+            fetch('/reports/control/' + encodeURIComponent(currentCtrlId) + '/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(payload),
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.ok) {
+                    /* Update the edit button's data attrs so re-open shows fresh values */
+                    var editBtn = currentRow ? currentRow.querySelector('.ctrl-edit-btn') : null;
+                    if (editBtn) {
+                        editBtn.dataset.target       = data.target;
+                        editBtn.dataset.useManual    = data.use_manual ? '1' : '0';
+                        editBtn.dataset.manualStatus = data.manual_status || '';
+                        editBtn.dataset.manualValue  = data.manual_value  || '';
+                        editBtn.dataset.manualNotes  = data.manual_notes  || '';
+                    }
+                    /* Update target display */
+                    if (currentRow) {
+                        var targetDisp = currentRow.querySelector('.ctrl-target-display');
+                        if (targetDisp) targetDisp.textContent = data.target;
+                        /* Update status badge */
+                        var statusCell = currentRow.querySelector('.ctrl-status-cell');
+                        if (statusCell) {
+                            var badgeMap = {
+                                'passing':     '<span class="tz-badge tz-badge-success">Passing</span>',
+                                'failing':     '<span class="tz-badge tz-badge-danger">Failing</span>',
+                                'not_measured':'<span class="tz-badge tz-badge-neutral">Not Measured</span>',
+                            };
+                            statusCell.innerHTML = badgeMap[data.status] || badgeMap['not_measured'];
+                        }
+                        /* Update current value display */
+                        var valDisp = currentRow.querySelector('.ctrl-value-display');
+                        if (valDisp) valDisp.textContent = data.current_value || '-';
+                        /* Update manual badge */
+                        var existingBadge = currentRow.querySelector('.ctrl-manual-badge');
+                        if (data.use_manual && !existingBadge && valDisp) {
+                            var badge = document.createElement('span');
+                            badge.className = 'ctrl-manual-badge ml-1';
+                            badge.title = data.manual_notes || 'Manual override active';
+                            badge.textContent = 'M';
+                            valDisp.parentNode.insertBefore(badge, valDisp.nextSibling);
+                        } else if (!data.use_manual && existingBadge) {
+                            existingBadge.remove();
+                        } else if (data.use_manual && existingBadge) {
+                            existingBadge.title = data.manual_notes || 'Manual override active';
+                        }
+                        /* Update row data-status for filter */
+                        currentRow.dataset.status = data.status;
+                    }
+                    closeModal();
+                } else {
+                    errEl.textContent = data.error || 'Save failed.';
+                    errEl.classList.remove('hidden');
+                }
+            })
+            .catch(function () {
+                errEl.textContent = 'Network error — please try again.';
+                errEl.classList.remove('hidden');
+            })
+            .finally(function () {
+                btnSave.disabled = false;
+                btnSave.textContent = 'Save';
+            });
+        });
+    }
+
     /* ── Tab switching ── */
     function switchReportTab(tabName) {
         document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
@@ -550,6 +934,8 @@ html.dark .ctrl-sort-th[data-dir] .ctrl-sort-icon {
         var hash = window.location.hash;
         switchReportTab((hash && hash.length > 1) ? hash.replace('#', '') : 'ciso');
         initControlFilters();
+        initGauges();
+        initControlEdit();
     });
 })();
 </script>

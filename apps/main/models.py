@@ -556,7 +556,7 @@ class Control(models.Model):
     source_reference = models.CharField(max_length=200, null=True, blank=True)
     indicator = models.TextField(null=True, blank=True)
     measurement_method = models.TextField(null=True, blank=True)
-    target = models.CharField(max_length=50, default='100%')
+    target = models.CharField(max_length=200, default='100%')
     current_value = models.CharField(max_length=50, null=True, blank=True)
 
     STATUS_CHOICES = (
@@ -570,6 +570,17 @@ class Control(models.Model):
     enabled = models.BooleanField(default=True)
     evaluator = models.CharField(max_length=100, null=True, blank=True,
         help_text='Dotted path to evaluator function, e.g. alm_01')
+
+    # Manual override — when use_manual=True the evaluator is skipped
+    use_manual = models.BooleanField(default=False,
+        help_text='When True, skip automated evaluator and use manual_status/manual_value instead.')
+    manual_status = models.CharField(max_length=20, null=True, blank=True,
+        choices=STATUS_CHOICES,
+        help_text='Manually set status, used when use_manual=True.')
+    manual_value = models.CharField(max_length=200, null=True, blank=True,
+        help_text='Manually set current value, used when use_manual=True.')
+    manual_notes = models.TextField(null=True, blank=True,
+        help_text='Evidence, context, or rationale for the manual override.')
 
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)

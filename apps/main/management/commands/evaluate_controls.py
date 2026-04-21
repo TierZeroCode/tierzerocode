@@ -18,10 +18,11 @@ class Command(BaseCommand):
         single_id = options.get('control_id')
 
         if single_id:
-            controls = Control.objects.filter(control_id=single_id, enabled=True)
+            controls = Control.objects.filter(control_id=single_id, enabled=True, use_manual=False)
         else:
             controls = Control.objects.filter(
                 enabled=True,
+                use_manual=False,
                 evaluator__isnull=False,
             ).exclude(evaluator='')
 

@@ -22,8 +22,10 @@ class Command(BaseCommand):
         # Rename AAL-05 (reauthentication) → AAL-12, but only if AAL-12 doesn't exist yet
         if not Control.objects.filter(control_id='AAL-12').exists():
             Control.objects.filter(control_id='AAL-05').update(control_id='AAL-12')
-        # Rename AAL-03 → AAL-05 if the old ID still exists
-        Control.objects.filter(control_id='AAL-03').update(control_id='AAL-05')
+        # Rename old AAL-03 (Phishing-Resistant) → AAL-05, but only if AAL-05 doesn't exist yet
+        # (AAL-03 is now a new control; once AAL-05 exists, the old rename is complete)
+        if not Control.objects.filter(control_id='AAL-05').exists():
+            Control.objects.filter(control_id='AAL-03').update(control_id='AAL-05')
         # Rename AAL-08 → AAL-06
         Control.objects.filter(control_id='AAL-08').update(control_id='AAL-06')
         # Rename AAL-09 → AAL-11 (frees AAL-09 for new control)
@@ -60,6 +62,16 @@ class Command(BaseCommand):
                 'measurement_method': 'Entra ID MFA registration policy (require MFA to register MFA); CA policy for security info registration',
                 'target': '100%',
                 'evaluator': 'alm_03',
+            },
+            {
+                'control_id': 'AAL-03',
+                'domain': 'AAL1 Authenticator Types',
+                'statement': 'AAL1 authentication SHALL use any approved authenticator type (password, look-up secret, OOB device, SF OTP, MF OTP, SF crypto, MF crypto).',
+                'source_reference': '800-63B-4 § 2.1.1',
+                'indicator': '% of AAL1 applications using only approved authenticator types',
+                'measurement_method': 'Application authentication method inventory; Entra ID auth methods report filtered to users with only email OTP or security questions as their registered second factor',
+                'target': '100%',
+                'evaluator': 'aal_03',
             },
             {
                 'control_id': 'AAL-02',
@@ -112,6 +124,16 @@ class Command(BaseCommand):
                 'evaluator': 'alm_06',
             },
             {
+                'control_id': 'ALM-11',
+                'domain': 'Issued Recovery Code Lifetime',
+                'statement': 'Issued recovery codes SHALL be valid for at most: 21 days (postal US), 30 days (postal intl), 10 minutes (SMS/voice), 24 hours (email).',
+                'source_reference': '800-63B-4 § 4.2.1.2',
+                'indicator': 'Recovery code lifetimes configured per delivery method',
+                'measurement_method': 'SSPR and application recovery flow configuration review; manual audit of Entra ID SSPR expiry settings and any application-level recovery code TTLs',
+                'target': 'Per NIST thresholds: ≤21d postal US, ≤30d postal intl, ≤10min SMS/voice, ≤24h email',
+                'evaluator': 'alm_11',
+            },
+            {
                 'control_id': 'AAL-06',
                 'domain': 'AAL2/AAL3 Replay Resistance',
                 'statement': 'At least one authenticator used at AAL2 SHALL be replay-resistant. AAL3 SHALL use replay-resistant authentication protocols.',
@@ -120,6 +142,16 @@ class Command(BaseCommand):
                 'measurement_method': 'Authentication method audit (FIDO2, WHfB, certificate-based are replay-resistant; OTP and push are replay-resistant if single-use)',
                 'target': '100%',
                 'evaluator': 'aal_06',
+            },
+            {
+                'control_id': 'AAL-07',
+                'domain': 'AAL2 Authentication Intent',
+                'statement': 'Authentication at AAL2 SHOULD demonstrate authentication intent from at least one authenticator.',
+                'source_reference': '800-63B-4 § 2.2.2',
+                'indicator': '% of AAL2 accounts with intent-demonstrating auth (number matching, tap, biometric)',
+                'measurement_method': 'Entra ID MFA settings; verify number matching enabled for push notifications; auth methods report for AAL2 users',
+                'target': '100%',
+                'evaluator': 'aal_07',
             },
             {
                 'control_id': 'AAL-09',
@@ -140,6 +172,16 @@ class Command(BaseCommand):
                 'measurement_method': 'Entra ID authentication methods review for T0/T1; verify number matching enabled for push notifications and no passwordless without user gesture',
                 'target': '100%',
                 'evaluator': 'aal_11',
+            },
+            {
+                'control_id': 'PHR-04',
+                'domain': 'Non-Exportable Keys (AAL3)',
+                'statement': 'Non-exportable authenticator SHALL be separate hardware or embedded processor (SE, TEE, TPM). SHALL prohibit export of auth secret to host processor.',
+                'source_reference': '800-63B-4 § 3.2.13',
+                'indicator': '% of AAL3 authenticators with hardware-protected non-exportable keys',
+                'measurement_method': 'FIDO2 key attestation audit; TPM 2.0 inventory for WHfB devices; Entra ID authentication methods report for T0/T1',
+                'target': '100% for T0/T1',
+                'evaluator': 'phr_04',
             },
             {
                 'control_id': 'PWD-10',

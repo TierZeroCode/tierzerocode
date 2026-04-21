@@ -606,6 +606,7 @@ def evaluate_controls_view(request):
 
 	controls = Control.objects.filter(
 		enabled=True,
+		use_manual=False,
 		evaluator__isnull=False,
 	).exclude(evaluator='')
 
@@ -648,6 +649,68 @@ def seed_controls_view(request):
 		messages.error(request, f'Seed failed: {str(e)}')
 
 	return redirect(reverse('reports') + '#controls')
+
+
+@login_required
+def update_control_view(request, control_id):
+	"""AJAX endpoint — update a control's target and/or manual override fields."""
+	import json as _json
+	if not request.user.is_superuser:
+		return JsonResponse({'error': 'Forbidden'}, status=403)
+	if request.method != 'POST':
+		return JsonResponse({'error': 'POST required'}, status=405)
+
+	ctrl = Control.objects.filter(control_id=control_id).first()
+	if not ctrl:
+		return JsonResponse({'error': 'Not found'}, status=404)
+
+	try:
+		data = _json.loads(request.body)
+	except Exception:
+		return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+	update_fields = ['updated_at']
+
+	if 'target' in data:
+		ctrl.target = (data['target'] or '').strip()[:200]
+		update_fields.append('target')
+
+	if 'use_manual' in data:
+		ctrl.use_manual = bool(data['use_manual'])
+		update_fields.append('use_manual')
+
+	if 'manual_status' in data:
+		val = data['manual_status']
+		ctrl.manual_status = val if val in ('passing', 'failing', 'not_measured') else None
+		update_fields.append('manual_status')
+
+	if 'manual_value' in data:
+		ctrl.manual_value = (data['manual_value'] or '').strip()[:200] or None
+		update_fields.append('manual_value')
+
+	if 'manual_notes' in data:
+		ctrl.manual_notes = (data['manual_notes'] or '').strip() or None
+		update_fields.append('manual_notes')
+
+	# When manual override is active, apply manual values to live status/current_value
+	if ctrl.use_manual:
+		ctrl.status = ctrl.manual_status or 'not_measured'
+		ctrl.current_value = ctrl.manual_value or '-'
+		update_fields += ['status', 'current_value']
+
+	ctrl.save(update_fields=list(set(update_fields)))
+
+	return JsonResponse({
+		'ok': True,
+		'control_id': ctrl.control_id,
+		'target': ctrl.target,
+		'use_manual': ctrl.use_manual,
+		'manual_status': ctrl.manual_status,
+		'manual_value': ctrl.manual_value,
+		'manual_notes': ctrl.manual_notes,
+		'status': ctrl.status,
+		'current_value': ctrl.current_value,
+	})
 
 ############################################################################################
 
