@@ -91,9 +91,12 @@ def _get_ldap_connection(integration):
         authentication=ldap3.SIMPLE,
         auto_bind=ldap3.AUTO_BIND_NONE,
     )
+    logger.debug("LDAP connecting to %s:%s ssl=%s as '%s'", server_host, port, use_ssl, service_account_dn)
     conn.open()
     if not conn.bind():
-        raise ConnectionError(f"LDAP bind failed: {conn.result}")
+        raise ConnectionError(
+            f"LDAP bind failed for DN '{service_account_dn}' on {server_host}:{port}: {conn.result}"
+        )
     return conn
 
 

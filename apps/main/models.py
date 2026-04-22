@@ -74,10 +74,10 @@ class Integration(models.Model):
     integration_context = models.CharField(max_length=35, choices=INTEGRATION_CONTEXTS, null=True)
     image_navbar_path = models.CharField(max_length=200, null=True)
     image_integration_path = models.CharField(max_length=200, null=True)
-    client_id = models.CharField(max_length=200, null=True)
-    client_secret = models.CharField(max_length=200, null=True)
-    tenant_id = models.CharField(max_length=200, null=True)
-    tenant_domain = models.CharField(max_length=200, null=True)
+    client_id = models.CharField(max_length=500, null=True)
+    client_secret = models.CharField(max_length=500, null=True)
+    tenant_id = models.CharField(max_length=500, null=True)
+    tenant_domain = models.CharField(max_length=500, null=True)
     integration_config = models.JSONField(null=True, blank=True)
     DEVICE_OWNERSHIP_CHOICES = (
         ("All", "All Devices"),
