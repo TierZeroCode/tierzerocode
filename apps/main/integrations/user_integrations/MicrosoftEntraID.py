@@ -11,7 +11,7 @@ from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_pa
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
 
 AUTHENTICATION_STRENGTHS = {
-    "Phishing Resistant": {'passKeyDeviceBound', 'passKeyDeviceBoundAuthenticator', 'passkey', 'windowsHelloForBusiness'},
+    "Phishing Resistant": {'passKeyDeviceBound', 'passKeyDeviceBoundAuthenticator', 'passKeySynced', 'windowsHelloForBusiness'},
     "Passwordless": {'microsoftAuthenticatorPasswordless'},
     "MFA": {'microsoftAuthenticatorPush', 'softwareOneTimePasscode', 'temporaryAccessPass'},
     "Deprecated": {'mobilePhone', 'email', 'securityQuestion'},
@@ -199,7 +199,7 @@ def _build_authentication_fields(auth_method_types):
         'securityQuestion': 'securityQuestion',
         'passKeyDeviceBound': 'passKeyDeviceBound',
         'passKeyDeviceBoundAuthenticator': 'passKeyDeviceBoundAuthenticator',
-        'passkey': 'passKeySynced',  # Passkey (Synced) — platform/cloud-synced passkeys
+        'passKeySynced': 'passKeySynced',  # Passkey (Synced) — platform/cloud-synced passkeys
     }
     
     auth_fields = {}
