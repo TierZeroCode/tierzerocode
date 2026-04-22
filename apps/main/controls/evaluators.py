@@ -982,8 +982,17 @@ def aal_11_detail():
     }
 
 
+def _get_aal2_only_users():
+    """AAL2-only users: persona aal_level == 2, excluding AAL3 (isAdmin or aal_level >= 3)."""
+    return UserData.objects.filter(
+        Q(persona__aal_level=2)
+    ).exclude(
+        Q(isAdmin=True) | Q(persona__aal_level__gte=3)
+    ).distinct()
+
+
 def aal_07():
-    """AAL-07: % of AAL2 accounts with intent-demonstrating authenticators.
+    """AAL-07: % of AAL2-only accounts with intent-demonstrating authenticators.
 
     NIST 800-63B-4 § 2.2.2: authentication at AAL2 SHOULD demonstrate intent
     from at least one authenticator. Intent-demonstrating methods require an
@@ -995,10 +1004,11 @@ def aal_07():
     - Software OTP (TOTP): user must type the code
 
     Phone/SMS, email, and TAP do not require active user intent.
+    AAL3 users are excluded — covered by AAL-11.
 
     Target: 100%
     """
-    aal2_users = _get_users_by_aal(2)
+    aal2_users = _get_aal2_only_users()
 
     total = aal2_users.count()
     if total == 0:
@@ -1011,12 +1021,12 @@ def aal_07():
 
 
 def aal_07_detail():
-    """Return detailed data for AAL-07: AAL2 users and intent-demonstrating auth."""
-    aal2_users = _get_users_by_aal(2)
+    """Return detailed data for AAL-07: AAL2-only users and intent-demonstrating auth."""
+    aal2_users = _get_aal2_only_users()
 
     total = aal2_users.count()
     if total == 0:
-        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2+ users found.'}
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No AAL2-only users found.'}
 
     passing_qs = aal2_users.filter(REPLAY_RESISTANT_Q).distinct()
     failing_qs = aal2_users.exclude(REPLAY_RESISTANT_Q).distinct()
@@ -1048,11 +1058,11 @@ def aal_07_detail():
         'failing_users': failing,
         'passing_users': passing,
         'logic': (
-            'AAL2 users (persona AAL level >= 2 or isAdmin=True) should have at least one authenticator '
+            'AAL2-only users (persona AAL level = 2, excluding admins and AAL3) should have at least one authenticator '
             'that requires explicit user action. FIDO2 keys (physical tap), WHfB (biometric/PIN), '
             'MS Authenticator Passwordless, MS Authenticator Push (number matching), and software OTP '
             '(code entry) all demonstrate intent. Phone/SMS codes and email OTP arrive passively and '
-            'do not require an active user decision beyond receiving them.'
+            'do not require an active user decision beyond receiving them. AAL3 users are measured separately by AAL-11.'
         ),
         'qualifying_methods': 'FIDO2 key (tap), WHfB (biometric/PIN), MS Authenticator Passwordless, MS Authenticator Push (number matching), Software OTP (code entry)',
         'disqualifying_methods': 'Phone/SMS, email OTP, and Temporary Access Pass alone do not demonstrate authentication intent',
