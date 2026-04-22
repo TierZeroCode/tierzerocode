@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.utils.timezone import make_aware
 # Import Models
-from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
+from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy, PasswordPolicy
 # Import Function Scripts
 from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
@@ -683,6 +683,75 @@ def syncAuthMethodsPolicy(access_token):
                   f"Auth methods policy sync error: {str(e)}")
 
 
+def syncPasswordPolicy(access_token):
+    """Sync password policy for each verified Entra ID domain via GET /v1.0/domains.
+
+    Each domain carries passwordValidityPeriodInDays and
+    passwordNotificationWindowInDays. Entra ID enforces 8-char minimum and
+    complexity for all cloud users — those are hardcoded constants, not API
+    fields. Lockout is handled by smart lockout (not a fixed threshold).
+
+    Requires Domain.Read.All or Directory.Read.All permission.
+    """
+    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
+
+    # 2147483647 is the Graph API sentinel for "password never expires"
+    _NEVER_EXPIRES = 2147483647
+
+    try:
+        headers = {'Authorization': access_token}
+        response = requests.get(
+            "https://graph.microsoft.com/v1.0/domains"
+            "?$select=id,isDefault,isVerified,passwordValidityPeriodInDays,passwordNotificationWindowInDays",
+            headers=headers,
+        )
+        if response.status_code != 200:
+            _sync_log("Microsoft Entra ID", "1516", "Failure",
+                      f"Password policy fetch failed: {response.status_code} - {response.text[:500]}")
+            return
+
+        domains = response.json().get('value', [])
+        synced = 0
+
+        for domain in domains:
+            if not domain.get('isVerified'):
+                continue
+
+            domain_id = domain.get('id', '')
+            validity = domain.get('passwordValidityPeriodInDays')
+            max_age = None if (validity is None or validity >= _NEVER_EXPIRES) else int(validity)
+            notification = domain.get('passwordNotificationWindowInDays')
+
+            PasswordPolicy.objects.update_or_create(
+                policy_identifier=domain_id,
+                defaults={
+                    'source': 'entra_id',
+                    'name': f"Entra ID — {domain_id}",
+                    # Entra ID enforces 8-char minimum and complexity for all cloud users
+                    'min_password_length': 8,
+                    'complexity_enabled': True,
+                    'max_password_age_days': max_age,
+                    'password_notification_window_days': int(notification) if notification is not None else None,
+                    # Fields not applicable to cloud-only policy
+                    'min_password_age_days': None,
+                    'password_history_length': None,
+                    'lockout_threshold': None,
+                    'lockout_duration_minutes': None,
+                    'lockout_observation_window_minutes': None,
+                    'reversible_encryption_enabled': None,
+                    'precedence': None,
+                },
+            )
+            synced += 1
+
+        _sync_log("Microsoft Entra ID", "1516", "Success",
+                  f"Password policies synced for {synced} verified domain(s)")
+
+    except Exception as e:
+        _sync_log("Microsoft Entra ID", "1517", "Failure",
+                  f"Password policy sync error: {str(e)}")
+
+
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
@@ -713,6 +782,9 @@ def syncMicrosoftEntraIDUser():
 
     # Sync authentication methods policy and SSPR config (requires Policy.Read.All)
     syncAuthMethodsPolicy(access_token)
+
+    # Sync password policy per verified domain (requires Domain.Read.All or Directory.Read.All)
+    syncPasswordPolicy(access_token)
 
     data.last_synced_at = timezone.now()
     data.save()
