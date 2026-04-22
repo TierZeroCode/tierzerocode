@@ -188,7 +188,7 @@ def syncActiveDirectoryUsers():
     )
 
     synced_psos = set()
-    matched = 0
+    matched_user_ids = []
     unmatched = 0
 
     now = timezone.now()
@@ -247,9 +247,26 @@ def syncActiveDirectoryUsers():
         user.ad_synced_at = now
 
         user.save(update_fields=update_fields)
-        matched += 1
+        matched_user_ids.append(user.pk)
 
     conn.unbind()
+
+    # Link matched users to this integration via M2M
+    if matched_user_ids:
+        UserIntegrationThrough = UserData.integration.through
+        existing_links = set(
+            UserIntegrationThrough.objects.filter(
+                integration=integration,
+                userdata_id__in=matched_user_ids,
+            ).values_list('userdata_id', flat=True)
+        )
+        new_links = [
+            UserIntegrationThrough(userdata_id=uid, integration=integration)
+            for uid in matched_user_ids
+            if uid not in existing_links
+        ]
+        if new_links:
+            UserIntegrationThrough.objects.bulk_create(new_links, ignore_conflicts=True)
 
     integration.last_synced_at = now
     integration.save(update_fields=['last_synced_at'])
@@ -257,9 +274,9 @@ def syncActiveDirectoryUsers():
     createLog(
         None, "1514", "System Integration", "Active Directory User Sync",
         "Superuser", True, "System Integration Sync", "Success",
-        additional_data=f"Matched: {matched}, Unmatched (no UPN in UserData): {unmatched}, PSOs synced: {len(synced_psos)}",
+        additional_data=f"Matched: {len(matched_user_ids)}, Unmatched (no UPN in UserData): {unmatched}, PSOs synced: {len(synced_psos)}",
         user_id="system@tierzerocode.com", ip_address="127.0.0.1",
         user_agent="System", browser="System", operating_system="System",
     )
 
-    logger.info("AD sync complete: %d matched, %d unmatched, %d PSOs", matched, unmatched, len(synced_psos))
+    logger.info("AD sync complete: %d matched, %d unmatched, %d PSOs", len(matched_user_ids), unmatched, len(synced_psos))
