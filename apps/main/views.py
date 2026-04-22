@@ -30,10 +30,10 @@ from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosof
 # Reused Data Sets
 #X6969
 integration_names = ['Cloudflare Zero Trust', 'CrowdStrike Falcon', 'Microsoft Defender for Endpoint', 'Microsoft Entra ID', 'Microsoft Intune', 'Sophos Central', 'Qualys', 'Tailscale']
-user_integration_names = ['Microsoft Entra ID']
+user_integration_names = ['Microsoft Entra ID', 'Active Directory']
 #X6969
 integration_names_short = ['Cloudflare', 'CrowdStrike', 'Defender', 'Entra ID', 'Intune', 'Sophos', 'Qualys', 'Tailscale']
-user_integration_names_short = ['Entra ID']
+user_integration_names_short = ['Entra ID', 'Active Directory']
 
 VALID_DEVICE_INTEGRATION_SLUGS = {'microsoft-entra-id', 'microsoft-intune', 'microsoft-defender-for-endpoint', 'crowdstrike-falcon', 'tailscale', 'cloudflare-zero-trust', 'qualys', 'sophos-central'}
 VALID_USER_INTEGRATION_SLUGS = {'microsoft-entra-id', 'active-directory'}
