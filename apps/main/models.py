@@ -487,6 +487,7 @@ class UserData(models.Model):
     # Start Authentication methods
     passKeyDeviceBound_authentication_method = models.BooleanField(null=True)
     passKeyDeviceBoundAuthenticator_authentication_method = models.BooleanField(null=True)
+    passKeySynced_authentication_method = models.BooleanField(null=True)
     windowsHelloforBusiness_authentication_method = models.BooleanField(null=True)
     microsoftAuthenticatorPasswordless_authentication_method = models.BooleanField(null=True)
     microsoftAuthenticatorPush_authentication_method = models.BooleanField(null=True)

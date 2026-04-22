@@ -11,7 +11,7 @@ from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_pa
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
 
 AUTHENTICATION_STRENGTHS = {
-    "Phishing Resistant": {'passKeyDeviceBound', 'passKeyDeviceBoundAuthenticator', 'windowsHelloForBusiness'},
+    "Phishing Resistant": {'passKeyDeviceBound', 'passKeyDeviceBoundAuthenticator', 'passkey', 'windowsHelloForBusiness'},
     "Passwordless": {'microsoftAuthenticatorPasswordless'},
     "MFA": {'microsoftAuthenticatorPush', 'softwareOneTimePasscode', 'temporaryAccessPass'},
     "Deprecated": {'mobilePhone', 'email', 'securityQuestion'},
@@ -198,7 +198,8 @@ def _build_authentication_fields(auth_method_types):
         'mobilePhone': 'mobilePhone',
         'securityQuestion': 'securityQuestion',
         'passKeyDeviceBound': 'passKeyDeviceBound',
-        'passKeyDeviceBoundAuthenticator': 'passKeyDeviceBoundAuthenticator'
+        'passKeyDeviceBoundAuthenticator': 'passKeyDeviceBoundAuthenticator',
+        'passkey': 'passKeySynced',  # Passkey (Synced) — platform/cloud-synced passkeys
     }
     
     auth_fields = {}
@@ -215,6 +216,7 @@ _USER_UPDATE_FIELDS = [
     'isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable',
     'isSsprEnabled', 'isSsprRegistered',
     'passKeyDeviceBound_authentication_method', 'passKeyDeviceBoundAuthenticator_authentication_method',
+    'passKeySynced_authentication_method',
     'windowsHelloforBusiness_authentication_method', 'microsoftAuthenticatorPasswordless_authentication_method',
     'microsoftAuthenticatorPush_authentication_method', 'softwareOneTimePasscode_authentication_method',
     'temporaryAccessPass_authentication_method', 'mobilePhone_authentication_method',
