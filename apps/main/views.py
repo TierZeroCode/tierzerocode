@@ -379,8 +379,8 @@ def indexDevice(request):
 
 @login_required
 def indexUser(request):
-	# of Users that have adopted each authentication method
-	users = UserData.objects.all()
+	# Scoped to cloud and hybrid (Entra ID-synced) users only — on-prem-only AD users excluded
+	users = UserData.objects.filter(integration__integration_type='Microsoft Entra ID').distinct()
  
    # Aggregate counts for highest and lowest authentication strengths
 	auth_strength_counts = UserData.objects.aggregate(
@@ -456,7 +456,7 @@ def indexUser(request):
 		'personas': personas,
 		'persona_groups': PersonaGroup.objects.all(),
 
-		'count_total_users': UserData.objects.count(),
+		'count_total_users': users.count(),
 
 		'auth_method_adoption_labels': ['Windows Hello for Business', 'Passkey Device', 'Passkey Authenticator', 'MS Authenticator Passwordless', 'MS Authenticator Push', 'Software OTP', 'Mobile Phone'],
 		'auth_method_adoption_data': list(users.aggregate(
@@ -477,7 +477,7 @@ def indexUser(request):
 def personaMetrics(request, persona_id):
 	persona_obj = get_object_or_404(Persona, id=persona_id)
 	persona_name = persona_obj.persona_name
-	users = UserData.objects.filter(persona=persona_obj)
+	users = UserData.objects.filter(persona=persona_obj, integration__integration_type='Microsoft Entra ID').distinct()
    # Aggregate counts for highest and lowest authentication strengths
 	auth_strength_counts = users.aggregate(
         count_phishing_resistant=Count('id', filter=Q(highest_authentication_strength='Phishing Resistant')),
@@ -1085,7 +1085,8 @@ def device_master_list_api(request):
 
 @login_required
 def userMasterList(request):
-	user_data_list = UserData.objects.all()
+	# Scoped to cloud and hybrid (Entra ID-synced) users only — on-prem-only AD users excluded
+	user_data_list = UserData.objects.filter(integration__integration_type='Microsoft Entra ID').distinct()
 	user_list = []
 	for user_data in user_data_list:		
 		user_list.append([user_data, user_data.passKeyDeviceBound_authentication_method, user_data.passKeyDeviceBoundAuthenticator_authentication_method, user_data.windowsHelloforBusiness_authentication_method, user_data.microsoftAuthenticatorPasswordless_authentication_method, user_data.microsoftAuthenticatorPush_authentication_method, user_data.softwareOneTimePasscode_authentication_method, user_data.temporaryAccessPass_authentication_method, user_data.mobilePhone_authentication_method, user_data.email_authentication_method, user_data.securityQuestion_authentication_method])
@@ -1127,7 +1128,7 @@ def user_master_list_api(request):
     lowest_auth = request.GET.getlist('lowest_auth[]')
     personas = request.GET.getlist('personas[]')
 
-    users = UserData.objects.select_related('persona').all()
+    users = UserData.objects.select_related('persona').filter(integration__integration_type='Microsoft Entra ID').distinct()
 
     # Apply sorting
     if order_column.isdigit() and int(order_column) < len(columns):
