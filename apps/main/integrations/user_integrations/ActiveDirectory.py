@@ -89,8 +89,9 @@ def _get_ldap_connection(integration):
         user=service_account_dn,
         password=service_account_password,
         authentication=ldap3.SIMPLE,
-        auto_bind=ldap3.AUTO_BIND_NO_TLS,
+        auto_bind=ldap3.AUTO_BIND_NONE,
     )
+    conn.open()
     if not conn.bind():
         raise ConnectionError(f"LDAP bind failed: {conn.result}")
     return conn
