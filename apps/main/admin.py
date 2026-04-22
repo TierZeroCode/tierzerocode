@@ -1,24 +1,31 @@
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
 from apps.main.models import (
+    ADPasswordPolicy,
+    CloudflareZeroTrustDeviceData,
+    ConditionalAccessPolicy,
+    Control,
+    ControlFramework,
+    CrowdStrikeFalconDeviceData,
     Device,
-    Integration,
     DeviceComplianceSettings,
+    Integration,
+    MicrosoftDefenderforEndpointDeviceData,
     MicrosoftEntraIDDeviceData,
     MicrosoftIntuneDeviceData,
-    UserData,
-    MicrosoftDefenderforEndpointDeviceData,
-    CrowdStrikeFalconDeviceData,
-    SophosCentralDeviceData,
-    TailscaleDeviceData,
-    CloudflareZeroTrustDeviceData,
+    Notification,
+    Persona,
+    PersonaGroup,
     QualysDevice,
     SignInSummary,
-    Notification,
-    PersonaGroup,
-    Persona,
+    SophosCentralDeviceData,
+    TailscaleDeviceData,
+    TenantAuthMethodsPolicy,
+    TenantSecurityConfig,
+    UserData,
 )
 
 
@@ -257,6 +264,26 @@ class NotificationResource(resources.ModelResource):
 
 
 # ---------------------------------------------------------------------------
+# Custom list filters
+# ---------------------------------------------------------------------------
+
+class IntegrationFilter(admin.SimpleListFilter):
+    title = _('integration')
+    parameter_name = 'integration'
+
+    def lookups(self, request, model_admin):
+        return [
+            (str(i.pk), i.integration_type)
+            for i in Integration.objects.order_by('integration_type')
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(integration__pk=self.value())
+        return queryset
+
+
+# ---------------------------------------------------------------------------
 # Admin classes
 # ---------------------------------------------------------------------------
 
@@ -268,6 +295,10 @@ class DeviceAdmin(ImportExportModelAdmin):
 @admin.register(Integration)
 class IntegrationAdmin(ImportExportModelAdmin):
     resource_class = IntegrationResource
+    list_display = ('integration_type', 'integration_context', 'enabled', 'last_synced_at')
+    list_filter = ('enabled', 'integration_context', 'integration_type')
+    search_fields = ('integration_type',)
+    ordering = ('integration_context', 'integration_type')
 
 
 @admin.register(DeviceComplianceSettings)
@@ -329,7 +360,7 @@ class PersonaGroupAdmin(ImportExportModelAdmin):
 class UserDataAdmin(ImportExportModelAdmin):
     resource_class = UserDataResource
     list_display = ('upn', 'uid', 'network_id', 'persona', 'job_title', 'department', 'isAdmin', 'isMfaCapable', 'created_at', 'updated_at')
-    list_filter = ('isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable', 'isSsprEnabled', 'department', 'job_title')
+    list_filter = ('isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable', 'isSsprEnabled', 'department', 'job_title', IntegrationFilter)
     search_fields = ('upn', 'uid', 'network_id', 'given_name', 'surname', 'job_title', 'department')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
@@ -357,3 +388,48 @@ class NotificationAdmin(ImportExportModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(ControlFramework)
+class ControlFrameworkAdmin(admin.ModelAdmin):
+    list_display = ('name', 'short_name', 'version', 'url')
+    search_fields = ('name', 'short_name')
+    ordering = ('name',)
+
+
+@admin.register(Control)
+class ControlAdmin(admin.ModelAdmin):
+    list_display = ('control_id', 'domain', 'framework', 'status', 'target', 'current_value', 'enabled', 'use_manual')
+    list_filter = ('status', 'enabled', 'use_manual', 'framework', 'domain')
+    search_fields = ('control_id', 'domain', 'statement')
+    ordering = ('control_id',)
+    readonly_fields = ('updated_at',)
+
+
+@admin.register(ConditionalAccessPolicy)
+class ConditionalAccessPolicyAdmin(admin.ModelAdmin):
+    list_display = ('policy_id', 'display_name', 'state', 'created_at', 'updated_at')
+    list_filter = ('state',)
+    search_fields = ('display_name', 'policy_id')
+    ordering = ('display_name',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(TenantSecurityConfig)
+class TenantSecurityConfigAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'synced_at')
+    readonly_fields = ('synced_at',)
+
+
+@admin.register(TenantAuthMethodsPolicy)
+class TenantAuthMethodsPolicyAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'synced_at', 'sspr_state')
+    list_filter = ('sspr_state',)
+    readonly_fields = ('synced_at',)
+
+
+@admin.register(ADPasswordPolicy)
+class ADPasswordPolicyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'policy_dn', 'min_password_length', 'max_password_age_days', 'lockout_threshold', 'complexity_enabled')
+    search_fields = ('name', 'policy_dn')
+    ordering = ('name',)
