@@ -146,6 +146,38 @@ def _sync_pso(conn, pso_dn):
     )
 
 
+def _sync_all_psos(conn, base_dn):
+    """Discover and sync every PSO from the Password Settings Container.
+
+    This finds all FGPP objects directly, regardless of whether any user has
+    msDS-ResultantPSO set. The container is always at
+    CN=Password Settings Container,CN=System,<base_dn>.
+    """
+    pso_container = f"CN=Password Settings Container,CN=System,{base_dn}"
+    try:
+        conn.search(
+            search_base=pso_container,
+            search_filter='(objectClass=msDS-PasswordSettings)',
+            search_scope=ldap3.SUBTREE,
+            attributes=['distinguishedName'],
+        )
+    except Exception as e:
+        logger.warning("Could not search PSO container %s: %s", pso_container, e)
+        return set()
+
+    pso_dns = set()
+    for entry in conn.entries:
+        try:
+            dn = entry.entry_dn
+            _sync_pso(conn, dn)
+            pso_dns.add(dn)
+            logger.debug("Synced PSO: %s", dn)
+        except Exception as e:
+            logger.error("Failed to sync PSO %s: %s", entry.entry_dn, e)
+
+    return pso_dns
+
+
 def syncActiveDirectoryUsers():
     """Main entry point: sync enabled AD users into UserData by UPN."""
     integration = Integration.objects.filter(
@@ -161,6 +193,10 @@ def syncActiveDirectoryUsers():
         raise ValueError("Active Directory integration missing Base DN (tenant_id field)")
 
     conn = _get_ldap_connection(integration)
+
+    # Sync all PSOs directly from the container first, before touching users.
+    synced_psos = _sync_all_psos(conn, base_dn)
+    logger.info("Discovered %d PSO(s) from Password Settings Container", len(synced_psos))
 
     search_filter = (
         '(&(objectClass=user)'
@@ -186,7 +222,6 @@ def syncActiveDirectoryUsers():
         generator=True,
     )
 
-    synced_psos = set()
     matched_user_ids = []
     unmatched = 0
 
