@@ -24,7 +24,7 @@ def _ad_interval_to_days(raw):
         if val == 0 or val == -9223372036854775808:  # max/never
             return None
         return abs(val) // _100NS_PER_SECOND // 86400
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -37,28 +37,21 @@ def _ad_interval_to_minutes(raw):
         if val == 0 or val == -9223372036854775808:
             return None
         return abs(val) // _100NS_PER_SECOND // 60
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
 def _pwd_last_set_to_datetime(raw):
-    """Convert pwdLastSet (100ns since 1601-01-01) to timezone-aware datetime.
-
-    The raw value from ldap3 comes as bytes (int64 LE Windows FILETIME).
-    Decode with int.from_bytes before passing here, or pass an int directly.
-    """
+    """Convert pwdLastSet 100ns tick count (Python int from ldap3) to datetime."""
     if not raw:
         return None
     try:
-        if isinstance(raw, bytes):
-            val = int.from_bytes(raw, 'little')
-        else:
-            val = int(raw)
+        val = int(raw)
         if val == 0:
             return None
         seconds = val / _100NS_PER_SECOND
         return _AD_EPOCH + timedelta(seconds=seconds)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -83,7 +76,8 @@ def _get_ldap_connection(integration):
     service_account_dn = integration.client_id or ''
     service_account_password = integration.client_secret or ''
 
-    server = ldap3.Server(server_host, port=port, use_ssl=use_ssl, get_info=ldap3.ALL)
+    # OFFLINE_AD_2012_R2 avoids a live schema fetch that can overflow on large AD integer attributes.
+    server = ldap3.Server(server_host, port=port, use_ssl=use_ssl, get_info=ldap3.OFFLINE_AD_2012_R2)
     conn = ldap3.Connection(
         server,
         user=service_account_dn,
@@ -240,13 +234,16 @@ def syncActiveDirectoryUsers():
             except Exception as e:
                 logger.error("Failed to sync PSO %s: %s", pso_dn, e)
 
+        # objectGUID: binary attribute — raw_attributes gives the correct 16-byte GUID
         raw_guid_list = raw_attrs.get('objectGUID', [])
-        raw_pwd_list = raw_attrs.get('pwdLastSet', [])
-
         user.ad_object_guid = _parse_guid(raw_guid_list[0] if raw_guid_list else None)
+
         user.ad_sam_account_name = _get('sAMAccountName')
         user.ad_distinguished_name = _get('distinguishedName')
-        user.ad_password_last_set = _pwd_last_set_to_datetime(raw_pwd_list[0] if raw_pwd_list else None)
+
+        # pwdLastSet: integer attribute — use ldap3's decoded int, not raw bytes (raw bytes are BER big-endian, not LE FILETIME)
+        user.ad_password_last_set = _pwd_last_set_to_datetime(_get('pwdLastSet'))
+
         user.ad_resultant_pso = pso_dn
         user.ad_synced_at = now
 
