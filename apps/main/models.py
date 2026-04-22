@@ -62,6 +62,7 @@ class Integration(models.Model):
         ("Sophos Central", "Sophos Central"),
         ("Qualys", "Qualys"),
         ("Tailscale", "Tailscale"),
+        ("Active Directory", "Active Directory"),
     )
     integration_type = models.CharField(max_length=35, choices=INTEGRATION_CHOICES, null=True)
     integration_type_short = models.CharField(max_length=35, null=True)
@@ -77,6 +78,7 @@ class Integration(models.Model):
     client_secret = models.CharField(max_length=200, null=True)
     tenant_id = models.CharField(max_length=200, null=True)
     tenant_domain = models.CharField(max_length=200, null=True)
+    integration_config = models.JSONField(null=True, blank=True)
     DEVICE_OWNERSHIP_CHOICES = (
         ("All", "All Devices"),
         ("Company", "Corporate Devices Only"),
@@ -482,6 +484,13 @@ class UserData(models.Model):
     isSsprRegistered = models.BooleanField(null=True)
     isSystemPreferredAuthenticationMethodEnabled = models.BooleanField(null=True)
     onPremisesSyncEnabled = models.BooleanField(null=True)
+    # AD fields
+    ad_object_guid = models.CharField(max_length=100, null=True, blank=True)
+    ad_sam_account_name = models.CharField(max_length=200, null=True, blank=True)
+    ad_distinguished_name = models.CharField(max_length=500, null=True, blank=True)
+    ad_password_last_set = models.DateTimeField(null=True)
+    ad_resultant_pso = models.CharField(max_length=500, null=True, blank=True)
+    ad_synced_at = models.DateTimeField(null=True)
     highest_authentication_strength = models.CharField(max_length=200, null=True)
     lowest_authentication_strength = models.CharField(max_length=200, null=True)
     # End Auth Capabilities
@@ -698,3 +707,28 @@ class TenantAuthMethodsPolicy(models.Model):
     class Meta:
         verbose_name = "Tenant Auth Methods Policy"
         verbose_name_plural = "Tenant Auth Methods Policies"
+
+
+class ADPasswordPolicy(models.Model):
+    """Fine-Grained Password Policy pulled from msDS-ResultantPSO."""
+    policy_dn = models.CharField(max_length=500, unique=True)
+    name = models.CharField(max_length=200, null=True)
+    min_password_length = models.IntegerField(null=True)
+    password_history_length = models.IntegerField(null=True)
+    max_password_age_days = models.IntegerField(null=True)
+    min_password_age_days = models.IntegerField(null=True)
+    lockout_threshold = models.IntegerField(null=True)
+    lockout_duration_minutes = models.IntegerField(null=True)
+    lockout_observation_window_minutes = models.IntegerField(null=True)
+    complexity_enabled = models.BooleanField(null=True)
+    reversible_encryption_enabled = models.BooleanField(null=True)
+    precedence = models.IntegerField(null=True)
+    synced_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return self.name or self.policy_dn
+
+    class Meta:
+        verbose_name = "AD Password Policy"
+        verbose_name_plural = "AD Password Policies"

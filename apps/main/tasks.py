@@ -1,6 +1,7 @@
 import logging
 from django_tasks import task
 from apps.main.integrations.user_integrations.MicrosoftEntraID import syncMicrosoftEntraIDUser
+from apps.main.integrations.user_integrations.ActiveDirectory import syncActiveDirectoryUsers
 from apps.main.integrations.device_integrations.MicrosoftEntraID import syncMicrosoftEntraIDDevice
 from apps.main.integrations.device_integrations.MicrosoftIntune import syncMicrosoftIntuneDevice
 from apps.main.integrations.device_integrations.MicrosoftDefenderforEndpoint import syncMicrosoftDefenderforEndpointDevice
@@ -103,4 +104,24 @@ def microsoftEntraIDUserSyncTask(user_email, ip_address, user_agent, browser, op
 
         _update_notification(obj, "Failure")
         _safe_log("1505", "Failure", f"Microsoft Entra ID User - {e}",
+                  user_email, ip_address, user_agent, browser, operating_system)
+
+
+@task(queue_name='default')
+def activeDirectoryUserSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Run Active Directory user sync in a background thread."""
+    obj = _get_or_create_notification(notification_id, "Active Directory User Integration Sync")
+    _update_notification(obj, "In Progress")
+
+    try:
+        syncActiveDirectoryUsers()
+
+        _update_notification(obj, "Success")
+        _safe_log("1505", "Success", "Active Directory User",
+                  user_email, ip_address, user_agent, browser, operating_system)
+    except Exception as e:
+        logger.error("Error syncing Active Directory users: %s", e)
+
+        _update_notification(obj, "Failure")
+        _safe_log("1505", "Failure", f"Active Directory User - {e}",
                   user_email, ip_address, user_agent, browser, operating_system)

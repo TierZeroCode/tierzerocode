@@ -36,7 +36,7 @@ integration_names_short = ['Cloudflare', 'CrowdStrike', 'Defender', 'Entra ID', 
 user_integration_names_short = ['Entra ID']
 
 VALID_DEVICE_INTEGRATION_SLUGS = {'microsoft-entra-id', 'microsoft-intune', 'microsoft-defender-for-endpoint', 'crowdstrike-falcon', 'tailscale', 'cloudflare-zero-trust', 'qualys', 'sophos-central'}
-VALID_USER_INTEGRATION_SLUGS = {'microsoft-entra-id'}
+VALID_USER_INTEGRATION_SLUGS = {'microsoft-entra-id', 'active-directory'}
 
 # Maps URL slugs to the exact integration_type strings stored in the database.
 # Using .replace("-", " ").title() is insufficient because .title() lowercases
@@ -50,6 +50,7 @@ SLUG_TO_INTEGRATION_TYPE = {
 	'sophos-central': 'Sophos Central',
 	'qualys': 'Qualys',
 	'tailscale': 'Tailscale',
+	'active-directory': 'Active Directory',
 }
 os_platforms = ['Android', 'iOS/iPadOS', 'MacOS', 'Ubuntu', 'Windows', 'Windows Server', 'Other']
 endpoint_types = ['Client', 'Mobile', 'Server', 'Other']
@@ -1507,7 +1508,7 @@ def custom_403(request, exception):
 
 ############################################################################################
 
-from apps.main.tasks import deviceIntegrationSyncTask, microsoftEntraIDUserSyncTask
+from apps.main.tasks import deviceIntegrationSyncTask, microsoftEntraIDUserSyncTask, activeDirectoryUserSyncTask
 
 @login_required
 def syncDevices(request, integration):
@@ -1546,6 +1547,17 @@ def syncUsers(request, integration):
 		print ("Syncing Microsoft Entra ID Users")
 		messages.info(request, 'Microsoft Entra ID User Integration Sync in Progress')
 		result = microsoftEntraIDUserSyncTask.enqueue(user_email, ip_address, user_agent, browser, operating_system)
+		logger.info("Task enqueued: %s", result.id)
+	elif integration == 'active-directory':
+		print ("Syncing Active Directory Users")
+		messages.info(request, 'Active Directory User Integration Sync in Progress')
+		notification = Notification.objects.create(
+			title="Active Directory User Integration Sync",
+			status="Queued",
+			created_at=timezone.now(),
+			updated_at=timezone.now(),
+		)
+		result = activeDirectoryUserSyncTask.enqueue(user_email, ip_address, user_agent, browser, operating_system, notification.id)
 		logger.info("Task enqueued: %s", result.id)
 	logger.info("Redirecting to Integrations")
 	return redirect('/integrations')
