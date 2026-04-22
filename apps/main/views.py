@@ -1287,7 +1287,7 @@ def integrations(request):
 		integration = user_integrations.get(integration_name)
 		if integration:
 			has_secret = bool(integration.client_secret)
-			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at])
+			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at, integration.integration_config or {}])
 	context = {
 		'page':'integrations',
 		'notifications': Notification.objects.order_by('-created_at')[:10],
@@ -1332,12 +1332,22 @@ def updateIntegration(request, id):
 	if not request.user.is_superuser:
 		return HttpResponseForbidden("Unauthorized")
 	integration_update = Integration.objects.get(id=id)
-	integration_update.client_id = request.POST['client_id']
-	integration_update.client_secret = request.POST['client_secret']
-	integration_update.tenant_id = request.POST['tenant_id']
-	integration_update.tenant_domain = request.POST['tenant_domain']
-	if 'device_ownership_filter' in request.POST:
-		integration_update.device_ownership_filter = request.POST['device_ownership_filter']
+	if integration_update.integration_type == 'Active Directory':
+		integration_update.integration_config = {
+			'server': request.POST.get('ad_server', ''),
+			'port': int(request.POST.get('ad_port', 636) or 636),
+			'use_ssl': request.POST.get('ad_use_ssl') == 'on',
+			'base_dn': request.POST.get('ad_base_dn', ''),
+			'service_account_dn': request.POST.get('ad_service_account_dn', ''),
+			'service_account_password': request.POST.get('ad_service_account_password') or (integration_update.integration_config or {}).get('service_account_password', ''),
+		}
+	else:
+		integration_update.client_id = request.POST['client_id']
+		integration_update.client_secret = request.POST['client_secret']
+		integration_update.tenant_id = request.POST['tenant_id']
+		integration_update.tenant_domain = request.POST['tenant_domain']
+		if 'device_ownership_filter' in request.POST:
+			integration_update.device_ownership_filter = request.POST['device_ownership_filter']
 	integration_update.save()
 
 	return redirect('integrations')

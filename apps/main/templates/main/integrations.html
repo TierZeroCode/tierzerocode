@@ -238,6 +238,35 @@
                         <form action="/update-integration/{{ userIntegrationStatus.4 }}" method="post">
                             {% csrf_token %}
                             <div class="px-6 py-4 space-y-4">
+                                {% if userIntegrationStatus.0 == 'Active Directory' %}
+                                <div>
+                                    <label class="tz-form-label">LDAP Server <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="ad_server" placeholder="dc01.corp.example.com" value="{{ userIntegrationStatus.10.server }}" required>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="tz-form-label">Port</label>
+                                        <input type="number" class="tz-form-input" name="ad_port" placeholder="636" value="{{ userIntegrationStatus.10.port|default:'636' }}">
+                                    </div>
+                                    <div class="flex items-center gap-2 pt-5">
+                                        <input type="checkbox" id="ad_use_ssl_{{ userIntegrationStatus.4 }}" name="ad_use_ssl" class="tz-form-checkbox" {% if userIntegrationStatus.10.use_ssl != False %}checked{% endif %}>
+                                        <label for="ad_use_ssl_{{ userIntegrationStatus.4 }}" class="tz-form-label mb-0">Use SSL (LDAPS)</label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="tz-form-label">Base DN <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="ad_base_dn" placeholder="DC=corp,DC=example,DC=com" value="{{ userIntegrationStatus.10.base_dn }}" required>
+                                </div>
+                                <div>
+                                    <label class="tz-form-label">Service Account DN <span class="text-code-red-500">*</span></label>
+                                    <input type="text" class="tz-form-input" name="ad_service_account_dn" placeholder="CN=svc-ldap,OU=Service Accounts,DC=corp,DC=example,DC=com" value="{{ userIntegrationStatus.10.service_account_dn }}" required>
+                                </div>
+                                <div>
+                                    <label class="tz-form-label">Service Account Password <span class="text-code-red-500">*</span></label>
+                                    <input type="password" class="tz-form-input" name="ad_service_account_password" placeholder="{% if userIntegrationStatus.10.service_account_password %}Password saved — enter to change{% else %}Password{% endif %}">
+                                    {% if userIntegrationStatus.10.service_account_password %}<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Leave blank to keep the existing password.</p>{% endif %}
+                                </div>
+                                {% else %}
                                 <div>
                                     <label class="tz-form-label">Client ID <span class="text-code-red-500">*</span></label>
                                     <input type="text" class="tz-form-input" name="client_id" placeholder="Client ID" value="{{ userIntegrationStatus.5 }}">
@@ -254,6 +283,7 @@
                                     <label class="tz-form-label">Tenant Domain <span class="text-code-red-500">*</span></label>
                                     <input type="text" class="tz-form-input" name="tenant_domain" placeholder="example.com" value="{{ userIntegrationStatus.7 }}">
                                 </div>
+                                {% endif %}
                             </div>
                             <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
                                 <button type="button" class="tz-btn-secondary" data-bs-dismiss="modal">Cancel</button>
