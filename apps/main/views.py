@@ -572,7 +572,7 @@ def reports(request):
 	active_integrations = Integration.objects.filter(enabled=True).count()
 	sso_enabled = SSOIntegration.objects.filter(enabled=True).exists()
 
-	controls = Control.objects.filter(enabled=True).select_related('framework')
+	controls = Control.objects.filter(enabled=True).select_related('framework').order_by('control_id')
 	frameworks = ControlFramework.objects.all()
 
 	context = {
