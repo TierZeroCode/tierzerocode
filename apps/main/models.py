@@ -481,6 +481,7 @@ class UserData(models.Model):
     isSsprEnabled = models.BooleanField(null=True)
     isSsprRegistered = models.BooleanField(null=True)
     isSystemPreferredAuthenticationMethodEnabled = models.BooleanField(null=True)
+    onPremisesSyncEnabled = models.BooleanField(null=True)
     highest_authentication_strength = models.CharField(max_length=200, null=True)
     lowest_authentication_strength = models.CharField(max_length=200, null=True)
     # End Auth Capabilities

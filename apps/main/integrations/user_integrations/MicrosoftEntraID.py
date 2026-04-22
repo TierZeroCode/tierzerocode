@@ -20,7 +20,7 @@ AUTHENTICATION_STRENGTHS = {
 
 def getMicrosoftEntraIDUsers(access_token):
     """Fetch all enabled Microsoft Entra ID users."""
-    url = "https://graph.microsoft.com/v1.0/users?$select=userPrincipalName,id,employeeId,givenName,surname,accountEnabled,jobTitle,department,createdDateTime,signInActivity&$filter=accountEnabled eq true and userType eq 'Member'"
+    url = "https://graph.microsoft.com/v1.0/users?$select=userPrincipalName,id,employeeId,givenName,surname,accountEnabled,jobTitle,department,createdDateTime,signInActivity,onPremisesSyncEnabled&$filter=accountEnabled eq true and userType eq 'Member'"
     headers = {'Authorization': access_token}
     return _fetch_paginated_data(url, headers)
 
@@ -214,7 +214,7 @@ _USER_UPDATE_FIELDS = [
     'job_title', 'department', 'last_logon_timestamp', 'created_at_timestamp',
     'highest_authentication_strength', 'lowest_authentication_strength',
     'isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable',
-    'isSsprEnabled', 'isSsprRegistered',
+    'isSsprEnabled', 'isSsprRegistered', 'onPremisesSyncEnabled',
     'passKeyDeviceBound_authentication_method', 'passKeyDeviceBoundAuthenticator_authentication_method',
     'passKeySynced_authentication_method',
     'windowsHelloforBusiness_authentication_method', 'microsoftAuthenticatorPasswordless_authentication_method',
@@ -275,6 +275,8 @@ def _process_user_data(user_data, auth_by_upn, memberships_by_upn, persona_dupli
     capability_fields = ['isAdmin', 'isMfaCapable', 'isMfaRegistered', 'isPasswordlessCapable', 'isSsprEnabled', 'isSsprRegistered']
     for field in capability_fields:
         user_fields[field] = user_authentication_data.get(field, False)
+
+    user_fields['onPremisesSyncEnabled'] = user_data.get('onPremisesSyncEnabled')  # None = cloud-only, True = hybrid
 
     user_fields.update(_build_authentication_fields(auth_method_types))
     return user_fields
