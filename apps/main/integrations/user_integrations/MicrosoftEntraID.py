@@ -276,7 +276,7 @@ def _process_user_data(user_data, auth_by_upn, memberships_by_upn, persona_dupli
     for field in capability_fields:
         user_fields[field] = user_authentication_data.get(field, False)
 
-    user_fields['onPremisesSyncEnabled'] = user_data.get('onPremisesSyncEnabled')  # None = cloud-only, True = hybrid
+    user_fields['onPremisesSyncEnabled'] = user_data.get('onPremisesSyncEnabled') or False  # null from Graph = cloud-only
 
     user_fields.update(_build_authentication_fields(auth_method_types))
     return user_fields
