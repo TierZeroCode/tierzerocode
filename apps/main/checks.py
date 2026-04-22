@@ -5,8 +5,8 @@ from django.contrib.auth.models import User
 #X6969
 REQUIRED_SYSTEM_DEVICE_INTEGRATIONS = ['Microsoft Entra ID', 'Qualys', 'Sophos Central', 'Microsoft Intune', 'Microsoft Defender for Endpoint', 'CrowdStrike Falcon', 'Cloudflare Zero Trust', 'Tailscale']
 REQUIRED_SYSTEM_DEVICE_INTEGRATIONS_SHORT = ['Entra ID', 'Qualys', 'Sophos', 'Intune', 'Defender', 'CrowdStrike', 'Cloudflare', 'Tailscale']
-REQUIRED_SYSTEM_USER_INTEGRATIONS = ['Microsoft Entra ID']
-REQUIRED_SYSTEM_USER_INTEGRATIONS_SHORT = ['Entra ID']
+REQUIRED_SYSTEM_USER_INTEGRATIONS = ['Microsoft Entra ID', 'Active Directory']
+REQUIRED_SYSTEM_USER_INTEGRATIONS_SHORT = ['Entra ID', 'Active Directory']
 REQUIRED_OS_PLATFORMS = ['Android', 'iOS/iPadOS', 'MacOS', 'Red Hat Enterprise Linux', 'CentOS', 'Ubuntu', 'Windows', 'Windows Server', 'Other']
 
 def checkSystemDeviceIntegrations():
