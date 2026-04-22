@@ -241,7 +241,7 @@
                                 {% if userIntegrationStatus.0 == 'Active Directory' %}
                                 <div>
                                     <label class="tz-form-label">LDAP Server <span class="text-code-red-500">*</span></label>
-                                    <input type="text" class="tz-form-input" name="ad_server" placeholder="dc01.corp.example.com" value="{{ userIntegrationStatus.10.server }}" required>
+                                    <input type="text" class="tz-form-input" name="tenant_domain" placeholder="dc01.corp.example.com" value="{{ userIntegrationStatus.7 }}" required>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
@@ -255,16 +255,16 @@
                                 </div>
                                 <div>
                                     <label class="tz-form-label">Base DN <span class="text-code-red-500">*</span></label>
-                                    <input type="text" class="tz-form-input" name="ad_base_dn" placeholder="DC=corp,DC=example,DC=com" value="{{ userIntegrationStatus.10.base_dn }}" required>
+                                    <input type="text" class="tz-form-input" name="tenant_id" placeholder="DC=corp,DC=example,DC=com" value="{{ userIntegrationStatus.6 }}" required>
                                 </div>
                                 <div>
                                     <label class="tz-form-label">Service Account DN <span class="text-code-red-500">*</span></label>
-                                    <input type="text" class="tz-form-input" name="ad_service_account_dn" placeholder="CN=svc-ldap,OU=Service Accounts,DC=corp,DC=example,DC=com" value="{{ userIntegrationStatus.10.service_account_dn }}" required>
+                                    <input type="text" class="tz-form-input" name="client_id" placeholder="CN=svc-ldap,OU=Service Accounts,DC=corp,DC=example,DC=com" value="{{ userIntegrationStatus.5 }}" required>
                                 </div>
                                 <div>
                                     <label class="tz-form-label">Service Account Password <span class="text-code-red-500">*</span></label>
-                                    <input type="password" class="tz-form-input" name="ad_service_account_password" placeholder="{% if userIntegrationStatus.10.service_account_password %}Password saved — enter to change{% else %}Password{% endif %}">
-                                    {% if userIntegrationStatus.10.service_account_password %}<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Leave blank to keep the existing password.</p>{% endif %}
+                                    <input type="password" class="tz-form-input" name="client_secret" placeholder="{% if userIntegrationStatus.3 %}Password saved — enter to change{% else %}Password{% endif %}">
+                                    {% if userIntegrationStatus.3 %}<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Leave blank to keep the existing password.</p>{% endif %}
                                 </div>
                                 {% else %}
                                 <div>

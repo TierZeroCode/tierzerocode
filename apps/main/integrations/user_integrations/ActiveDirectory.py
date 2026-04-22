@@ -74,13 +74,14 @@ def _parse_guid(raw):
         return None
 
 
-def _get_ldap_connection(config):
-    """Create and return a bound ldap3 Connection from integration_config dict."""
-    server_host = config.get('server', '')
-    port = int(config.get('port', 636))
-    use_ssl = config.get('use_ssl', True)
-    service_account_dn = config.get('service_account_dn', '')
-    service_account_password = config.get('service_account_password', '')
+def _get_ldap_connection(integration):
+    """Create and return a bound ldap3 Connection from Integration model fields."""
+    server_host = integration.tenant_domain or ''
+    extra = integration.integration_config or {}
+    port = int(extra.get('port', 636))
+    use_ssl = extra.get('use_ssl', True)
+    service_account_dn = integration.client_id or ''
+    service_account_password = integration.client_secret or ''
 
     server = ldap3.Server(server_host, port=port, use_ssl=use_ssl, get_info=ldap3.ALL)
     conn = ldap3.Connection(
@@ -156,12 +157,11 @@ def syncActiveDirectoryUsers():
         logger.warning("No enabled Active Directory integration found — skipping.")
         return
 
-    config = integration.integration_config or {}
-    base_dn = config.get('base_dn', '')
+    base_dn = integration.tenant_id or ''
     if not base_dn:
-        raise ValueError("Active Directory integration_config missing 'base_dn'")
+        raise ValueError("Active Directory integration missing Base DN (tenant_id field)")
 
-    conn = _get_ldap_connection(config)
+    conn = _get_ldap_connection(integration)
 
     search_filter = (
         '(&(objectClass=user)'
