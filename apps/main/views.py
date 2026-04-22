@@ -611,6 +611,15 @@ def evaluate_controls_view(request):
 		evaluator__isnull=False,
 	).exclude(evaluator='')
 
+	import re as _re
+
+	def _extract_pct(val):
+		"""Return float percentage from strings like '85%' or '142/150 (85%)', else None."""
+		if not val:
+			return None
+		m = _re.search(r'(\d+(?:\.\d+)?)\s*%', str(val))
+		return float(m.group(1)) if m else None
+
 	evaluated = 0
 	for ctrl in controls:
 		func = getattr(evaluators, ctrl.evaluator, None)
@@ -618,6 +627,12 @@ def evaluate_controls_view(request):
 			continue
 		try:
 			current_value, status = func()
+			# If evaluator says failing, check whether we meet the configured target.
+			if status == 'failing' and ctrl.target:
+				target_pct = _extract_pct(ctrl.target)
+				current_pct = _extract_pct(current_value)
+				if target_pct is not None and current_pct is not None and current_pct >= target_pct:
+					status = 'passing'
 			ctrl.current_value = current_value
 			ctrl.status = status
 			ctrl.save(update_fields=['current_value', 'status', 'updated_at'])
@@ -698,6 +713,17 @@ def update_control_view(request, control_id):
 		ctrl.status = ctrl.manual_status or 'not_measured'
 		ctrl.current_value = ctrl.manual_value or '-'
 		update_fields += ['status', 'current_value']
+	elif 'target' in data and ctrl.current_value and ctrl.current_value not in ('Error', '-', ''):
+		# Recalculate status immediately when target changes on an auto-evaluated control.
+		import re as _re2
+		def _pct(v):
+			m = _re2.search(r'(\d+(?:\.\d+)?)\s*%', str(v))
+			return float(m.group(1)) if m else None
+		target_pct = _pct(ctrl.target)
+		current_pct = _pct(ctrl.current_value)
+		if target_pct is not None and current_pct is not None:
+			ctrl.status = 'passing' if current_pct >= target_pct else 'failing'
+			update_fields.append('status')
 
 	ctrl.save(update_fields=list(set(update_fields)))
 
