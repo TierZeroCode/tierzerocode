@@ -86,11 +86,11 @@ class Command(BaseCommand):
             {
                 'control_id': 'AAL-05',
                 'domain': 'AAL2 Phishing-Resistant Availability',
-                'statement': 'Verifiers SHALL offer at least one phishing-resistant authentication option at AAL2. Federal agencies SHALL require staff, contractors, and partners to use phishing-resistant authentication.',
+                'statement': 'Verifiers SHALL offer at least one phishing-resistant authentication option at AAL2.',
                 'source_reference': '800-63B-4 § 2.2.2',
-                'indicator': '% of staff/contractor/partner accounts using phishing-resistant MFA',
-                'measurement_method': 'Entra ID auth methods report filtered to FIDO2/WHfB/CBA; CA authentication strength policies',
-                'target': '100% for staff/contractors/partners',
+                'indicator': '% of AAL2 accounts using phishing-resistant MFA',
+                'measurement_method': 'Entra ID auth methods report filtered to FIDO2/WHfB/CBA',
+                'target': '100%',
                 'evaluator': 'aal_05',
             },
             {
