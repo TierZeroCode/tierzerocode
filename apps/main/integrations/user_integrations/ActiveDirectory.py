@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 import ldap3
 from django.utils import timezone
 
-from apps.main.models import Integration, UserData, ADPasswordPolicy
+from apps.main.models import Integration, UserData, PasswordPolicy
 from apps.logger.views import createLog
 
 logger = logging.getLogger(__name__)
@@ -127,9 +127,10 @@ def _sync_pso(conn, pso_dn):
         except Exception:
             return None
 
-    ADPasswordPolicy.objects.update_or_create(
-        policy_dn=pso_dn,
+    PasswordPolicy.objects.update_or_create(
+        policy_identifier=pso_dn,
         defaults={
+            'source': 'active_directory',
             'name': _get('name'),
             'min_password_length': _get('msDS-MinimumPasswordLength'),
             'password_history_length': _get('msDS-PasswordHistoryLength'),

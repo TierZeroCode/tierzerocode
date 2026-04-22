@@ -4,7 +4,7 @@ from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
 from apps.main.models import (
-    ADPasswordPolicy,
+    PasswordPolicy,
     CloudflareZeroTrustDeviceData,
     ConditionalAccessPolicy,
     Control,
@@ -428,8 +428,9 @@ class TenantAuthMethodsPolicyAdmin(admin.ModelAdmin):
     readonly_fields = ('synced_at',)
 
 
-@admin.register(ADPasswordPolicy)
-class ADPasswordPolicyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'policy_dn', 'min_password_length', 'max_password_age_days', 'lockout_threshold', 'complexity_enabled')
-    search_fields = ('name', 'policy_dn')
-    ordering = ('name',)
+@admin.register(PasswordPolicy)
+class PasswordPolicyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'source', 'policy_identifier', 'min_password_length', 'max_password_age_days', 'lockout_threshold', 'complexity_enabled', 'synced_at')
+    list_filter = ('source', 'complexity_enabled')
+    search_fields = ('name', 'policy_identifier')
+    ordering = ('source', 'name')

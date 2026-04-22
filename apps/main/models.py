@@ -709,26 +709,45 @@ class TenantAuthMethodsPolicy(models.Model):
         verbose_name_plural = "Tenant Auth Methods Policies"
 
 
-class ADPasswordPolicy(models.Model):
-    """Fine-Grained Password Policy pulled from msDS-ResultantPSO."""
-    policy_dn = models.CharField(max_length=500, unique=True)
-    name = models.CharField(max_length=200, null=True)
-    min_password_length = models.IntegerField(null=True)
-    password_history_length = models.IntegerField(null=True)
-    max_password_age_days = models.IntegerField(null=True)
-    min_password_age_days = models.IntegerField(null=True)
-    lockout_threshold = models.IntegerField(null=True)
-    lockout_duration_minutes = models.IntegerField(null=True)
-    lockout_observation_window_minutes = models.IntegerField(null=True)
+class PasswordPolicy(models.Model):
+    """Password policy from any identity source (Entra ID or Active Directory FGPP)."""
+
+    SOURCE_CHOICES = [
+        ('active_directory', 'Active Directory'),
+        ('entra_id', 'Microsoft Entra ID'),
+    ]
+    source = models.CharField(max_length=50, choices=SOURCE_CHOICES, db_index=True)
+
+    # AD: the PSO distinguished name; Entra: domain name (e.g. 'contoso.com') or 'default'
+    policy_identifier = models.CharField(max_length=500, unique=True)
+    name = models.CharField(max_length=200, null=True, blank=True)
+
+    # --- Fields common to both sources ---
+    min_password_length = models.IntegerField(null=True, blank=True)
+    password_history_length = models.IntegerField(null=True, blank=True)
+    max_password_age_days = models.IntegerField(null=True, blank=True)
+    min_password_age_days = models.IntegerField(null=True, blank=True)
+    lockout_threshold = models.IntegerField(null=True, blank=True)
+    lockout_duration_minutes = models.IntegerField(null=True, blank=True)
     complexity_enabled = models.BooleanField(null=True)
+
+    # --- Active Directory FGPP-specific ---
+    lockout_observation_window_minutes = models.IntegerField(null=True, blank=True)
     reversible_encryption_enabled = models.BooleanField(null=True)
-    precedence = models.IntegerField(null=True)
+    # Lower number = higher precedence (AD PSO concept)
+    precedence = models.IntegerField(null=True, blank=True)
+
+    # --- Entra ID-specific ---
+    # Days before expiry that users are notified
+    password_notification_window_days = models.IntegerField(null=True, blank=True)
+
     synced_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
-        return self.name or self.policy_dn
+        return f"[{self.get_source_display()}] {self.name or self.policy_identifier}"
 
     class Meta:
-        verbose_name = "AD Password Policy"
-        verbose_name_plural = "AD Password Policies"
+        verbose_name = "Password Policy"
+        verbose_name_plural = "Password Policies"
+        ordering = ['source', 'name']
