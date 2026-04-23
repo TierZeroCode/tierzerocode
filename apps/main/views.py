@@ -560,6 +560,7 @@ def reports(request):
 	compliance_total = Device.objects.count()
 	compliance_compliant = Device.objects.filter(compliant=True).count()
 	compliance_noncompliant = Device.objects.filter(compliant=False).count()
+	compliance_percent = round(compliance_compliant / compliance_total * 100) if compliance_total > 0 else 0
 
 	total_users = UserData.objects.count()
 	mfa_enrolled = UserData.objects.exclude(highest_authentication_strength='None').exclude(highest_authentication_strength__isnull=True).count()
@@ -609,6 +610,7 @@ def reports(request):
 		'compliance_total': compliance_total,
 		'compliance_compliant': compliance_compliant,
 		'compliance_noncompliant': compliance_noncompliant,
+		'compliance_percent': compliance_percent,
 		'total_users': total_users,
 		'mfa_enrolled': mfa_enrolled,
 		'mfa_percent': mfa_percent,

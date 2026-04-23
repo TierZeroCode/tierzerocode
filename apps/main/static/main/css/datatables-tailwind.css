@@ -53,8 +53,14 @@ table.dataTable tbody td {
     vertical-align: middle;
     font-variant-numeric: tabular-nums;
 }
+table.dataTable tbody tr.odd {
+    background-color: oklch(0.985 0.004 260);
+}
+table.dataTable tbody tr.even {
+    background-color: transparent;
+}
 table.dataTable tbody tr:hover {
-    background-color: oklch(0.970 0.014 255 / 0.3);
+    background-color: oklch(0.970 0.014 255 / 0.3) !important;
 }
 
 /* Pagination */
@@ -165,7 +171,7 @@ table.dataTable tbody tr:hover {
     background-color: oklch(0.250 0.020 260) !important;
 }
 .dark table.dataTable tbody tr.odd {
-    background-color: transparent !important;
+    background-color: oklch(0.215 0.015 260 / 0.6) !important;
 }
 .dark table.dataTable tbody tr.even {
     background-color: transparent !important;

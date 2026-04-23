@@ -153,10 +153,10 @@
 
   /* ── Sidebar navigation ── */
   .tz-nav-item {
-    @apply flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors;
+    @apply flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors;
   }
   .tz-nav-item-active {
-    @apply flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-semibold text-code-blue-600 dark:text-code-blue-400 bg-code-blue-50 dark:bg-code-blue-500/8;
+    @apply flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-semibold text-code-blue-600 dark:text-code-blue-400 bg-code-blue-50 dark:bg-code-blue-500/8;
   }
   .tz-nav-group {
     @apply text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3 pt-5 pb-1;
