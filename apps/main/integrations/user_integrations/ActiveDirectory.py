@@ -427,3 +427,6 @@ def syncActiveDirectoryUsers():
     )
 
     logger.info("AD sync complete: %d matched, %d unmatched, %d PSOs", len(matched_user_ids), unmatched, len(synced_psos))
+
+    from apps.main.integrations.password_policy_assignment import assign_user_password_policies
+    assign_user_password_policies()

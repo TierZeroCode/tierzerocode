@@ -798,6 +798,10 @@ def syncMicrosoftEntraIDUser():
     # Sync password policy per verified domain (requires Domain.Read.All or Directory.Read.All)
     syncPasswordPolicy(access_token)
 
+    # Assign each user to their effective password policy
+    from apps.main.integrations.password_policy_assignment import assign_user_password_policies
+    assign_user_password_policies()
+
     data.last_synced_at = timezone.now()
     data.save()
     return True

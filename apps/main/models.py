@@ -509,6 +509,10 @@ class UserData(models.Model):
     # End Authentication methods
     integration = models.ManyToManyField("Integration", related_name='users')
     persona_group = models.ForeignKey("PersonaGroup", on_delete=models.CASCADE, null=True, related_name='users')
+    password_policy = models.ForeignKey(
+        "PasswordPolicy", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='users',
+    )
     created_at_timestamp = models.DateTimeField(null=True)
     last_logon_timestamp = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
