@@ -146,14 +146,8 @@ def _sync_pso(conn, pso_dn):
     )
 
 
-def _sync_all_psos(conn, base_dn):
-    """Discover and sync every PSO from the Password Settings Container.
-
-    Fetches all FGPP attributes in a single search using the same dict-based
-    access as the main user loop (avoids Entry API edge cases with the offline
-    schema). The container is always CN=Password Settings Container,CN=System,<base_dn>.
-    """
-    pso_container = f"CN=Password Settings Container,CN=System,{base_dn}"
+def _search_psos(conn, search_base, scope):
+    """Run a paged search for msDS-PasswordSettings objects. Returns list or None on error."""
     pso_attrs = [
         'name',
         'msDS-MinimumPasswordLength',
@@ -167,22 +161,42 @@ def _sync_all_psos(conn, base_dn):
         'msDS-PasswordReversibleEncryptionEnabled',
         'msDS-PasswordSettingsPrecedence',
     ]
-
     try:
-        results = conn.extend.standard.paged_search(
-            search_base=pso_container,
+        return conn.extend.standard.paged_search(
+            search_base=search_base,
             search_filter='(objectClass=msDS-PasswordSettings)',
-            search_scope=ldap3.SUBTREE,
+            search_scope=scope,
             attributes=pso_attrs,
             paged_size=100,
             generator=False,
         )
     except Exception as e:
-        logger.error("PSO container search failed for %s: %s", pso_container, e)
-        return set()
+        logger.warning("PSO search failed (base=%s): %s", search_base, e)
+        return None
+
+
+def _sync_all_psos(conn, base_dn):
+    """Discover and sync every PSO from the Password Settings Container.
+
+    First tries the dedicated container path. If that returns nothing (common
+    when the service account lacks explicit read rights on the container),
+    falls back to a full subtree search from base_dn — some DCs permit this
+    even when the container ACL is restricted.
+    """
+    pso_container = f"CN=Password Settings Container,CN=System,{base_dn}"
+
+    results = _search_psos(conn, pso_container, ldap3.SUBTREE)
+
+    if not results or not any(e.get('type') == 'searchResEntry' for e in results):
+        logger.warning(
+            "No PSOs found in container %s — trying subtree search from base DN. "
+            "If this also returns 0, grant the service account 'Read' on %s.",
+            pso_container, pso_container,
+        )
+        results = _search_psos(conn, base_dn, ldap3.SUBTREE)
 
     if not results:
-        logger.warning("No PSO entries returned from %s (check service account read permissions on this container)", pso_container)
+        logger.error("PSO search returned no results from either path — FGPP will not be synced.")
         return set()
 
     pso_dns = set()
