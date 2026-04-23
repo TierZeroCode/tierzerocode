@@ -85,6 +85,45 @@ class Command(BaseCommand):
         )
         self._report(conn)
 
+        # ── 6. ONE_LEVEL then BASE on each found DN ──────────────────────────
+        self.stdout.write(f'\n[6] ONE_LEVEL inside container, then BASE search on each found DN:')
+        conn.search(
+            search_base=pso_container,
+            search_filter='(objectClass=*)',
+            search_scope=ldap3.LEVEL,
+            attributes=['objectClass'],
+        )
+        child_dns = [
+            e['dn'] for e in (conn.response or [])
+            if e.get('type') == 'searchResEntry' and e.get('dn')
+        ]
+        self.stdout.write(f'    ONE_LEVEL found {len(child_dns)} child DN(s)')
+        for dn in child_dns:
+            self.stdout.write(f'    BASE search on: {dn}')
+            conn.search(
+                search_base=dn,
+                search_filter='(objectClass=*)',
+                search_scope=ldap3.BASE,
+                attributes=['*'],
+            )
+            base_entries = [e for e in (conn.response or []) if e.get('type') == 'searchResEntry']
+            if not base_entries:
+                self.stdout.write(self.style.ERROR(f'      No entry returned (result={conn.result})'))
+            else:
+                attrs = base_entries[0].get('attributes', {})
+                raw  = base_entries[0].get('raw_attributes', {})
+                has_data = any(v for v in raw.values() if v)
+                if not has_data:
+                    self.stdout.write(self.style.ERROR(
+                        '      Entry found but ZERO attributes returned — '
+                        'service account is missing READ permission on this PSO object'
+                    ))
+                else:
+                    self.stdout.write(self.style.SUCCESS(f'      Read OK — {len(attrs)} attribute(s)'))
+                    for k, v in attrs.items():
+                        if v not in (None, [], ''):
+                            self.stdout.write(f'        {k}: {v}')
+
         conn.unbind()
         self.stdout.write('\nDone.')
 

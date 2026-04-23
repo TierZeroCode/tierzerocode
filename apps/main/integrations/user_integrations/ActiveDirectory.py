@@ -193,30 +193,86 @@ def _do_pso_search(conn, search_base, scope):
 def _sync_all_psos(conn, base_dn):
     """Discover and sync every PSO.
 
-    Tries the PSO container first (plain non-paged search — the paged-search
-    LDAP control can be denied on this container even after granting Read).
-    Falls back to a full subtree scan if the container search returns nothing.
+    Strategy:
+    1. ONE_LEVEL search on the container with (objectClass=*) — works even when the
+       service account only has List Contents (not Read) on PSO child objects.
+    2. For each DN found, BASE search with all PSO attributes to read the values.
+       If no attributes come back, the service account is missing Read on that PSO.
+    3. Falls back to a SUBTREE attribute search in case the container path is wrong.
     """
     pso_container = f"CN=Password Settings Container,CN=System,{base_dn}"
 
-    entries = _do_pso_search(conn, pso_container, ldap3.SUBTREE)
+    # ── Phase 1: enumerate PSO DNs via ONE_LEVEL (avoids objectClass filter) ──
+    conn.search(
+        search_base=pso_container,
+        search_filter='(objectClass=*)',
+        search_scope=ldap3.LEVEL,
+        attributes=['objectClass'],
+    )
+    pso_dns_to_read = [
+        e['dn'] for e in (conn.response or [])
+        if e.get('type') == 'searchResEntry' and e.get('dn')
+    ]
+    logger.info(
+        "PSO container ONE_LEVEL result=%s (%s) — found %d child DN(s)",
+        conn.result.get('result', '?'), conn.result.get('description', ''),
+        len(pso_dns_to_read),
+    )
 
-    if not entries:
-        logger.warning(
-            "0 PSOs from container %s — falling back to subtree search from base DN %s",
-            pso_container, base_dn,
+    # ── Phase 2: read full attributes for each PSO via BASE search ────────────
+    pso_dns = set()
+    for pso_dn in pso_dns_to_read:
+        conn.search(
+            search_base=pso_dn,
+            search_filter='(objectClass=*)',
+            search_scope=ldap3.BASE,
+            attributes=_PSO_ATTRS,
         )
-        entries = _do_pso_search(conn, base_dn, ldap3.SUBTREE)
+        base_entries = [e for e in (conn.response or []) if e.get('type') == 'searchResEntry']
+        if not base_entries:
+            logger.error(
+                "PSO BASE search on %s returned no entry (result=%s). "
+                "Service account may lack Read on this PSO object.",
+                pso_dn, conn.result,
+            )
+            continue
 
+        raw_attrs = base_entries[0].get('raw_attributes', {})
+        has_attrs = any(v for v in raw_attrs.values() if v)
+        if not has_attrs:
+            logger.error(
+                "PSO %s found but no attributes returned — service account is missing "
+                "Read permission on this PSO object. Grant it with: "
+                "dsacls \"%s\" /G \"DOMAIN\\svc_account:GR\"",
+                pso_dn, pso_dn,
+            )
+            continue
+
+        try:
+            _upsert_pso_from_raw(pso_dn, raw_attrs)
+            pso_dns.add(pso_dn)
+            logger.info("Synced PSO: %s", pso_dn)
+        except Exception as e:
+            logger.error("Failed to upsert PSO %s: %s", pso_dn, e)
+
+    if pso_dns:
+        return pso_dns
+
+    # ── Phase 3: fallback — objectClass filter SUBTREE (works when Read is granted) ──
+    logger.warning(
+        "ONE_LEVEL approach yielded 0 synced PSOs — trying SUBTREE objectClass filter as fallback",
+    )
+    entries = _do_pso_search(conn, pso_container, ldap3.SUBTREE)
+    if not entries:
+        entries = _do_pso_search(conn, base_dn, ldap3.SUBTREE)
     if not entries:
         logger.error(
-            "PSO search found 0 entries from both paths — FGPP will not be synced. "
-            "Verify the service account has 'Read' on %s.",
+            "All PSO search strategies returned 0 results. "
+            "Grant the service account Read on each PSO object inside %s.",
             pso_container,
         )
         return set()
 
-    pso_dns = set()
     for entry in entries:
         dn = entry.get('dn', '')
         if not dn:
@@ -225,7 +281,7 @@ def _sync_all_psos(conn, base_dn):
         try:
             _upsert_pso_from_raw(dn, raw_attrs)
             pso_dns.add(dn)
-            logger.info("Synced PSO: %s", dn)
+            logger.info("Synced PSO (fallback): %s", dn)
         except Exception as e:
             logger.error("Failed to upsert PSO %s: %s", dn, e)
 
