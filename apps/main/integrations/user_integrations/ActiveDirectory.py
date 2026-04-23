@@ -94,148 +94,138 @@ def _get_ldap_connection(integration):
     return conn
 
 
-def _sync_pso(conn, pso_dn):
-    """Pull FGPP attributes for a given PSO DN and upsert ADPasswordPolicy."""
-    pso_attrs = [
-        'name',
-        'msDS-MinimumPasswordLength',
-        'msDS-PasswordHistoryLength',
-        'msDS-MaximumPasswordAge',
-        'msDS-MinimumPasswordAge',
-        'msDS-LockoutThreshold',
-        'msDS-LockoutDuration',
-        'msDS-LockoutObservationWindow',
-        'msDS-PasswordComplexityEnabled',
-        'msDS-PasswordReversibleEncryptionEnabled',
-        'msDS-PasswordSettingsPrecedence',
-    ]
-    conn.search(
-        search_base=pso_dn,
-        search_filter='(objectClass=msDS-PasswordSettings)',
-        search_scope=ldap3.BASE,
-        attributes=pso_attrs,
-    )
-    if not conn.entries:
-        return
+_PSO_ATTRS = [
+    'name',
+    'msDS-MinimumPasswordLength',
+    'msDS-PasswordHistoryLength',
+    'msDS-MaximumPasswordAge',
+    'msDS-MinimumPasswordAge',
+    'msDS-LockoutThreshold',
+    'msDS-LockoutDuration',
+    'msDS-LockoutObservationWindow',
+    'msDS-PasswordComplexityEnabled',
+    'msDS-PasswordReversibleEncryptionEnabled',
+    'msDS-PasswordSettingsPrecedence',
+]
 
-    entry = conn.entries[0]
 
-    def _get(attr):
-        try:
-            val = entry[attr].value
-            return val if val != [] else None
-        except Exception:
-            return None
+def _raw_str(raw_attrs, attr):
+    """Decode first raw bytes value for an attribute as a UTF-8 string."""
+    vals = raw_attrs.get(attr) or []
+    if not vals:
+        return None
+    v = vals[0]
+    return v.decode('utf-8') if isinstance(v, bytes) else str(v)
 
+
+def _raw_int(raw_attrs, attr):
+    s = _raw_str(raw_attrs, attr)
+    if s is None:
+        return None
+    try:
+        return int(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def _raw_bool(raw_attrs, attr):
+    s = _raw_str(raw_attrs, attr)
+    if s is None:
+        return None
+    return s.upper() == 'TRUE'
+
+
+def _upsert_pso_from_raw(dn, raw_attrs):
+    """Write one PSO dict (raw_attributes format) to PasswordPolicy."""
     PasswordPolicy.objects.update_or_create(
-        policy_identifier=pso_dn,
+        policy_identifier=dn,
         defaults={
             'source': 'active_directory',
-            'name': _get('name'),
-            'min_password_length': _get('msDS-MinimumPasswordLength'),
-            'password_history_length': _get('msDS-PasswordHistoryLength'),
-            'max_password_age_days': _ad_interval_to_days(_get('msDS-MaximumPasswordAge')),
-            'min_password_age_days': _ad_interval_to_days(_get('msDS-MinimumPasswordAge')),
-            'lockout_threshold': _get('msDS-LockoutThreshold'),
-            'lockout_duration_minutes': _ad_interval_to_minutes(_get('msDS-LockoutDuration')),
-            'lockout_observation_window_minutes': _ad_interval_to_minutes(_get('msDS-LockoutObservationWindow')),
-            'complexity_enabled': _get('msDS-PasswordComplexityEnabled'),
-            'reversible_encryption_enabled': _get('msDS-PasswordReversibleEncryptionEnabled'),
-            'precedence': _get('msDS-PasswordSettingsPrecedence'),
+            'name': _raw_str(raw_attrs, 'name'),
+            'min_password_length': _raw_int(raw_attrs, 'msDS-MinimumPasswordLength'),
+            'password_history_length': _raw_int(raw_attrs, 'msDS-PasswordHistoryLength'),
+            'max_password_age_days': _ad_interval_to_days(_raw_int(raw_attrs, 'msDS-MaximumPasswordAge')),
+            'min_password_age_days': _ad_interval_to_days(_raw_int(raw_attrs, 'msDS-MinimumPasswordAge')),
+            'lockout_threshold': _raw_int(raw_attrs, 'msDS-LockoutThreshold'),
+            'lockout_duration_minutes': _ad_interval_to_minutes(_raw_int(raw_attrs, 'msDS-LockoutDuration')),
+            'lockout_observation_window_minutes': _ad_interval_to_minutes(_raw_int(raw_attrs, 'msDS-LockoutObservationWindow')),
+            'complexity_enabled': _raw_bool(raw_attrs, 'msDS-PasswordComplexityEnabled'),
+            'reversible_encryption_enabled': _raw_bool(raw_attrs, 'msDS-PasswordReversibleEncryptionEnabled'),
+            'precedence': _raw_int(raw_attrs, 'msDS-PasswordSettingsPrecedence'),
         }
     )
 
 
-def _search_psos(conn, search_base, scope):
-    """Run a paged search for msDS-PasswordSettings objects. Returns list or None on error."""
-    pso_attrs = [
-        'name',
-        'msDS-MinimumPasswordLength',
-        'msDS-PasswordHistoryLength',
-        'msDS-MaximumPasswordAge',
-        'msDS-MinimumPasswordAge',
-        'msDS-LockoutThreshold',
-        'msDS-LockoutDuration',
-        'msDS-LockoutObservationWindow',
-        'msDS-PasswordComplexityEnabled',
-        'msDS-PasswordReversibleEncryptionEnabled',
-        'msDS-PasswordSettingsPrecedence',
-    ]
-    try:
-        return conn.extend.standard.paged_search(
-            search_base=search_base,
-            search_filter='(objectClass=msDS-PasswordSettings)',
-            search_scope=scope,
-            attributes=pso_attrs,
-            paged_size=100,
-            generator=False,
-        )
-    except Exception as e:
-        logger.warning("PSO search failed (base=%s): %s", search_base, e)
-        return None
+def _sync_pso(conn, pso_dn):
+    """Fetch a single PSO by DN and upsert PasswordPolicy (per-user fallback)."""
+    conn.search(
+        search_base=pso_dn,
+        search_filter='(objectClass=msDS-PasswordSettings)',
+        search_scope=ldap3.BASE,
+        attributes=_PSO_ATTRS,
+    )
+    entries = [e for e in (conn.response or []) if e.get('type') == 'searchResEntry']
+    if not entries:
+        logger.warning("_sync_pso: no entry found for DN %s (result=%s)", pso_dn, conn.result)
+        return
+    raw_attrs = entries[0].get('raw_attributes', {})
+    _upsert_pso_from_raw(pso_dn, raw_attrs)
+
+
+def _do_pso_search(conn, search_base, scope):
+    """Execute a plain (non-paged) LDAP search for PSOs; return list of searchResEntry dicts."""
+    conn.search(
+        search_base=search_base,
+        search_filter='(objectClass=msDS-PasswordSettings)',
+        search_scope=scope,
+        attributes=_PSO_ATTRS,
+    )
+    result_code = conn.result.get('result', -1)
+    description = conn.result.get('description', '')
+    entries = [e for e in (conn.response or []) if e.get('type') == 'searchResEntry']
+    logger.info(
+        "PSO search base=%s scope=%s → result=%s (%s) entries=%d",
+        search_base, scope, result_code, description, len(entries),
+    )
+    return entries
 
 
 def _sync_all_psos(conn, base_dn):
-    """Discover and sync every PSO from the Password Settings Container.
+    """Discover and sync every PSO.
 
-    First tries the dedicated container path. If that returns nothing (common
-    when the service account lacks explicit read rights on the container),
-    falls back to a full subtree search from base_dn — some DCs permit this
-    even when the container ACL is restricted.
+    Tries the PSO container first (plain non-paged search — the paged-search
+    LDAP control can be denied on this container even after granting Read).
+    Falls back to a full subtree scan if the container search returns nothing.
     """
     pso_container = f"CN=Password Settings Container,CN=System,{base_dn}"
 
-    results = _search_psos(conn, pso_container, ldap3.SUBTREE)
+    entries = _do_pso_search(conn, pso_container, ldap3.SUBTREE)
 
-    if not results or not any(e.get('type') == 'searchResEntry' for e in results):
+    if not entries:
         logger.warning(
-            "No PSOs found in container %s — trying subtree search from base DN. "
-            "If this also returns 0, grant the service account 'Read' on %s.",
-            pso_container, pso_container,
+            "0 PSOs from container %s — falling back to subtree search from base DN %s",
+            pso_container, base_dn,
         )
-        results = _search_psos(conn, base_dn, ldap3.SUBTREE)
+        entries = _do_pso_search(conn, base_dn, ldap3.SUBTREE)
 
-    if not results:
-        logger.error("PSO search returned no results from either path — FGPP will not be synced.")
+    if not entries:
+        logger.error(
+            "PSO search found 0 entries from both paths — FGPP will not be synced. "
+            "Verify the service account has 'Read' on %s.",
+            pso_container,
+        )
         return set()
 
     pso_dns = set()
-    for entry in results:
-        if entry.get('type') != 'searchResEntry':
-            continue
-
+    for entry in entries:
         dn = entry.get('dn', '')
         if not dn:
             continue
-
-        attrs_dict = entry.get('attributes', {})
-
-        def _get(attr, _a=attrs_dict):
-            val = _a.get(attr)
-            if val is None or val == []:
-                return None
-            return val[0] if isinstance(val, list) else val
-
+        raw_attrs = entry.get('raw_attributes', {})
         try:
-            PasswordPolicy.objects.update_or_create(
-                policy_identifier=dn,
-                defaults={
-                    'source': 'active_directory',
-                    'name': _get('name'),
-                    'min_password_length': _get('msDS-MinimumPasswordLength'),
-                    'password_history_length': _get('msDS-PasswordHistoryLength'),
-                    'max_password_age_days': _ad_interval_to_days(_get('msDS-MaximumPasswordAge')),
-                    'min_password_age_days': _ad_interval_to_days(_get('msDS-MinimumPasswordAge')),
-                    'lockout_threshold': _get('msDS-LockoutThreshold'),
-                    'lockout_duration_minutes': _ad_interval_to_minutes(_get('msDS-LockoutDuration')),
-                    'lockout_observation_window_minutes': _ad_interval_to_minutes(_get('msDS-LockoutObservationWindow')),
-                    'complexity_enabled': _get('msDS-PasswordComplexityEnabled'),
-                    'reversible_encryption_enabled': _get('msDS-PasswordReversibleEncryptionEnabled'),
-                    'precedence': _get('msDS-PasswordSettingsPrecedence'),
-                }
-            )
+            _upsert_pso_from_raw(dn, raw_attrs)
             pso_dns.add(dn)
-            logger.debug("Synced PSO: %s", dn)
+            logger.info("Synced PSO: %s", dn)
         except Exception as e:
             logger.error("Failed to upsert PSO %s: %s", dn, e)
 
