@@ -147,6 +147,7 @@ html.dark .ctrl-modal-footer { border-color: oklch(0.295 0.025 260); }
             <button data-tab="ciso" class="tz-nav-item-active w-full text-left">CISO Overview</button>
             <button data-tab="controls" class="tz-nav-item w-full text-left">Controls Monitoring</button>
             <button data-tab="sox" class="tz-nav-item w-full text-left">SOX Controls</button>
+            <button data-tab="reference" class="tz-nav-item w-full text-left">Reference</button>
         </div>
     </nav>
 
@@ -556,6 +557,213 @@ html.dark .ctrl-modal-footer { border-color: oklch(0.295 0.025 260); }
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Reference Tab -->
+        <div id="panel-reference" class="tab-panel hidden space-y-4">
+
+            <!-- Acronyms -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Acronyms</h2>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:9rem">Acronym</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            {% for row in ""|ljust:1 %}{% endfor %}
+                            <tr><td class="py-2 px-4 font-medium tabular-nums text-slate-900 dark:text-slate-100">AAL</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Authenticator Assurance Level — NIST SP 800-63 classification of MFA strength (AAL1/AAL2/AAL3)</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">AD</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Active Directory — Microsoft on-premises identity and directory service</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">CA</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Conditional Access — policy engine in Entra ID that grants or blocks access based on signals</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">CISO</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Chief Information Security Officer</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">CODE</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Correlation of Distributed Endpoints — the name of this platform</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">EDR</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Endpoint Detection and Response — security tooling that monitors and responds to threats on devices</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">FGPP</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Fine-Grained Password Policy — AD feature allowing different password policies per group or user, stored as PSOs</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">ITGC</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">IT General Controls — SOX controls covering access, change management, and operations</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">MDM</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Mobile Device Management — platform for enrolling and managing endpoints (e.g. Microsoft Intune)</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">MFA</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Multi-Factor Authentication — requiring two or more verification factors to authenticate</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">PSO</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Password Settings Object — AD object representing a Fine-Grained Password Policy</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">SOX</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Sarbanes-Oxley Act — U.S. law requiring financial reporting controls, including IT controls</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">SSO</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Single Sign-On — authentication scheme that allows one login to access multiple systems</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">UPN</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">User Principal Name — the user's login identifier in format user@domain.com</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">ZT</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Zero Trust — security model that requires continuous verification regardless of network location</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Control Status -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Control Status</h2>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <tr>
+                                <td class="py-2.5 px-4" style="width:9rem"><span class="tz-badge tz-badge-success">Passing</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">The control's current measured value meets or exceeds the target threshold.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4"><span class="tz-badge tz-badge-danger">Failing</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">The control's current measured value is below the target threshold. Action is required.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4"><span class="tz-badge tz-badge-neutral">Not Measured</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">No evaluator has been run for this control, or it requires manual review. This does not indicate a passing or failing state.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4"><span class="ctrl-manual-badge text-[10px] px-1.5 py-0.5 h-auto w-auto rounded">M</span> <span class="text-xs text-slate-700 dark:text-slate-300 ml-1">Manual</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">The automated evaluator has been overridden. Status and value were set manually, typically backed by off-system evidence or a review record.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Authentication Strength -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Authentication Strength Levels</h2>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:13rem">Level</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Description</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Examples</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Phishing Resistant</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Hardware-bound credentials that cannot be intercepted or replayed by a phishing attack. Strongest available.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">FIDO2, Windows Hello for Business, hardware security keys</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Multi-factor Authentication</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Two or more factors required. Phishing-susceptible but still significantly stronger than password alone.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">Authenticator app (TOTP), push notification</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Deprecated</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Authentication methods considered insecure or phased out by current standards. Should be disabled or migrated.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">SMS one-time codes, voice calls, app passwords</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">None</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Password only. No second factor registered or enforced. Highest risk — account is vulnerable to credential compromise.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">Username + password with no MFA method registered</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Framework Names -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Security Frameworks</h2>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:9rem">Short Name</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Full Name</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">CIS Controls</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Center for Internet Security Critical Security Controls</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">Prioritized set of actions to defend against the most common attacks</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">CMMC</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Cybersecurity Maturity Model Certification</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">U.S. DoD contractor cybersecurity certification framework</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">ISO 27001</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">International Organization for Standardization 27001</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">International standard for information security management systems</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">NIST CSF</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">NIST Cybersecurity Framework</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">Voluntary framework of standards and best practices for managing cybersecurity risk</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">NIST SP 800-63</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">NIST Special Publication 800-63: Digital Identity Guidelines</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">Defines Authenticator Assurance Levels (AAL1/2/3) and identity proofing requirements</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">SOC 2</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">System and Organization Controls 2</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">AICPA audit standard for service organizations covering security, availability, and confidentiality</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">SOX ITGC</td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Sarbanes-Oxley IT General Controls</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">IT controls required for SOX compliance: access management, change management, system operations</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Key Terms -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Key Terms</h2>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:11rem">Term</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Definition</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Cloud-Only User</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">A user account created directly in Entra ID, not synchronized from on-premises Active Directory. Subject to Entra ID password policies only.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Compliant Device</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">An endpoint that meets all required security policies as defined in Device Compliance Settings for its OS platform and enrolled integrations.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Hybrid User</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">A user account that originates in on-premises Active Directory and is synchronized to Entra ID. Password policy is controlled by AD (default domain or an FGPP/PSO if applied).</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Integration</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">A configured vendor connection that pulls security data (devices or users) into the platform. Examples: Microsoft Intune, CrowdStrike Falcon, Sophos Central.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Persona</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">A user classification used to segment identity risk reporting. Users are assigned to personas via group membership. Examples: Privileged, Service Account, Standard User.</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Resultant PSO</td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">The effective Fine-Grained Password Policy applied to an AD user after evaluating all group and user-level PSO assignments and precedence values.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </div>
