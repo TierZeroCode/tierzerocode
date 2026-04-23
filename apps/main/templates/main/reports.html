@@ -154,73 +154,204 @@ html.dark .ctrl-modal-footer { border-color: oklch(0.295 0.025 260); }
     <div class="flex-1 min-w-0">
 
         <!-- CISO Overview Tab -->
-        <div id="panel-ciso" class="tab-panel">
+        <div id="panel-ciso" class="tab-panel space-y-4">
+
+            {% if controls_total > 0 %}
+            <!-- ── Control Posture ── -->
             <div class="tz-card">
-                <div class="tz-card-header">
-                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">CISO Overview</h2>
+                <div class="tz-card-header flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Control Posture</h2>
+                    <span class="text-[11px] text-slate-400">{{ controls_total }} controls evaluated</span>
                 </div>
                 <div class="tz-card-body">
-                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Executive-level security posture summary for CISO reporting. Includes compliance trends, risk scores, and key metrics across all integrated security tools.</p>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div class="tz-stat-card">
-                            <span class="tz-section-label">Compliance Rate</span>
-                            <span class="tz-stat-value">{% if compliance_total > 0 %}{% widthratio compliance_compliant compliance_total 100 %}%{% else %}N/A{% endif %}</span>
-                            <span class="tz-stat-label">{{ compliance_compliant }} / {{ compliance_total }} devices</span>
-                        </div>
-                        <div class="tz-stat-card">
-                            <span class="tz-section-label">MFA Coverage</span>
-                            <span class="tz-stat-value">{{ mfa_percent }}%</span>
-                            <span class="tz-stat-label">{{ mfa_enrolled }} / {{ total_users }} users</span>
-                        </div>
-                        <div class="tz-stat-card">
-                            <span class="tz-section-label">Managed Devices</span>
-                            <span class="tz-stat-value">{{ managed_devices }}</span>
-                            <span class="tz-stat-label">Across {{ active_integrations }} integrations</span>
-                        </div>
+                    <!-- Score headline -->
+                    <div class="flex items-baseline gap-3 mb-3">
+                        <span class="text-3xl font-bold tabular-nums {% if controls_pass_pct >= 80 %}text-emerald-600 dark:text-emerald-400{% elif controls_pass_pct >= 50 %}text-amber-600 dark:text-amber-400{% else %}text-red-600 dark:text-red-400{% endif %}">{{ controls_pass_pct }}%</span>
+                        <span class="text-sm text-slate-500 dark:text-slate-400">controls passing &mdash; {{ controls_passing }} of {{ controls_total }}</span>
                     </div>
 
-                    <div class="tz-card">
-                        <div class="tz-card-header">
-                            <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Risk Summary</h3>
+                    <!-- Stacked progress bar -->
+                    <div class="flex h-2.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700/60 mb-4">
+                        {% if controls_passing > 0 %}
+                        <div class="bg-emerald-500 dark:bg-emerald-500 transition-all" style="width:{% widthratio controls_passing controls_total 100 %}%"></div>
+                        {% endif %}
+                        {% if controls_failing > 0 %}
+                        <div class="bg-red-500 dark:bg-red-500 transition-all" style="width:{% widthratio controls_failing controls_total 100 %}%"></div>
+                        {% endif %}
+                        {% if controls_not_measured > 0 %}
+                        <div class="bg-slate-300 dark:bg-slate-600 transition-all" style="width:{% widthratio controls_not_measured controls_total 100 %}%"></div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="flex flex-wrap gap-x-5 gap-y-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 shrink-0"></span>
+                            <span class="text-xs text-slate-600 dark:text-slate-400">Passing <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ controls_passing }}</span></span>
                         </div>
-                        <div class="tz-card-body">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="border-b border-slate-200 dark:border-slate-700/50">
-                                        <th class="text-left py-2 px-3 tz-section-label">Category</th>
-                                        <th class="text-left py-2 px-3 tz-section-label">Status</th>
-                                        <th class="text-right py-2 px-3 tz-section-label">Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                    <tr>
-                                        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300">Non-compliant devices</td>
-                                        <td class="py-2.5 px-3">
-                                            {% if compliance_noncompliant > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
-                                        </td>
-                                        <td class="py-2.5 px-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ compliance_noncompliant }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300">Users without MFA</td>
-                                        <td class="py-2.5 px-3">
-                                            {% if users_no_mfa > 0 %}<span class="tz-badge tz-badge-warning">Review</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
-                                        </td>
-                                        <td class="py-2.5 px-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_no_mfa }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-2.5 px-3 text-slate-700 dark:text-slate-300">Users with deprecated auth</td>
-                                        <td class="py-2.5 px-3">
-                                            {% if users_deprecated_auth > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
-                                        </td>
-                                        <td class="py-2.5 px-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_deprecated_auth }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-red-500 shrink-0"></span>
+                            <span class="text-xs text-slate-600 dark:text-slate-400">Failing <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ controls_failing }}</span></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-slate-300 dark:bg-slate-600 shrink-0"></span>
+                            <span class="text-xs text-slate-600 dark:text-slate-400">Not Measured <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ controls_not_measured }}</span></span>
                         </div>
                     </div>
                 </div>
             </div>
+            {% endif %}
+
+            <!-- ── Key Metrics ── -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="tz-stat-card">
+                    <span class="tz-section-label">Endpoint Compliance</span>
+                    <span class="tz-stat-value">{% if compliance_total > 0 %}{% widthratio compliance_compliant compliance_total 100 %}%{% else %}N/A{% endif %}</span>
+                    <span class="tz-stat-label">{{ compliance_compliant }} / {{ compliance_total }} devices</span>
+                </div>
+                <div class="tz-stat-card">
+                    <span class="tz-section-label">MFA Coverage</span>
+                    <span class="tz-stat-value">{{ mfa_percent }}%</span>
+                    <span class="tz-stat-label">{{ mfa_enrolled }} / {{ total_users }} users</span>
+                </div>
+                <div class="tz-stat-card">
+                    <span class="tz-section-label">Managed Endpoints</span>
+                    <span class="tz-stat-value">{{ managed_devices }}</span>
+                    <span class="tz-stat-label">{{ active_integrations }} active integrations</span>
+                </div>
+            </div>
+
+            {% if framework_stats %}
+            <!-- ── Framework Breakdown ── -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">By Framework</h3>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label">Framework</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:40%">Coverage</th>
+                                <th class="text-right py-2 px-4 tz-section-label" style="width:5rem">Score</th>
+                                <th class="text-right py-2 px-4 tz-section-label" style="width:7rem">Controls</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            {% for fs in framework_stats %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/20">
+                                <td class="py-3 px-4">
+                                    <p class="font-medium text-slate-800 dark:text-slate-200">{{ fs.framework.short_name }}</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">{{ fs.framework.name }}</p>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex h-1.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700/60">
+                                        {% if fs.passing > 0 %}<div class="bg-emerald-500" style="width:{{ fs.pass_pct }}%"></div>{% endif %}
+                                        {% if fs.failing > 0 %}<div class="bg-red-500" style="width:{{ fs.fail_pct }}%"></div>{% endif %}
+                                        {% if fs.not_measured > 0 %}<div class="bg-slate-300 dark:bg-slate-600" style="width:{{ fs.nm_pct }}%"></div>{% endif %}
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-right tabular-nums font-semibold {% if fs.pass_pct >= 80 %}text-emerald-600 dark:text-emerald-400{% elif fs.pass_pct >= 50 %}text-amber-600 dark:text-amber-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                                    {{ fs.pass_pct }}%
+                                </td>
+                                <td class="py-3 px-4 text-right tabular-nums text-xs text-slate-500 dark:text-slate-400">
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ fs.passing }}</span>
+                                    <span class="mx-0.5">/</span>
+                                    {% if fs.failing > 0 %}<span class="text-red-600 dark:text-red-400 font-medium">{{ fs.failing }}</span><span class="mx-0.5">/</span>{% endif %}
+                                    {{ fs.total }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ── Risk Items ── -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Risk Items</h3>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label">Area</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Status</th>
+                                <th class="text-right py-2 px-4 tz-section-label">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <tr>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Failing controls</td>
+                                <td class="py-2.5 px-4">
+                                    {% if controls_failing > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                </td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ controls_failing }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Non-compliant endpoints</td>
+                                <td class="py-2.5 px-4">
+                                    {% if compliance_noncompliant > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                </td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ compliance_noncompliant }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Users without MFA</td>
+                                <td class="py-2.5 px-4">
+                                    {% if users_no_mfa > 0 %}<span class="tz-badge tz-badge-warning">Review</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                </td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_no_mfa }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Users with deprecated auth</td>
+                                <td class="py-2.5 px-4">
+                                    {% if users_deprecated_auth > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                </td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{{ users_deprecated_auth }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if failing_controls %}
+            <!-- ── Failing Controls Detail ── -->
+            <div class="tz-card">
+                <div class="tz-card-header flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Controls Requiring Attention</h3>
+                    <span class="tz-badge tz-badge-danger">{{ controls_failing }} failing</span>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:6rem">Control</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Domain</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:7rem">Framework</th>
+                                <th class="text-right py-2 px-4 tz-section-label" style="width:5rem">Current</th>
+                                <th class="text-right py-2 px-4 tz-section-label" style="width:5rem">Target</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            {% for ctrl in failing_controls %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/20">
+                                <td class="py-2.5 px-4 font-medium tabular-nums">
+                                    <a href="{% url 'control_detail' ctrl.control_id %}" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a>
+                                </td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">{{ ctrl.domain }}</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">{{ ctrl.framework.short_name }}</td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium text-red-600 dark:text-red-400">{% if ctrl.use_manual and ctrl.manual_value %}{{ ctrl.manual_value }}{% else %}{{ ctrl.current_value|default:"—" }}{% endif %}</td>
+                                <td class="py-2.5 px-4 text-right tabular-nums text-slate-500 dark:text-slate-400">{{ ctrl.target }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
         </div>
 
         <!-- Controls Monitoring Tab -->

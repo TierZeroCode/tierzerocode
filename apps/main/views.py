@@ -575,6 +575,35 @@ def reports(request):
 	controls = Control.objects.filter(enabled=True).select_related('framework').order_by('control_id')
 	frameworks = ControlFramework.objects.all()
 
+	# CISO aggregates
+	controls_total = controls.count()
+	controls_passing = controls.filter(status='passing').count()
+	controls_failing = controls.filter(status='failing').count()
+	controls_not_measured = controls.filter(status='not_measured').count() + controls.filter(status__isnull=True).count()
+	controls_pass_pct = round(controls_passing / controls_total * 100) if controls_total > 0 else 0
+
+	framework_stats = []
+	for fw in frameworks.order_by('name'):
+		fw_controls = controls.filter(framework=fw)
+		fw_total = fw_controls.count()
+		if fw_total == 0:
+			continue
+		fw_passing = fw_controls.filter(status='passing').count()
+		fw_failing = fw_controls.filter(status='failing').count()
+		fw_not_measured = fw_total - fw_passing - fw_failing
+		framework_stats.append({
+			'framework': fw,
+			'total': fw_total,
+			'passing': fw_passing,
+			'failing': fw_failing,
+			'not_measured': fw_not_measured,
+			'pass_pct': round(fw_passing / fw_total * 100) if fw_total > 0 else 0,
+			'fail_pct': round(fw_failing / fw_total * 100) if fw_total > 0 else 0,
+			'nm_pct': round(fw_not_measured / fw_total * 100) if fw_total > 0 else 0,
+		})
+
+	failing_controls = controls.filter(status='failing').order_by('framework__name', 'control_id')
+
 	context = {
 		'page': 'reports',
 		'compliance_total': compliance_total,
@@ -592,6 +621,13 @@ def reports(request):
 		'notifications': Notification.objects.all().order_by('-created_at')[:10],
 		'controls': controls,
 		'frameworks': frameworks,
+		'controls_total': controls_total,
+		'controls_passing': controls_passing,
+		'controls_failing': controls_failing,
+		'controls_not_measured': controls_not_measured,
+		'controls_pass_pct': controls_pass_pct,
+		'framework_stats': framework_stats,
+		'failing_controls': failing_controls,
 	}
 	return render(request, 'main/reports.html', context)
 
