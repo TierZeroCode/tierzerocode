@@ -149,31 +149,81 @@ def _sync_pso(conn, pso_dn):
 def _sync_all_psos(conn, base_dn):
     """Discover and sync every PSO from the Password Settings Container.
 
-    This finds all FGPP objects directly, regardless of whether any user has
-    msDS-ResultantPSO set. The container is always at
-    CN=Password Settings Container,CN=System,<base_dn>.
+    Fetches all FGPP attributes in a single search using the same dict-based
+    access as the main user loop (avoids Entry API edge cases with the offline
+    schema). The container is always CN=Password Settings Container,CN=System,<base_dn>.
     """
     pso_container = f"CN=Password Settings Container,CN=System,{base_dn}"
+    pso_attrs = [
+        'name',
+        'msDS-MinimumPasswordLength',
+        'msDS-PasswordHistoryLength',
+        'msDS-MaximumPasswordAge',
+        'msDS-MinimumPasswordAge',
+        'msDS-LockoutThreshold',
+        'msDS-LockoutDuration',
+        'msDS-LockoutObservationWindow',
+        'msDS-PasswordComplexityEnabled',
+        'msDS-PasswordReversibleEncryptionEnabled',
+        'msDS-PasswordSettingsPrecedence',
+    ]
+
     try:
-        conn.search(
+        results = conn.extend.standard.paged_search(
             search_base=pso_container,
             search_filter='(objectClass=msDS-PasswordSettings)',
             search_scope=ldap3.SUBTREE,
-            attributes=['distinguishedName'],
+            attributes=pso_attrs,
+            paged_size=100,
+            generator=False,
         )
     except Exception as e:
-        logger.warning("Could not search PSO container %s: %s", pso_container, e)
+        logger.error("PSO container search failed for %s: %s", pso_container, e)
+        return set()
+
+    if not results:
+        logger.warning("No PSO entries returned from %s (check service account read permissions on this container)", pso_container)
         return set()
 
     pso_dns = set()
-    for entry in conn.entries:
+    for entry in results:
+        if entry.get('type') != 'searchResEntry':
+            continue
+
+        dn = entry.get('dn', '')
+        if not dn:
+            continue
+
+        attrs_dict = entry.get('attributes', {})
+
+        def _get(attr, _a=attrs_dict):
+            val = _a.get(attr)
+            if val is None or val == []:
+                return None
+            return val[0] if isinstance(val, list) else val
+
         try:
-            dn = entry.entry_dn
-            _sync_pso(conn, dn)
+            PasswordPolicy.objects.update_or_create(
+                policy_identifier=dn,
+                defaults={
+                    'source': 'active_directory',
+                    'name': _get('name'),
+                    'min_password_length': _get('msDS-MinimumPasswordLength'),
+                    'password_history_length': _get('msDS-PasswordHistoryLength'),
+                    'max_password_age_days': _ad_interval_to_days(_get('msDS-MaximumPasswordAge')),
+                    'min_password_age_days': _ad_interval_to_days(_get('msDS-MinimumPasswordAge')),
+                    'lockout_threshold': _get('msDS-LockoutThreshold'),
+                    'lockout_duration_minutes': _ad_interval_to_minutes(_get('msDS-LockoutDuration')),
+                    'lockout_observation_window_minutes': _ad_interval_to_minutes(_get('msDS-LockoutObservationWindow')),
+                    'complexity_enabled': _get('msDS-PasswordComplexityEnabled'),
+                    'reversible_encryption_enabled': _get('msDS-PasswordReversibleEncryptionEnabled'),
+                    'precedence': _get('msDS-PasswordSettingsPrecedence'),
+                }
+            )
             pso_dns.add(dn)
             logger.debug("Synced PSO: %s", dn)
         except Exception as e:
-            logger.error("Failed to sync PSO %s: %s", entry.entry_dn, e)
+            logger.error("Failed to upsert PSO %s: %s", dn, e)
 
     return pso_dns
 
