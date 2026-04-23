@@ -684,12 +684,12 @@ def syncAuthMethodsPolicy(access_token):
 
 
 def syncPasswordPolicy(access_token):
-    """Sync password policy for each verified Entra ID domain via GET /v1.0/domains.
+    """Sync one Entra ID cloud password policy record from the default domain.
 
-    Each domain carries passwordValidityPeriodInDays and
-    passwordNotificationWindowInDays. Entra ID enforces 8-char minimum and
-    complexity for all cloud users — those are hardcoded constants, not API
-    fields. Lockout is handled by smart lockout (not a fixed threshold).
+    Entra ID has one effective password policy per tenant. Per-domain validity
+    periods differ only in the max-age setting; min length, complexity, and
+    lockout are tenant-wide constants. We use the default domain as the source
+    of truth and keep a single PasswordPolicy row with source='entra_id'.
 
     Requires Domain.Read.All or Directory.Read.All permission.
     """
@@ -711,38 +711,50 @@ def syncPasswordPolicy(access_token):
             return
 
         domains = response.json().get('value', [])
-        synced = 0
+        verified = [d for d in domains if d.get('isVerified')]
 
-        for domain in domains:
-            if not domain.get('isVerified'):
-                continue
+        # Prefer the default domain; fall back to first non-.onmicrosoft.com; then any verified
+        target = (
+            next((d for d in verified if d.get('isDefault')), None)
+            or next((d for d in verified if not d.get('id', '').endswith('.onmicrosoft.com')), None)
+            or (verified[0] if verified else None)
+        )
 
-            domain_id = domain.get('id', '')
-            validity = domain.get('passwordValidityPeriodInDays')
-            max_age = None if (validity is None or validity >= _NEVER_EXPIRES) else int(validity)
-            notification = domain.get('passwordNotificationWindowInDays')
+        if not target:
+            _sync_log("Microsoft Entra ID", "1516", "Failure",
+                      "Password policy sync: no verified domains found in tenant")
+            return
 
-            PasswordPolicy.objects.update_or_create(
-                policy_identifier=domain_id,
-                defaults={
-                    'source': 'entra_id',
-                    'name': f"Entra ID — {domain_id}",
-                    # Entra ID enforces 8-char minimum and complexity for all cloud users
-                    'min_password_length': 8,
-                    'complexity_enabled': True,
-                    'max_password_age_days': max_age,
-                    'password_notification_window_days': int(notification) if notification is not None else None,
-                    # Fields not applicable to cloud-only policy
-                    'min_password_age_days': None,
-                    'password_history_length': None,
-                    'lockout_threshold': None,
-                    'lockout_duration_minutes': None,
-                    'lockout_observation_window_minutes': None,
-                    'reversible_encryption_enabled': None,
-                    'precedence': None,
-                },
-            )
-            synced += 1
+        domain_id = target.get('id', '')
+        validity = target.get('passwordValidityPeriodInDays')
+        max_age = None if (validity is None or validity >= _NEVER_EXPIRES) else int(validity)
+        notification = target.get('passwordNotificationWindowInDays')
+
+        PasswordPolicy.objects.update_or_create(
+            policy_identifier=domain_id,
+            defaults={
+                'source': 'entra_id',
+                'name': 'Entra ID Cloud Password Policy',
+                # Entra ID enforces 8-char minimum and complexity for all cloud users
+                'min_password_length': 8,
+                'complexity_enabled': True,
+                'max_password_age_days': max_age,
+                'password_notification_window_days': int(notification) if notification is not None else None,
+                # Fields not applicable to cloud-only policy
+                'min_password_age_days': None,
+                'password_history_length': None,
+                'lockout_threshold': None,
+                'lockout_duration_minutes': None,
+                'lockout_observation_window_minutes': None,
+                'reversible_encryption_enabled': None,
+                'precedence': None,
+            },
+        )
+
+        # Remove stale per-domain records from older syncs that created one row per domain
+        PasswordPolicy.objects.filter(source='entra_id').exclude(policy_identifier=domain_id).delete()
+
+        synced = 1
 
         _sync_log("Microsoft Entra ID", "1516", "Success",
                   f"Password policies synced for {synced} verified domain(s)")
