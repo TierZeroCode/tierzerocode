@@ -440,6 +440,18 @@ class TailscaleDeviceData(models.Model):
     def __str__(self):
         return self.hostname or f'{self.__class__.__name__} {self.pk}'
 
+class PersonaTag(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Persona Tag'
+        verbose_name_plural = 'Persona Tags'
+
+    def __str__(self):
+        return self.name
+
+
 class Persona(models.Model):
     AAL_LEVEL_CHOICES = (
         (1, 'AAL1'),
@@ -450,6 +462,7 @@ class Persona(models.Model):
     priority = models.IntegerField(null=True)
     aal_level = models.IntegerField(choices=AAL_LEVEL_CHOICES, default=1,
         help_text='Authentication Assurance Level per NIST SP 800-63')
+    tags = models.ManyToManyField(PersonaTag, blank=True, related_name='personas')
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
 

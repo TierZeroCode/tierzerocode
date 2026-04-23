@@ -22,7 +22,7 @@ from .integrations.user_integrations.MicrosoftEntraID import (
     getMicrosoftEntraIDGuests, getMicrosoftEntraIDGroups,
     getMicrosoftEntraIDApps, getMicrosoftEntraTenantDetails,
 )
-from .models import Control, ControlFramework, Device, DeviceComplianceSettings, Integration, Notification, SignInSummary, UserData, PersonaGroup, Persona
+from .models import Control, ControlFramework, Device, DeviceComplianceSettings, Integration, Notification, SignInSummary, UserData, PersonaGroup, Persona, PersonaTag
 from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosoftGraphConnection
 
 ############################################################################################
@@ -934,7 +934,8 @@ def generalSettings(request):
 		'notifications': Notification.objects.order_by('-created_at')[:10],
 		'devicecomps': compliance_settings,
 		'persona_groups': PersonaGroup.objects.all().order_by('group_name'),
-		'personas': Persona.objects.all().order_by('priority', 'persona_name'),
+		'personas': Persona.objects.prefetch_related('tags').order_by('priority', 'persona_name'),
+		'persona_tags': PersonaTag.objects.all(),
 		'users': users,
 		'integrationStatuses': integrationStatuses,
 		'is_superuser': request.user.is_superuser,
@@ -1817,5 +1818,55 @@ def delete_persona(request, id):
     # Preserve the tab in the redirect - check GET parameter or default
     current_tab = request.GET.get('tab', 'personas')
     return redirect(reverse('general-settings') + f'#{current_tab}')
+
+
+@login_required
+def add_persona_tag(request):
+    """Create a new PersonaTag."""
+    if request.method == 'POST':
+        name = request.POST.get('tag_name', '').strip()
+        if not name:
+            messages.error(request, 'Tag name is required.')
+        else:
+            _, created = PersonaTag.objects.get_or_create(name=name)
+            if created:
+                messages.success(request, f'Tag "{name}" added.')
+            else:
+                messages.info(request, f'Tag "{name}" already exists.')
+    return redirect(reverse('general-settings') + '#personas')
+
+
+@login_required
+def delete_persona_tag(request, tag_id):
+    """Delete a PersonaTag (removes it from all personas)."""
+    try:
+        tag = PersonaTag.objects.get(pk=tag_id)
+        tag.delete()
+        messages.success(request, f'Tag "{tag.name}" deleted.')
+    except PersonaTag.DoesNotExist:
+        messages.error(request, 'Tag not found.')
+    return redirect(reverse('general-settings') + '#personas')
+
+
+@login_required
+def toggle_persona_tag(request, persona_id):
+    """AJAX: add or remove a tag on a persona. Returns JSON."""
+    from django.http import JsonResponse
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        persona = Persona.objects.get(pk=persona_id)
+        tag = PersonaTag.objects.get(pk=request.POST.get('tag_id'))
+        if persona.tags.filter(pk=tag.pk).exists():
+            persona.tags.remove(tag)
+            action = 'removed'
+        else:
+            persona.tags.add(tag)
+            action = 'added'
+        return JsonResponse({'action': action, 'tag_id': tag.pk, 'tag_name': tag.name})
+    except (Persona.DoesNotExist, PersonaTag.DoesNotExist):
+        return JsonResponse({'error': 'Not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 ############################################################################################

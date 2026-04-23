@@ -65,6 +65,9 @@ urlpatterns = [
     # ============================================================================
     path('add-persona', views.add_persona, name='add_persona'),
     path('delete-persona/<int:id>', views.delete_persona, name='delete_persona'),
+    path('add-persona-tag', views.add_persona_tag, name='add_persona_tag'),
+    path('delete-persona-tag/<int:tag_id>', views.delete_persona_tag, name='delete_persona_tag'),
+    path('toggle-persona-tag/<int:persona_id>', views.toggle_persona_tag, name='toggle_persona_tag'),
     
     # ============================================================================
     # API Endpoints

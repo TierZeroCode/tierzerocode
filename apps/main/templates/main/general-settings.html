@@ -417,6 +417,7 @@
                                             <th class="text-left py-2 px-3 tz-section-label">Priority</th>
                                             <th class="text-left py-2 px-3 tz-section-label">AAL Level</th>
                                             <th class="text-left py-2 px-3 tz-section-label">Persona Name</th>
+                                            <th class="text-left py-2 px-3 tz-section-label">Tags</th>
                                             <th class="text-left py-2 px-3 tz-section-label">Created</th>
                                             <th class="text-left py-2 px-3 tz-section-label">Actions</th>
                                         </tr>
@@ -431,6 +432,32 @@
                                                 {% else %}<span class="tz-badge tz-badge-neutral">AAL1</span>{% endif %}
                                             </td>
                                             <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ persona.persona_name }}</td>
+                                            <td class="py-3 px-3">
+                                                <div class="flex items-center gap-1.5 flex-wrap relative">
+                                                    <div id="tags-{{ persona.id }}" class="flex items-center gap-1 flex-wrap">
+                                                        {% for tag in persona.tags.all %}
+                                                        <span class="persona-tag-badge inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600" data-tag-id="{{ tag.id }}">{{ tag.name }}</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                    {% if persona_tags %}
+                                                    <button type="button" class="tag-toggle-btn inline-flex items-center justify-center w-5 h-5 rounded border border-dashed border-slate-400 dark:border-slate-500 text-slate-400 dark:text-slate-500 hover:border-slate-600 dark:hover:border-slate-300 hover:text-slate-600 dark:hover:text-slate-300 text-xs leading-none flex-shrink-0" data-persona-id="{{ persona.id }}" title="Edit tags">+</button>
+                                                    <div id="tag-dropdown-{{ persona.id }}" class="tag-dropdown hidden absolute left-0 top-7 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-max">
+                                                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-1.5 px-1">Toggle tags</p>
+                                                        <div class="flex flex-col gap-1">
+                                                            {% for tag in persona_tags %}
+                                                            <button type="button"
+                                                                class="tag-pill-btn text-left text-xs px-2 py-1 rounded {% if tag in persona.tags.all %}bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900{% else %}text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700{% endif %}"
+                                                                data-persona-id="{{ persona.id }}"
+                                                                data-tag-id="{{ tag.id }}"
+                                                                data-tag-name="{{ tag.name }}">
+                                                                {{ tag.name }}
+                                                            </button>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
                                             <td class="py-3 px-3 text-slate-500">{{ persona.created_at|date:"M d, Y" }}</td>
                                             <td class="py-3 px-3">
                                                 <a href="{% url 'delete_persona' persona.id %}?tab=personas"
@@ -448,6 +475,38 @@
                             <div class="tz-empty-state py-8">
                                 <p class="tz-empty-state-description">No personas found. Add your first persona above.</p>
                             </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Manage Tags -->
+                    <div class="tz-card">
+                        <div class="tz-card-header">
+                            <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Manage Tags</h2>
+                        </div>
+                        <div class="tz-card-body">
+                            <form method="POST" action="{% url 'add_persona_tag' %}" class="flex gap-3 items-end mb-4">
+                                {% csrf_token %}
+                                <div class="flex-1 max-w-xs">
+                                    <label class="tz-form-label">New Tag Name</label>
+                                    <input type="text" name="tag_name" class="tz-form-input" placeholder="e.g. Privileged, Non-Human" required>
+                                </div>
+                                <button type="submit" class="tz-btn-primary">Add Tag</button>
+                            </form>
+                            {% if persona_tags %}
+                            <div class="flex flex-wrap gap-2">
+                                {% for tag in persona_tags %}
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300">
+                                    <span>{{ tag.name }}</span>
+                                    <a href="{% url 'delete_persona_tag' tag.id %}"
+                                       class="text-slate-400 hover:text-code-red-500 leading-none"
+                                       onclick="return confirm('Delete tag &quot;{{ tag.name }}&quot;? It will be removed from all personas.');"
+                                       title="Delete tag">&#x2715;</a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-xs text-slate-500 dark:text-slate-400">No tags yet. Add your first tag above.</p>
                             {% endif %}
                         </div>
                     </div>
@@ -810,5 +869,68 @@ function updateTabFields(tabName) {
         personaGroupTabField.value = 'persona-groups';
     }
 }
+
+// ── Persona tag dropdowns ─────────────────────────────────────────────────────
+function getCsrfToken() {
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    return el ? el.value : '';
+}
+
+document.querySelectorAll('.tag-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const personaId = this.dataset.personaId;
+        const dropdown = document.getElementById('tag-dropdown-' + personaId);
+        document.querySelectorAll('.tag-dropdown').forEach(d => {
+            if (d !== dropdown) d.classList.add('hidden');
+        });
+        dropdown.classList.toggle('hidden');
+    });
+});
+
+document.addEventListener('click', function() {
+    document.querySelectorAll('.tag-dropdown').forEach(d => d.classList.add('hidden'));
+});
+
+document.querySelectorAll('.tag-pill-btn').forEach(btn => {
+    btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const personaId = this.dataset.personaId;
+        const tagId    = this.dataset.tagId;
+        const tagName  = this.dataset.tagName;
+
+        try {
+            const resp = await fetch('/toggle-persona-tag/' + personaId, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'tag_id=' + tagId,
+            });
+            const data = await resp.json();
+            if (!resp.ok) return;
+
+            const badgeContainer = document.getElementById('tags-' + personaId);
+
+            if (data.action === 'added') {
+                this.classList.add('bg-slate-700', 'dark:bg-slate-200', 'text-white', 'dark:text-slate-900');
+                this.classList.remove('text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-100', 'dark:hover:bg-slate-700');
+                const badge = document.createElement('span');
+                badge.className = 'persona-tag-badge inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600';
+                badge.dataset.tagId = tagId;
+                badge.textContent = tagName;
+                badgeContainer.appendChild(badge);
+            } else {
+                this.classList.remove('bg-slate-700', 'dark:bg-slate-200', 'text-white', 'dark:text-slate-900');
+                this.classList.add('text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-100', 'dark:hover:bg-slate-700');
+                const badge = badgeContainer.querySelector('[data-tag-id="' + tagId + '"]');
+                if (badge) badge.remove();
+            }
+        } catch (err) {
+            console.error('Tag toggle failed:', err);
+        }
+    });
+});
 </script>
 {% endblock %}

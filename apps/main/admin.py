@@ -19,6 +19,7 @@ from apps.main.models import (
     Notification,
     Persona,
     PersonaGroup,
+    PersonaTag,
     QualysDevice,
     SignInSummary,
     SophosCentralDeviceData,
@@ -354,6 +355,12 @@ class PersonaAdmin(ImportExportModelAdmin):
 @admin.register(PersonaGroup)
 class PersonaGroupAdmin(ImportExportModelAdmin):
     resource_class = PersonaGroupResource
+
+
+@admin.register(PersonaTag)
+class PersonaTagAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
 
 
 @admin.register(UserData)
