@@ -133,6 +133,9 @@
     </aside>
     <!-- ═══ END SIDEBAR ═══ -->
 
+    <!-- Mobile sidebar backdrop -->
+    <div id="sidebar-backdrop" class="hidden fixed inset-0 z-20 bg-slate-950/50" onclick="toggleSidebar()"></div>
+
     <!-- ═══ MAIN ═══ -->
     <div id="main-content" class="flex-1 flex flex-col ml-56 transition-all duration-200 min-w-0">
 
@@ -306,17 +309,36 @@
     })();
 
     /* Sidebar */
+    (function() {
+      if (window.innerWidth < 768) {
+        var s = document.getElementById('sidebar');
+        var m = document.getElementById('main-content');
+        if (s) s.classList.add('-translate-x-full');
+        if (m) { m.classList.remove('ml-56'); m.classList.add('ml-0'); }
+      }
+    })();
+
     function toggleSidebar() {
       var s = document.getElementById('sidebar');
       var m = document.getElementById('main-content');
+      var bd = document.getElementById('sidebar-backdrop');
+      var isMobile = window.innerWidth < 768;
       if (s.classList.contains('-translate-x-full')) {
         s.classList.remove('-translate-x-full');
-        m.classList.add('ml-56');
-        m.classList.remove('ml-0');
+        if (isMobile) {
+          if (bd) bd.classList.remove('hidden');
+        } else {
+          m.classList.add('ml-56');
+          m.classList.remove('ml-0');
+        }
       } else {
         s.classList.add('-translate-x-full');
-        m.classList.remove('ml-56');
-        m.classList.add('ml-0');
+        if (isMobile) {
+          if (bd) bd.classList.add('hidden');
+        } else {
+          m.classList.remove('ml-56');
+          m.classList.add('ml-0');
+        }
       }
     }
 

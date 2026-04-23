@@ -134,3 +134,4 @@ django-api.js
 # Tailwind CSS CLI binary
 tailwindcss
 tailwindcss.exe
+.gstack/
