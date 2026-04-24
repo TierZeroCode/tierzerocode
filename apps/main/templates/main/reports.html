@@ -156,16 +156,22 @@ html.dark .ctrl-fw-toggle:hover { background: oklch(0.235 0.018 260); }
 .ctrl-fw-toggle.collapsed .ctrl-fw-chevron { transform: rotate(-90deg); }
 
 /* ── Category separator row ── */
+.ctrl-cat-row { cursor: pointer; user-select: none; }
 .ctrl-cat-row td {
     padding: 0.35rem 1rem;
     background: oklch(0.975 0.005 260);
     border-top: 1px solid oklch(0.915 0.012 260);
     border-bottom: 1px solid oklch(0.915 0.012 260);
+    transition: background 80ms;
 }
+.ctrl-cat-row:hover td { background: oklch(0.963 0.010 260); }
 html.dark .ctrl-cat-row td {
     background: oklch(0.235 0.018 260);
     border-color: oklch(0.295 0.025 260);
 }
+html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
+.ctrl-cat-chevron { transition: transform 150ms; flex-shrink: 0; }
+.ctrl-cat-row.collapsed .ctrl-cat-chevron { transform: rotate(-90deg); }
 </style>
 {% endblock %}
 
@@ -506,13 +512,18 @@ html.dark .ctrl-cat-row td {
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
                             {% for cat in group.categories %}
-                            <!-- Category separator row -->
+                            <!-- Category separator row (collapsible) -->
                             <tr class="ctrl-cat-row" data-ctrl-cat-header="{{ cat.name }}" data-ctrl-cat-fw="{{ group.framework.id }}">
                                 <td colspan="8">
-                                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ cat.name }}</span>
-                                    <span class="text-[10px] text-slate-400 dark:text-slate-500 ml-2">{{ cat.total }} controls</span>
-                                    {% if cat.failing > 0 %}<span class="ml-2 text-[10px] font-medium text-code-red-600 dark:text-code-red-400">{{ cat.failing }} failing</span>{% endif %}
-                                    {% if cat.passing > 0 %}<span class="ml-1 text-[10px] font-medium text-code-green-600 dark:text-code-green-400">{{ cat.passing }} passing</span>{% endif %}
+                                    <div class="flex items-center gap-2">
+                                        <svg class="ctrl-cat-chevron w-3 h-3 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">{{ cat.label }} ({{ cat.name }})</span>
+                                        <span class="text-[10px] text-slate-400 dark:text-slate-500">{{ cat.total }} controls</span>
+                                        {% if cat.failing > 0 %}<span class="text-[10px] font-medium text-code-red-600 dark:text-code-red-400">· {{ cat.failing }} failing</span>{% endif %}
+                                        {% if cat.passing > 0 %}<span class="text-[10px] font-medium text-code-green-600 dark:text-code-green-400">· {{ cat.passing }} passing</span>{% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% for ctrl in cat.controls %}
@@ -659,6 +670,7 @@ html.dark .ctrl-cat-row td {
                             {% for row in ""|ljust:1 %}{% endfor %}
                             <tr><td class="py-2 px-4 font-medium tabular-nums text-slate-900 dark:text-slate-100">AAL</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Authenticator Assurance Level — NIST SP 800-63 classification of MFA strength (AAL1/AAL2/AAL3)</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">AD</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Active Directory — Microsoft on-premises identity and directory service</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">ALM</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Authenticator Lifecycle Management — controls governing how authenticators are bound, maintained, and revoked over their lifetime (NIST SP 800-63B-4 §4)</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">CA</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Conditional Access — policy engine in Entra ID that grants or blocks access based on signals</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">CISO</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Chief Information Security Officer</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">CODE</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Correlation of Distributed Endpoints — the name of this platform</td></tr>
@@ -667,11 +679,53 @@ html.dark .ctrl-cat-row td {
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">ITGC</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">IT General Controls — SOX controls covering access, change management, and operations</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">MDM</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Mobile Device Management — platform for enrolling and managing endpoints (e.g. Microsoft Intune)</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">MFA</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Multi-Factor Authentication — requiring two or more verification factors to authenticate</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">PHR</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Phishing-Resistant Authentication — hardware-bound authenticators (FIDO2, WHfB, PIV) that cannot be intercepted or replayed by a phishing attack (NIST SP 800-63B-4 §3.2)</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">PSO</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Password Settings Object — AD object representing a Fine-Grained Password Policy</td></tr>
+                            <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">PWD</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Password Controls — memorized secret requirements covering length, complexity, blocklists, and prohibited practices (NIST SP 800-63B-4 §3.1)</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">SOX</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Sarbanes-Oxley Act — U.S. law requiring financial reporting controls, including IT controls</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">SSO</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Single Sign-On — authentication scheme that allows one login to access multiple systems</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">UPN</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">User Principal Name — the user's login identifier in format user@domain.com</td></tr>
                             <tr><td class="py-2 px-4 font-medium text-slate-900 dark:text-slate-100">ZT</td><td class="py-2 px-4 text-slate-600 dark:text-slate-400">Zero Trust — security model that requires continuous verification regardless of network location</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Control Categories -->
+            <div class="tz-card">
+                <div class="tz-card-header">
+                    <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Control Categories</h2>
+                </div>
+                <div class="tz-card-body p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:9rem">Category</th>
+                                <th class="text-left py-2 px-4 tz-section-label">Description</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:12rem">Source</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Authenticator Assurance Level <span class="text-slate-400 dark:text-slate-500 font-normal">(AAL)</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Controls that enforce the strength and binding of authentication methods. Covers MFA enforcement, phishing-resistant requirements (AAL2/AAL3), reauthentication intervals, and verifier impersonation resistance.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400 dark:text-slate-500">NIST SP 800-63B-4 §3.2</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Authenticator Lifecycle Management <span class="text-slate-400 dark:text-slate-500 font-normal">(ALM)</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Controls governing how authenticators are issued, bound to accounts, updated, and revoked. Includes enrollment binding, multi-authenticator support, post-enrollment changes, and account recovery procedures.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400 dark:text-slate-500">NIST SP 800-63B-4 §4</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Phishing-Resistant Authentication <span class="text-slate-400 dark:text-slate-500 font-normal">(PHR)</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Controls specific to hardware-bound, non-exportable authenticator requirements. Covers non-exportable key storage (SE, TEE, TPM), hardware token attestation, and verifier-impersonation-resistant channel binding at AAL3.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400 dark:text-slate-500">NIST SP 800-63B-4 §3.2.13</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">Password Controls <span class="text-slate-400 dark:text-slate-500 font-normal">(PWD)</span></td>
+                                <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">Controls for memorized secret (password) verifier requirements. Covers minimum length, complexity rules, breach/blocklist checking, prohibited practices (KBA, hints, forced rotation), and secure storage requirements.</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400 dark:text-slate-500">NIST SP 800-63B-4 §3.1</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -967,6 +1021,15 @@ html.dark .ctrl-cat-row td {
             hdr.classList.toggle('hidden', !catVisible[key]);
         });
 
+        /* Re-hide rows belonging to a collapsed category (collapse + filter compose) */
+        document.querySelectorAll('.ctrl-cat-row.collapsed').forEach(function (catRow) {
+            var catName = catRow.dataset.ctrlCatHeader;
+            var fwId    = catRow.dataset.ctrlCatFw;
+            document.querySelectorAll('[data-ctrl-cat="' + catName + '"][data-ctrl-fw="' + fwId + '"]').forEach(function (r) {
+                r.classList.add('hidden');
+            });
+        });
+
         var countEl = document.getElementById('ctrl-count');
         if (countEl) {
             countEl.textContent = visible === total
@@ -1108,6 +1171,14 @@ html.dark .ctrl-cat-row td {
                 if (!body) return;
                 var collapsed = body.classList.toggle('hidden');
                 btn.classList.toggle('collapsed', collapsed);
+            });
+        });
+
+        /* Category collapsible toggles */
+        document.querySelectorAll('.ctrl-cat-row').forEach(function (row) {
+            row.addEventListener('click', function () {
+                row.classList.toggle('collapsed');
+                applyFilters();
             });
         });
 
