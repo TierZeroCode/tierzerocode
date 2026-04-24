@@ -585,6 +585,13 @@ def reports(request):
 
 	from itertools import groupby as _groupby
 
+	_CATEGORY_LABELS = {
+		'AAL': 'Authenticator Assurance Level',
+		'ALM': 'Authenticator Lifecycle Management',
+		'PHR': 'Phishing-Resistant Authentication',
+		'PWD': 'Password Controls',
+	}
+
 	framework_stats = []
 	controls_grouped = []
 	for fw in frameworks.order_by('name'):
@@ -618,6 +625,7 @@ def reports(request):
 			cat_failing = sum(1 for c in cat_list if c.status == 'failing')
 			categories.append({
 				'name': cat_key,
+				'label': _CATEGORY_LABELS.get(cat_key, cat_key),
 				'total': len(cat_list),
 				'passing': cat_passing,
 				'failing': cat_failing,
