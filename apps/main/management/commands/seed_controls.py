@@ -33,6 +33,7 @@ CONTROLS = [
         'target': '100%',
         'amber_threshold': '< 100%',
         'red_threshold': '< 95%',
+        'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'aal_02_1',
     },
 ]

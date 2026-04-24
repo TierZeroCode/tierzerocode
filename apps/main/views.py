@@ -827,6 +827,19 @@ def update_control_view(request, control_id):
 
 ############################################################################################
 
+_DATA_SOURCE_LOGOS = {
+	'Microsoft Entra ID':                'main/img/integration_images/webp/microsoft_entra_id_logo.webp',
+	'Microsoft Intune':                  'main/img/integration_images/webp/microsoft_intune_logo.webp',
+	'Microsoft Defender for Endpoint':   'main/img/integration_images/webp/microsoft_defender_for_endpoint_logo.webp',
+	'CrowdStrike Falcon':                'main/img/integration_images/webp/crowdstrike_falcon_logo.webp',
+	'Cloudflare Zero Trust':             'main/img/integration_images/webp/cloudflare_zero_trust_logo.webp',
+	'Sophos Central':                    'main/img/integration_images/webp/sophos_central_logo.webp',
+	'Qualys':                            'main/img/integration_images/webp/qualys_logo.webp',
+	'Tailscale':                         'main/img/integration_images/webp/tailscale_logo.webp',
+	'Active Directory':                  'main/img/integration_images/webp/active_directory_logo.webp',
+}
+
+
 @login_required
 def control_detail(request, control_id):
 	"""Show detailed view of a single control with underlying data."""
@@ -852,10 +865,17 @@ def control_detail(request, control_id):
 	if detail_data:
 		detail_data = {k: v for k, v in detail_data.items() if not k.startswith('_')}
 
+	# Build data source tiles (name + logo path)
+	data_source_tiles = [
+		{'name': name, 'logo': _DATA_SOURCE_LOGOS.get(name)}
+		for name in (ctrl.data_sources or [])
+	]
+
 	context = {
 		'page': 'reports',
 		'ctrl': ctrl,
 		'detail': detail_data,
+		'data_source_tiles': data_source_tiles,
 		'notifications': Notification.objects.all().order_by('-created_at')[:10],
 	}
 	return render(request, 'main/control-detail.html', context)

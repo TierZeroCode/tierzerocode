@@ -616,6 +616,9 @@ class Control(models.Model):
     manual_notes = models.TextField(null=True, blank=True,
         help_text='Evidence, context, or rationale for the manual override.')
 
+    data_sources = models.JSONField(default=list, blank=True,
+        help_text='List of data source names, e.g. ["Microsoft Entra ID", "CrowdStrike Falcon"].')
+
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
 
