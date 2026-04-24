@@ -254,7 +254,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         <a href="{% url 'control_export_noncompliant' ctrl.control_id %}" class="tz-btn-secondary text-xs py-1 px-2.5">Export XLSX</a>
     </div>
     <div class="tz-card-body p-0 overflow-x-auto">
-        <table class="w-full text-sm">
+        <table id="failing-table" class="w-full text-sm">
             <thead>
                 <tr class="border-b border-slate-200 dark:border-slate-700/50">
                     <th class="text-left py-2 px-4 tz-section-label">UPN</th>
@@ -277,6 +277,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
             </tbody>
         </table>
     </div>
+    <div id="failing-pagination" class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400"></div>
 </div>
 {% endif %}
 
@@ -287,7 +288,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         <h2 class="text-sm font-semibold text-code-green-700 dark:text-code-green-400">Compliant ({{ detail.passing_count }})</h2>
     </div>
     <div class="tz-card-body p-0 overflow-x-auto">
-        <table class="w-full text-sm">
+        <table id="passing-table" class="w-full text-sm">
             <thead>
                 <tr class="border-b border-slate-200 dark:border-slate-700/50">
                     <th class="text-left py-2 px-4 tz-section-label">UPN</th>
@@ -318,6 +319,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
             </tbody>
         </table>
     </div>
+    <div id="passing-pagination" class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400"></div>
 </div>
 {% endif %}
 
@@ -401,6 +403,43 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         if (!slot) return;
         var pct = parseGaugePct(slot.dataset.current, slot.dataset.target, slot.dataset.status);
         slot.innerHTML = makeGaugeSVG(pct, slot.dataset.status, slot.dataset.target);
+    });
+})();
+</script>
+<script>
+(function () {
+    var PAGE_SIZE = 50;
+
+    function paginate(tableId, barId) {
+        var table = document.getElementById(tableId);
+        var bar = document.getElementById(barId);
+        if (!table || !bar) return;
+        var rows = Array.from(table.tBodies[0].rows);
+        var total = rows.length;
+        if (total <= PAGE_SIZE) return; // no pagination needed
+        var page = 0;
+        var pages = Math.ceil(total / PAGE_SIZE);
+
+        function render() {
+            var start = page * PAGE_SIZE;
+            var end = Math.min(start + PAGE_SIZE, total);
+            rows.forEach(function (r, i) { r.style.display = (i >= start && i < end) ? '' : 'none'; });
+            bar.innerHTML =
+                '<span>' + (start + 1) + '–' + end + ' of ' + total + '</span>' +
+                '<span class="flex gap-2">' +
+                '<button id="' + barId + '-prev" class="tz-btn-secondary text-xs py-0.5 px-2" ' + (page === 0 ? 'disabled' : '') + '>← Prev</button>' +
+                '<span class="py-0.5 px-1">' + (page + 1) + ' / ' + pages + '</span>' +
+                '<button id="' + barId + '-next" class="tz-btn-secondary text-xs py-0.5 px-2" ' + (page >= pages - 1 ? 'disabled' : '') + '>Next →</button>' +
+                '</span>';
+            bar.querySelector('#' + barId + '-prev').addEventListener('click', function () { if (page > 0) { page--; render(); } });
+            bar.querySelector('#' + barId + '-next').addEventListener('click', function () { if (page < pages - 1) { page++; render(); } });
+        }
+        render();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        paginate('failing-table', 'failing-pagination');
+        paginate('passing-table', 'passing-pagination');
     });
 })();
 </script>

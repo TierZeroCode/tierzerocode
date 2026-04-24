@@ -175,14 +175,14 @@ def aal_03_detail():
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
         'mobilePhone_authentication_method',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
         'email_authentication_method',
         'securityQuestion_authentication_method',
         'highest_authentication_strength',
-    )[:100])
+    ))
 
     policy_note = ''
     if policy:
@@ -304,13 +304,13 @@ def aal_02_detail():
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
         'mobilePhone_authentication_method',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
         'persona__aal_level', 'isMfaRegistered', 'isMfaCapable',
         'highest_authentication_strength',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -362,7 +362,7 @@ def aal_05_detail():
         'passKeyDeviceBoundAuthenticator_authentication_method',
         'windowsHelloforBusiness_authentication_method',
         'highest_authentication_strength',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -371,7 +371,7 @@ def aal_05_detail():
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
         'mobilePhone_authentication_method',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -434,8 +434,8 @@ def aal_04_detail():
         'total': total,
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
-        'failing_users': list(failing_qs.values(*common_fields)[:100]),
-        'passing_users': list(passing_qs.values(*common_fields)[:100]),
+        'failing_users': list(failing_qs.values(*common_fields)),
+        'passing_users': list(passing_qs.values(*common_fields)),
         'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have at least one hardware-bound, non-exportable authenticator. Hardware FIDO2 security keys and WHfB (with TPM) are hardware-bound. Syncable passkeys (MS Authenticator) are software-backed and do not qualify.',
         'qualifying_methods': 'passKeyDeviceBound (hardware FIDO2 security key with SE/TPM), windowsHelloforBusiness (TPM 2.0 bound)',
         'disqualifying_methods': 'passKeyDeviceBoundAuthenticator (device-bound but software keychain — syncable), MS Authenticator push, OTP, phone/SMS',
@@ -490,7 +490,7 @@ def phr_04_detail():
         'windowsHelloforBusiness_authentication_method',
         'passKeyDeviceBoundAuthenticator_authentication_method',
         'highest_authentication_strength',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -500,7 +500,7 @@ def phr_04_detail():
         'softwareOneTimePasscode_authentication_method',
         'mobilePhone_authentication_method',
         'highest_authentication_strength',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -553,8 +553,8 @@ def alm_01_detail():
         'total': total,
         'passing_count': passing.count(),
         'failing_count': failing.count(),
-        'failing_users': list(failing[:100]),
-        'passing_users': list(passing[:100]),
+        'failing_users': list(failing),
+        'passing_users': list(passing),
         'logic': 'Users with at least one authentication method registered (passkey, WHfB, MS Authenticator, OTP, or phone).',
         'auth_fields': [
             ('passKeyDeviceBound_authentication_method', 'FIDO2 Security Key'),
@@ -635,8 +635,8 @@ def alm_02_detail():
         'total': total,
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
-        'failing_users': list(failing_qs.values(*common_fields)[:100]),
-        'passing_users': list(passing_qs.values(*common_fields)[:100]),
+        'failing_users': list(failing_qs.values(*common_fields)),
+        'passing_users': list(passing_qs.values(*common_fields)),
         'logic': 'NIST 800-63B-4 § 4.1.2.1: CSPs SHALL permit and SHOULD encourage binding of multiple authenticators. This measures accounts with at least 2 distinct authentication methods registered. Target: >90%.',
         'qualifying_methods': 'All 10 Entra ID auth method types count: FIDO2, Passkey, WHfB, MS Authenticator (passwordless), MS Authenticator (push), Software OTP, Temporary Access Pass, Mobile Phone, Email, Security Questions',
         'threshold': '>90%',
@@ -689,8 +689,8 @@ def aal_04_detail():
         'total': total,
         'passing_count': passing.count(),
         'failing_count': failing.count(),
-        'failing_users': list(failing[:100]),
-        'passing_users': list(passing[:100]),
+        'failing_users': list(failing),
+        'passing_users': list(passing),
         'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have hardware-bound phishing-resistant authenticators. FIDO2 device-bound keys and Windows Hello for Business qualify. Syncable passkeys do NOT qualify for AAL3.',
         'qualifying_methods': 'Hardware FIDO2 (passKeyDeviceBound) or Windows Hello for Business (windowsHelloforBusiness)',
         'disqualifying_methods': 'Syncable passkeys (passKeyDeviceBoundAuthenticator) do not meet AAL3 requirements.',
@@ -832,7 +832,7 @@ def alm_06_detail():
         'mobilePhone_authentication_method',
         'email_authentication_method',
         'securityQuestion_authentication_method',
-    )[:100])
+    ))
 
     # Also show users who have phone + a stronger method (compliant)
     phone_with_stronger = UserData.objects.filter(
@@ -849,7 +849,7 @@ def alm_06_detail():
         'microsoftAuthenticatorPasswordless_authentication_method',
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -913,8 +913,8 @@ def aal_09_detail():
         'total': total,
         'failing_count': failing_qs.count(),
         'passing_count': passing_qs.count(),
-        'failing_users': list(failing_qs.values(*common)[:100]),
-        'passing_users': list(passing_qs.values(*common)[:100]),
+        'failing_users': list(failing_qs.values(*common)),
+        'passing_users': list(passing_qs.values(*common)),
         'logic': (
             'NIST 800-63B-4 § 2.3.2: syncable authenticators SHALL NOT be used at AAL3. '
             'Microsoft Graph reports three passkey types: Passkey (other device-bound) = hardware FIDO2 key (permitted); '
@@ -973,7 +973,7 @@ def aal_11_detail():
         'microsoftAuthenticatorPasswordless_authentication_method',
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -981,7 +981,7 @@ def aal_11_detail():
         'mobilePhone_authentication_method',
         'email_authentication_method',
         'temporaryAccessPass_authentication_method',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -1053,7 +1053,7 @@ def aal_07_detail():
         'microsoftAuthenticatorPasswordless_authentication_method',
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -1062,7 +1062,7 @@ def aal_07_detail():
         'mobilePhone_authentication_method',
         'email_authentication_method',
         'temporaryAccessPass_authentication_method',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -1131,7 +1131,7 @@ def aal_06_detail():
         'microsoftAuthenticatorPasswordless_authentication_method',
         'microsoftAuthenticatorPush_authentication_method',
         'softwareOneTimePasscode_authentication_method',
-    )[:100])
+    ))
 
     failing = list(failing_qs.values(
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
@@ -1139,7 +1139,7 @@ def aal_06_detail():
         'highest_authentication_strength',
         'mobilePhone_authentication_method',
         'email_authentication_method',
-    )[:100])
+    ))
 
     return {
         'total': total,
@@ -1282,7 +1282,7 @@ def pwd_08_detail():
     failing = list(kba_users.values(
         'upn', 'given_name', 'surname', 'persona__persona_name',
         'highest_authentication_strength', 'securityQuestion_authentication_method',
-    )[:100])
+    ))
 
     policy_note = ''
     if policy:
