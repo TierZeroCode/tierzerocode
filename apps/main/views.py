@@ -583,24 +583,56 @@ def reports(request):
 	controls_not_measured = controls.filter(status='not_measured').count() + controls.filter(status__isnull=True).count()
 	controls_pass_pct = round(controls_passing / controls_total * 100) if controls_total > 0 else 0
 
+	from itertools import groupby as _groupby
+
 	framework_stats = []
+	controls_grouped = []
 	for fw in frameworks.order_by('name'):
-		fw_controls = controls.filter(framework=fw)
-		fw_total = fw_controls.count()
+		fw_controls_qs = controls.filter(framework=fw)
+		fw_total = fw_controls_qs.count()
 		if fw_total == 0:
 			continue
-		fw_passing = fw_controls.filter(status='passing').count()
-		fw_failing = fw_controls.filter(status='failing').count()
+		fw_passing = fw_controls_qs.filter(status='passing').count()
+		fw_failing = fw_controls_qs.filter(status='failing').count()
 		fw_not_measured = fw_total - fw_passing - fw_failing
+		fw_pass_pct = round(fw_passing / fw_total * 100) if fw_total > 0 else 0
+		fw_fail_pct = round(fw_failing / fw_total * 100) if fw_total > 0 else 0
+		fw_nm_pct = round(fw_not_measured / fw_total * 100) if fw_total > 0 else 0
+
 		framework_stats.append({
 			'framework': fw,
 			'total': fw_total,
 			'passing': fw_passing,
 			'failing': fw_failing,
 			'not_measured': fw_not_measured,
-			'pass_pct': round(fw_passing / fw_total * 100) if fw_total > 0 else 0,
-			'fail_pct': round(fw_failing / fw_total * 100) if fw_total > 0 else 0,
-			'nm_pct': round(fw_not_measured / fw_total * 100) if fw_total > 0 else 0,
+			'pass_pct': fw_pass_pct,
+			'fail_pct': fw_fail_pct,
+			'nm_pct': fw_nm_pct,
+		})
+
+		fw_controls_list = list(fw_controls_qs.order_by('control_id'))
+		categories = []
+		for cat_key, cat_iter in _groupby(fw_controls_list, key=lambda c: c.control_id.split('-')[0] if '-' in c.control_id else 'OTHER'):
+			cat_list = list(cat_iter)
+			cat_passing = sum(1 for c in cat_list if c.status == 'passing')
+			cat_failing = sum(1 for c in cat_list if c.status == 'failing')
+			categories.append({
+				'name': cat_key,
+				'total': len(cat_list),
+				'passing': cat_passing,
+				'failing': cat_failing,
+				'not_measured': len(cat_list) - cat_passing - cat_failing,
+				'controls': cat_list,
+			})
+
+		controls_grouped.append({
+			'framework': fw,
+			'total': fw_total,
+			'passing': fw_passing,
+			'failing': fw_failing,
+			'not_measured': fw_not_measured,
+			'pass_pct': fw_pass_pct,
+			'categories': categories,
 		})
 
 	failing_controls = controls.filter(status='failing').order_by('framework__name', 'control_id')
@@ -629,6 +661,7 @@ def reports(request):
 		'controls_not_measured': controls_not_measured,
 		'controls_pass_pct': controls_pass_pct,
 		'framework_stats': framework_stats,
+		'controls_grouped': controls_grouped,
 		'failing_controls': failing_controls,
 	}
 	return render(request, 'main/reports.html', context)
