@@ -579,8 +579,9 @@ def reports(request):
 	# CISO aggregates
 	controls_total = controls.count()
 	controls_passing = controls.filter(status='passing').count()
+	controls_warning = controls.filter(status='warning').count()
 	controls_failing = controls.filter(status='failing').count()
-	controls_not_measured = controls.filter(status='not_measured').count() + controls.filter(status__isnull=True).count()
+	controls_not_measured = controls.filter(status__in=['not_measured', '']).count() + controls.filter(status__isnull=True).count()
 	controls_pass_pct = round(controls_passing / controls_total * 100) if controls_total > 0 else 0
 
 	from itertools import groupby as _groupby
@@ -600,8 +601,9 @@ def reports(request):
 		if fw_total == 0:
 			continue
 		fw_passing = fw_controls_qs.filter(status='passing').count()
+		fw_warning = fw_controls_qs.filter(status='warning').count()
 		fw_failing = fw_controls_qs.filter(status='failing').count()
-		fw_not_measured = fw_total - fw_passing - fw_failing
+		fw_not_measured = fw_total - fw_passing - fw_warning - fw_failing
 		fw_pass_pct = round(fw_passing / fw_total * 100) if fw_total > 0 else 0
 		fw_fail_pct = round(fw_failing / fw_total * 100) if fw_total > 0 else 0
 		fw_nm_pct = round(fw_not_measured / fw_total * 100) if fw_total > 0 else 0
@@ -610,6 +612,7 @@ def reports(request):
 			'framework': fw,
 			'total': fw_total,
 			'passing': fw_passing,
+			'warning': fw_warning,
 			'failing': fw_failing,
 			'not_measured': fw_not_measured,
 			'pass_pct': fw_pass_pct,
@@ -622,14 +625,16 @@ def reports(request):
 		for cat_key, cat_iter in _groupby(fw_controls_list, key=lambda c: c.control_id.split('-')[0] if '-' in c.control_id else 'OTHER'):
 			cat_list = list(cat_iter)
 			cat_passing = sum(1 for c in cat_list if c.status == 'passing')
+			cat_warning = sum(1 for c in cat_list if c.status == 'warning')
 			cat_failing = sum(1 for c in cat_list if c.status == 'failing')
 			categories.append({
 				'name': cat_key,
 				'label': _CATEGORY_LABELS.get(cat_key, cat_key),
 				'total': len(cat_list),
 				'passing': cat_passing,
+				'warning': cat_warning,
 				'failing': cat_failing,
-				'not_measured': len(cat_list) - cat_passing - cat_failing,
+				'not_measured': len(cat_list) - cat_passing - cat_warning - cat_failing,
 				'controls': cat_list,
 			})
 
@@ -637,6 +642,7 @@ def reports(request):
 			'framework': fw,
 			'total': fw_total,
 			'passing': fw_passing,
+			'warning': fw_warning,
 			'failing': fw_failing,
 			'not_measured': fw_not_measured,
 			'pass_pct': fw_pass_pct,
@@ -665,6 +671,7 @@ def reports(request):
 		'frameworks': frameworks,
 		'controls_total': controls_total,
 		'controls_passing': controls_passing,
+		'controls_warning': controls_warning,
 		'controls_failing': controls_failing,
 		'controls_not_measured': controls_not_measured,
 		'controls_pass_pct': controls_pass_pct,

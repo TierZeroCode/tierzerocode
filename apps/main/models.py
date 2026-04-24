@@ -586,10 +586,15 @@ class Control(models.Model):
     indicator = models.TextField(null=True, blank=True)
     measurement_method = models.TextField(null=True, blank=True)
     target = models.CharField(max_length=200, default='100%')
+    amber_threshold = models.CharField(max_length=100, null=True, blank=True,
+        help_text='Amber alert threshold, e.g. "< 100%". Display only.')
+    red_threshold = models.CharField(max_length=100, null=True, blank=True,
+        help_text='Red alert threshold, e.g. "< 95%". Display only.')
     current_value = models.CharField(max_length=50, null=True, blank=True)
 
     STATUS_CHOICES = (
         ('passing', 'Passing'),
+        ('warning', 'Warning'),
         ('failing', 'Failing'),
         ('not_measured', 'Not Measured'),
     )

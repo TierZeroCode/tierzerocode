@@ -444,6 +444,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                     <div class="flex gap-1" id="ctrl-status-filters">
                         <button class="ctrl-pill" data-group="status" data-value="all">All</button>
                         <button class="ctrl-pill" data-group="status" data-value="passing">Passing</button>
+                        <button class="ctrl-pill" data-group="status" data-value="warning">Warning</button>
                         <button class="ctrl-pill" data-group="status" data-value="failing">Failing</button>
                         <button class="ctrl-pill" data-group="status" data-value="not_measured">Not Measured</button>
                     </div>
@@ -484,6 +485,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                             <div class="h-full bg-code-green-500 rounded-full" style="width:{{ group.pass_pct }}%"></div>
                         </div>
                         {% if group.failing > 0 %}<span class="text-[11px] font-medium text-code-red-600 dark:text-code-red-400">{{ group.failing }} Failing</span>{% endif %}
+                        {% if group.warning > 0 %}<span class="text-[11px] font-medium text-code-amber-600 dark:text-code-amber-400">{{ group.warning }} Warning</span>{% endif %}
                         <span class="text-[11px] font-medium text-code-green-600 dark:text-code-green-400">{{ group.passing }} Passing</span>
                         <span class="text-[11px] text-slate-400">{{ group.total }} total</span>
                     </div>
@@ -521,6 +523,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                         <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">{{ cat.label }} ({{ cat.name }})</span>
                                         <span class="text-[10px] text-slate-400 dark:text-slate-500">{{ cat.total }} controls</span>
                                         {% if cat.failing > 0 %}<span class="text-[10px] font-medium text-code-red-600 dark:text-code-red-400">· {{ cat.failing }} failing</span>{% endif %}
+                                        {% if cat.warning > 0 %}<span class="text-[10px] font-medium text-code-amber-600 dark:text-code-amber-400">· {{ cat.warning }} warning</span>{% endif %}
                                         {% if cat.passing > 0 %}<span class="text-[10px] font-medium text-code-green-600 dark:text-code-green-400">· {{ cat.passing }} passing</span>{% endif %}
                                     </div>
                                 </td>
@@ -549,6 +552,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 </td>
                                 <td class="py-2.5 px-4 ctrl-status-cell">
                                     {% if ctrl.status == 'passing' %}<span class="tz-badge tz-badge-success">Passing</span>
+                                    {% elif ctrl.status == 'warning' %}<span class="tz-badge tz-badge-warning">Warning</span>
                                     {% elif ctrl.status == 'failing' %}<span class="tz-badge tz-badge-danger">Failing</span>
                                     {% else %}<span class="tz-badge tz-badge-neutral">Not Measured</span>{% endif %}
                                 </td>
@@ -1271,6 +1275,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                         if (statusCell) {
                             var badgeMap = {
                                 'passing':     '<span class="tz-badge tz-badge-success">Passing</span>',
+                                'warning':     '<span class="tz-badge tz-badge-warning">Warning</span>',
                                 'failing':     '<span class="tz-badge tz-badge-danger">Failing</span>',
                                 'not_measured':'<span class="tz-badge tz-badge-neutral">Not Measured</span>',
                             };

@@ -664,6 +664,80 @@ def alm_02_detail():
     }
 
 
+def aal_02_1():
+    """AAL-2.1: % of AAL2-scoped accounts with isMfaRegistered=True.
+
+    NIST SP 800-63B-4 § 2.2.1: AAL2 authentication SHALL use either a
+    multi-factor authenticator or a combination of two separate single-factor
+    authenticators. Scoped strictly to personas with aal_level=2 (not admins).
+
+    Target: 100% — amber at <100%, red at <95%.
+    """
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    registered = base_qs.filter(isMfaRegistered=True).count()
+    pct = round(registered / total * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 95:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{registered}/{total} ({pct}%)', status)
+
+
+def aal_02_1_detail():
+    """Return detailed data for AAL-2.1: AAL2-scoped accounts with MFA registered."""
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return {
+            'total': 0,
+            'passing_count': 0,
+            'failing_count': 0,
+            '_fail_qs': None,
+            '_fail_fields': (),
+            '_pass_qs': None,
+            '_pass_fields': (),
+            'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
+        }
+
+    failing_qs = base_qs.filter(isMfaRegistered__in=[False, None])
+    passing_qs = base_qs.filter(isMfaRegistered=True)
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'isMfaRegistered',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'logic': 'NIST SP 800-63B-4 § 2.2.1: AAL2 authentication SHALL use either a multi-factor authenticator or a combination of two separate single-factor authenticators. Scoped to AAL2-assigned personas only. Target: 100% — all AAL2 accounts must have at least one MFA method registered.',
+        'qualifying_methods': 'isMfaRegistered flag from Entra ID registration report (any non-password MFA method: FIDO2, WHfB, MS Authenticator passwordless/push, Software OTP, Mobile Phone, Email)',
+        'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
+        'threshold': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
+    }
+
+
 def alm_03_detail():
     """Return detailed data for ALM-02."""
     summary = SignInSummary.objects.first()

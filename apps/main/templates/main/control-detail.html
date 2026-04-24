@@ -34,6 +34,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
     <div class="flex items-center gap-3">
         <h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100">{{ ctrl.control_id }}</h1>
         {% if ctrl.status == 'passing' %}<span class="tz-badge tz-badge-success">Passing</span>
+        {% elif ctrl.status == 'warning' %}<span class="tz-badge tz-badge-warning">Warning</span>
         {% elif ctrl.status == 'failing' %}<span class="tz-badge tz-badge-danger">Failing</span>
         {% else %}<span class="tz-badge tz-badge-neutral">Not Measured</span>{% endif %}
     </div>
@@ -77,6 +78,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 mb-0.5 text-center">Current</p>
             <p class="text-sm font-semibold text-center
                 {% if ctrl.status == 'passing' %}text-code-green-600 dark:text-code-green-400
+                {% elif ctrl.status == 'warning' %}text-code-amber-600 dark:text-code-amber-400
                 {% elif ctrl.status == 'failing' %}text-code-red-600 dark:text-code-red-400
                 {% else %}text-slate-500 dark:text-slate-400{% endif %}">
                 {{ ctrl.current_value|default:"—" }}
@@ -95,7 +97,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         </div>
         <div class="flex items-center gap-4 text-sm">
             <span class="text-slate-500">Target: <span class="font-semibold text-slate-900 dark:text-slate-100">{{ ctrl.target }}</span></span>
-            <span class="text-slate-500">Current: <span class="font-semibold {% if ctrl.status == 'passing' %}text-code-green-600 dark:text-code-green-400{% elif ctrl.status == 'failing' %}text-code-red-600 dark:text-code-red-400{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ ctrl.current_value|default:"-" }}</span></span>
+            <span class="text-slate-500">Current: <span class="font-semibold {% if ctrl.status == 'passing' %}text-code-green-600 dark:text-code-green-400{% elif ctrl.status == 'warning' %}text-code-amber-600 dark:text-code-amber-400{% elif ctrl.status == 'failing' %}text-code-red-600 dark:text-code-red-400{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ ctrl.current_value|default:"-" }}</span></span>
         </div>
     </div>
     {% if ctrl.use_manual and ctrl.manual_notes %}
@@ -114,6 +116,25 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
             {% endif %}
             {% if detail.disqualifying_methods %}
             <p class="text-xs text-code-red-700 dark:text-code-red-400 mt-1">Non-qualifying: {{ detail.disqualifying_methods }}</p>
+            {% endif %}
+            {% if detail.scope %}
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Scope: {{ detail.scope }}</p>
+            {% endif %}
+            {% if ctrl.amber_threshold or ctrl.red_threshold %}
+            <div class="flex items-center gap-4 mt-2">
+                {% if ctrl.amber_threshold %}
+                <span class="inline-flex items-center gap-1 text-xs">
+                    <span class="w-2 h-2 rounded-full bg-code-amber-400 shrink-0"></span>
+                    <span class="text-slate-500 dark:text-slate-400">Amber: <span class="font-medium text-slate-700 dark:text-slate-300">{{ ctrl.amber_threshold }}</span></span>
+                </span>
+                {% endif %}
+                {% if ctrl.red_threshold %}
+                <span class="inline-flex items-center gap-1 text-xs">
+                    <span class="w-2 h-2 rounded-full bg-code-red-400 shrink-0"></span>
+                    <span class="text-slate-500 dark:text-slate-400">Red: <span class="font-medium text-slate-700 dark:text-slate-300">{{ ctrl.red_threshold }}</span></span>
+                </span>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
         {% endif %}

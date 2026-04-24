@@ -84,6 +84,18 @@ class Command(BaseCommand):
                 'evaluator': 'aal_02',
             },
             {
+                'control_id': 'AAL-2.1',
+                'domain': 'AAL2 — MFA Registration',
+                'statement': 'AAL2 authentication SHALL use either a multi-factor authenticator or a combination of two separate authenticators.',
+                'source_reference': 'SP 800-63B-4 § 2.2.1',
+                'indicator': '% of AAL2-scoped user accounts with ≥1 approved MFA method registered',
+                'measurement_method': 'Entra ID authentication methods registration report — filter to AAL2-scoped users, count those with at least one non-password MFA method',
+                'target': '100%',
+                'amber_threshold': '< 100%',
+                'red_threshold': '< 95%',
+                'evaluator': 'aal_02_1',
+            },
+            {
                 'control_id': 'AAL-05',
                 'domain': 'AAL2 Phishing-Resistant Availability',
                 'statement': 'Verifiers SHALL offer at least one phishing-resistant authentication option at AAL2.',
