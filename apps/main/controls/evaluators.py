@@ -591,10 +591,8 @@ _ALL_AUTH_FIELDS = [
     'microsoftAuthenticatorPasswordless_authentication_method',
     'microsoftAuthenticatorPush_authentication_method',
     'softwareOneTimePasscode_authentication_method',
-    'temporaryAccessPass_authentication_method',
     'mobilePhone_authentication_method',
     'email_authentication_method',
-    'securityQuestion_authentication_method',
 ]
 
 
@@ -607,30 +605,33 @@ def _annotate_method_count(qs):
 
 
 def alm_02():
-    """ALM-02: % of accounts with >= 2 registered authentication methods.
+    """ALM-02: % of human subscriber accounts with >= 2 registered authentication methods.
 
     NIST 800-63B-4 § 4.1.2.1: CSPs SHOULD encourage subscribers to maintain
-    at least two separate means of authentication.
+    at least two separate means of authentication. Scoped to human accounts
+    (personas tagged 'Human') only — non-human/service accounts are excluded.
 
-    Target: >90%
+    Target: 100%
     """
-    total = UserData.objects.count()
+    base_qs = UserData.objects.filter(persona__tags__name='Human')
+    total = base_qs.count()
     if total == 0:
         return ('-', 'not_measured')
 
-    with_two = _annotate_method_count(UserData.objects.all()).filter(method_count__gte=2).count()
+    with_two = _annotate_method_count(base_qs).filter(method_count__gte=2).count()
     pct = round(with_two / total * 100)
-    status = 'passing' if pct > 90 else 'failing'
+    status = 'passing' if pct >= 100 else 'failing'
     return (f'{with_two}/{total} ({pct}%)', status)
 
 
 def alm_02_detail():
-    """Return detailed data for ALM-02: accounts with >= 2 auth methods."""
-    total = UserData.objects.count()
+    """Return detailed data for ALM-02: human subscriber accounts with >= 2 auth methods."""
+    base_qs = UserData.objects.filter(persona__tags__name='Human')
+    total = base_qs.count()
     if total == 0:
-        return {'total': 0, 'passing_count': 0, 'failing_count': 0, '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (), 'logic': 'No users synced.'}
+        return {'total': 0, 'passing_count': 0, 'failing_count': 0, '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (), 'logic': 'No human-tagged persona accounts found. Assign the "Human" tag to a persona to include accounts in this control.'}
 
-    annotated = _annotate_method_count(UserData.objects.all())
+    annotated = _annotate_method_count(base_qs)
     passing_qs = annotated.filter(method_count__gte=2)
     failing_qs = annotated.filter(method_count__lt=2)
 
@@ -656,9 +657,10 @@ def alm_02_detail():
         '_fail_fields': _fail_fields,
         '_pass_qs': passing_qs,
         '_pass_fields': _pass_fields,
-        'logic': 'NIST 800-63B-4 § 4.1.2.1: CSPs SHALL permit and SHOULD encourage binding of multiple authenticators. This measures accounts with at least 2 distinct authentication methods registered. Target: >90%.',
-        'qualifying_methods': 'All 10 Entra ID auth method types count: FIDO2, Passkey, WHfB, MS Authenticator (passwordless), MS Authenticator (push), Software OTP, Temporary Access Pass, Mobile Phone, Email, Security Questions',
-        'threshold': '>90%',
+        'logic': 'NIST 800-63B-4 § 4.1.2.1: CSPs SHALL permit and SHOULD encourage binding of multiple authenticators. Scoped to human subscriber accounts only (personas tagged "Human"). TAP and Security Questions are excluded — TAP is ephemeral and not a persistent registered method; Security Questions are not supported in Entra ID. Target: 100%.',
+        'qualifying_methods': '8 persistent Entra ID auth method types: FIDO2 (device-bound passkey), Passkey (device-bound authenticator), Windows Hello for Business, MS Authenticator (passwordless), MS Authenticator (push), Software OTP, Mobile Phone, Email',
+        'threshold': '100%',
+        'scope': 'Human subscriber accounts only (excludes non-human and unclassified accounts)',
     }
 
 

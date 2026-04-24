@@ -48,9 +48,9 @@ class Command(BaseCommand):
                 'domain': 'Multiple Authenticator Support',
                 'statement': 'CSPs SHALL permit binding of multiple authenticators to a subscriber account. SHOULD encourage subscribers to maintain at least two separate means of authentication.',
                 'source_reference': '800-63B-4 § 4.1.2.1',
-                'indicator': '% of accounts with ≥2 registered auth methods',
-                'measurement_method': 'Entra ID auth methods registration report',
-                'target': '>90%',
+                'indicator': '% of human subscriber accounts with ≥2 registered auth methods',
+                'measurement_method': 'Entra ID auth methods registration report; scoped to personas tagged "Human"',
+                'target': '100%',
                 'evaluator': 'alm_02',
             },
             {
