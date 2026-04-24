@@ -500,10 +500,9 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="1">
                                     <span class="ctrl-sort-label">Domain</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
                                 </th>
-                                <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Reference</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Target</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:5rem;">Current</th>
-                                <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="5" style="width:5rem;">
+                                <th class="text-left py-2 px-4 tz-section-label ctrl-sort-th" data-col="4" style="width:5rem;">
                                     <span class="ctrl-sort-label">Status</span><span class="ctrl-sort-icon ml-1 opacity-30">↕</span>
                                 </th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem;">Evaluated</th>
@@ -514,7 +513,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                             {% for cat in group.categories %}
                             <!-- Category separator row (collapsible) -->
                             <tr class="ctrl-cat-row" data-ctrl-cat-header="{{ cat.name }}" data-ctrl-cat-fw="{{ group.framework.id }}">
-                                <td colspan="8">
+                                <td colspan="7">
                                     <div class="flex items-center gap-2">
                                         <svg class="ctrl-cat-chevron w-3 h-3 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
@@ -538,17 +537,9 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 data-search="{{ ctrl.control_id|lower }} {{ ctrl.domain|lower }} {{ ctrl.statement|lower }}">
                                 <td class="py-2.5 px-4 font-medium tabular-nums"><a href="{% url 'control_detail' ctrl.control_id %}" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a></td>
                                 <td class="py-2.5 px-4">
-                                    <p class="text-slate-800 dark:text-slate-200 font-medium">{{ ctrl.domain }}</p>
-                                    <details class="mt-1">
-                                        <summary class="text-[11px] text-code-blue-600 cursor-pointer">Details</summary>
-                                        <div class="mt-1.5 text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
-                                            <p><span class="font-medium text-slate-600 dark:text-slate-300">Statement:</span> {{ ctrl.statement }}</p>
-                                            {% if ctrl.indicator %}<p><span class="font-medium text-slate-600 dark:text-slate-300">Indicator:</span> {{ ctrl.indicator }}</p>{% endif %}
-                                            {% if ctrl.measurement_method %}<p><span class="font-medium text-slate-600 dark:text-slate-300">Measurement:</span> {{ ctrl.measurement_method }}</p>{% endif %}
-                                        </div>
-                                    </details>
+                                    <p class="text-slate-800 dark:text-slate-200 font-medium leading-snug">{{ ctrl.domain }}</p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{{ ctrl.statement|truncatechars:90 }}{% if ctrl.source_reference %} <span class="text-slate-400 dark:text-slate-600">· {{ ctrl.source_reference }}</span>{% endif %}</p>
                                 </td>
-                                <td class="py-2.5 px-4 text-xs text-slate-500">{{ ctrl.source_reference|default:"-" }}</td>
                                 <td class="py-2.5 px-4 ctrl-target-cell" data-ctrl-target="{{ ctrl.target }}">
                                     <span class="ctrl-target-display font-medium text-slate-900 dark:text-slate-100 text-sm">{{ ctrl.target }}</span>
                                 </td>
@@ -583,7 +574,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                             {% endfor %}
                             {% endfor %}
                             <tr id="ctrl-no-results-{{ group.framework.id }}" class="hidden">
-                                <td colspan="8" class="py-8 px-4 text-center text-sm text-slate-400 dark:text-slate-500">No controls match the current filters.</td>
+                                <td colspan="7" class="py-8 px-4 text-center text-sm text-slate-400 dark:text-slate-500">No controls match the current filters.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1056,7 +1047,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
         var bText = (b.cells[col] ? b.cells[col].textContent : '').trim();
         var aKey, bKey;
         if (col === 0) { aKey = ctrlIdKey(aText); bKey = ctrlIdKey(bText); }
-        else if (col === 5) { aKey = statusKey(aText); bKey = statusKey(bText); return dir === 'asc' ? aKey - bKey : bKey - aKey; }
+        else if (col === 4) { aKey = statusKey(aText); bKey = statusKey(bText); return dir === 'asc' ? aKey - bKey : bKey - aKey; }
         else { aKey = aText.toLowerCase(); bKey = bText.toLowerCase(); }
         if (aKey < bKey) return dir === 'asc' ? -1 : 1;
         if (aKey > bKey) return dir === 'asc' ?  1 : -1;
