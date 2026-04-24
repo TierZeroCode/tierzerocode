@@ -729,7 +729,7 @@ def aal_02_1_detail():
         '_fail_fields': _fields,
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
-        'logic': 'Measures whether each AAL2-scoped account has at least one non-password MFA method enrolled in Entra ID, using the isMfaRegistered flag from the authentication methods registration report as the proxy.',
+        'logic': '',
         'qualifying_methods': 'isMfaRegistered flag from Entra ID registration report (any non-password MFA method: FIDO2, WHfB, MS Authenticator passwordless/push, Software OTP, Mobile Phone, Email)',
         'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
         'threshold': '100%',
