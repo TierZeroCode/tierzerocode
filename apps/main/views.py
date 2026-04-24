@@ -841,6 +841,10 @@ def control_detail(request, control_id):
 			except Exception as e:
 				detail_data = {'error': str(e)}
 
+	# Strip private queryset keys — only metadata goes to template
+	if detail_data:
+		detail_data = {k: v for k, v in detail_data.items() if not k.startswith('_')}
+
 	context = {
 		'page': 'reports',
 		'ctrl': ctrl,
@@ -848,6 +852,73 @@ def control_detail(request, control_id):
 		'notifications': Notification.objects.all().order_by('-created_at')[:10],
 	}
 	return render(request, 'main/control-detail.html', context)
+
+############################################################################################
+
+@login_required
+def control_findings_ajax(request, control_id):
+    """Return paginated user rows for a control's findings table as JSON."""
+    from django.http import JsonResponse
+    from apps.main.controls import evaluators
+
+    ctrl = Control.objects.filter(control_id=control_id).first()
+    if not ctrl:
+        return JsonResponse({'error': 'Not found'}, status=404)
+
+    which = request.GET.get('type', 'failing')
+    try:
+        page = max(0, int(request.GET.get('page', 0)))
+        size = int(request.GET.get('size', 25))
+        if size not in (10, 25, 50, 100, 250, 500):
+            size = 25
+    except (ValueError, TypeError):
+        page, size = 0, 25
+
+    detail_func_name = f'{ctrl.evaluator}_detail' if ctrl.evaluator else None
+    if not detail_func_name:
+        return JsonResponse({'rows': [], 'total': 0, 'page': 0, 'size': size, 'pages': 0})
+
+    detail_func = getattr(evaluators, detail_func_name, None)
+    if not detail_func:
+        return JsonResponse({'rows': [], 'total': 0, 'page': 0, 'size': size, 'pages': 0})
+
+    try:
+        detail_data = detail_func()
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+    if which == 'failing':
+        qs = detail_data.get('_fail_qs')
+        fields = detail_data.get('_fail_fields', ())
+        total = detail_data.get('failing_count', 0)
+    else:
+        qs = detail_data.get('_pass_qs')
+        fields = detail_data.get('_pass_fields', ())
+        total = detail_data.get('passing_count', 0)
+
+    if qs is None or not fields:
+        return JsonResponse({'rows': [], 'total': total, 'page': page, 'size': size, 'pages': 0,
+                             'has_persona': False, 'has_admin': False})
+
+    offset = page * size
+    rows = list(qs.values(*fields)[offset:offset + size])
+
+    # Normalize values for JSON serialisation
+    for row in rows:
+        for k, v in list(row.items()):
+            if v is None:
+                row[k] = None
+
+    pages = (total + size - 1) // size if size > 0 else 0
+    return JsonResponse({
+        'rows': rows,
+        'total': total,
+        'page': page,
+        'size': size,
+        'pages': pages,
+        'has_persona': 'persona__persona_name' in fields,
+        'has_admin': 'isAdmin' in fields,
+    })
 
 ############################################################################################
 
@@ -863,7 +934,6 @@ def control_export_noncompliant(request, control_id):
         from django.http import Http404
         raise Http404(f'Control {control_id} not found')
 
-    # Get detail data
     detail_data = None
     detail_func_name = f'{ctrl.evaluator}_detail' if ctrl.evaluator else None
     if detail_func_name:
@@ -875,15 +945,16 @@ def control_export_noncompliant(request, control_id):
     ws = wb.active
     ws.title = f'{ctrl.control_id} Non-Compliant'
 
-    # Add header info
     ws.append([f'Control: {ctrl.control_id} — {ctrl.domain}'])
     ws.append([f'Status: {ctrl.get_status_display()}'])
     ws.append([f'Target: {ctrl.target}', f'Current: {ctrl.current_value or "-"}'])
     ws.append([])
 
-    if detail_data and detail_data.get('failing_users'):
-        users = detail_data['failing_users']
-        if users:
+    fail_qs = detail_data.get('_fail_qs') if detail_data else None
+    fail_fields = detail_data.get('_fail_fields', ()) if detail_data else ()
+    users = list(fail_qs.values(*fail_fields)) if fail_qs is not None and fail_fields else None
+
+    if users:
             # Build headers from first record's keys
             headers = []
             header_map = {
@@ -938,7 +1009,7 @@ def control_export_noncompliant(request, control_id):
                         max_length = max(max_length, len(str(cell.value)))
                 ws.column_dimensions[col_letter].width = min(max_length + 2, 40)
 
-    elif detail_data and detail_data.get('policies'):
+    elif detail_data and detail_data.get('policies'):  # policy-based controls (e.g. aal_12)
         # AAL-05: export policies instead
         ws.append(['Policy Name', 'State', 'Sign-in Frequency', 'Frequency Type', 'Days', 'Persistent Browser', 'Has Session Control'])
         from openpyxl.styles import Font, PatternFill

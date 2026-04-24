@@ -250,79 +250,73 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
 </div>
 
 <!-- Failing Records -->
-{% if detail.failing_users %}
-<div class="tz-card mb-5">
+{% if detail.failing_count %}
+<div class="tz-card mb-5" id="fail-card">
     <div class="tz-card-header flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-code-red-700 dark:text-code-red-400">Non-Compliant ({{ detail.failing_count }})</h2>
-        <a href="{% url 'control_export_noncompliant' ctrl.control_id %}" class="tz-btn-secondary text-xs py-1 px-2.5">Export XLSX</a>
+        <h2 class="text-sm font-semibold text-code-red-700 dark:text-code-red-400">Non-Compliant (<span id="fail-total">{{ detail.failing_count }}</span>)</h2>
+        <div class="flex items-center gap-2">
+            <select id="fail-size" class="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded px-2 py-1 focus:outline-none">
+                <option value="10">10 / page</option>
+                <option value="25" selected>25 / page</option>
+                <option value="50">50 / page</option>
+                <option value="100">100 / page</option>
+                <option value="250">250 / page</option>
+                <option value="500">500 / page</option>
+            </select>
+            <a href="{% url 'control_export_noncompliant' ctrl.control_id %}" class="tz-btn-secondary text-xs py-1 px-2.5">Export XLSX</a>
+        </div>
     </div>
     <div class="tz-card-body p-0 overflow-x-auto">
-        <table id="failing-table" class="w-full text-sm">
-            <thead>
+        <table id="fail-table" class="w-full text-sm">
+            <thead id="fail-thead">
                 <tr class="border-b border-slate-200 dark:border-slate-700/50">
                     <th class="text-left py-2 px-4 tz-section-label">UPN</th>
                     <th class="text-left py-2 px-4 tz-section-label">Name</th>
-                    {% if detail.failing_users.0.persona__persona_name is not None %}<th class="text-left py-2 px-4 tz-section-label">Persona</th>{% endif %}
-                    {% if detail.failing_users.0.isAdmin is not None %}<th class="text-left py-2 px-4 tz-section-label">Admin</th>{% endif %}
+                    <th class="text-left py-2 px-4 tz-section-label col-fail-persona" style="display:none">Persona</th>
+                    <th class="text-left py-2 px-4 tz-section-label col-fail-admin" style="display:none">Admin</th>
                     <th class="text-left py-2 px-4 tz-section-label">Auth Strength</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                {% for user in detail.failing_users %}
-                <tr class="bg-code-red-50/30 dark:bg-code-red-500/5">
-                    <td class="py-2 px-4 text-slate-800 dark:text-slate-200 font-medium">{{ user.upn }}</td>
-                    <td class="py-2 px-4 text-slate-600 dark:text-slate-400">{{ user.given_name }} {{ user.surname }}</td>
-                    {% if user.persona__persona_name is not None %}<td class="py-2 px-4 text-slate-600 dark:text-slate-400">{{ user.persona__persona_name|default:"-" }}</td>{% endif %}
-                    {% if user.isAdmin is not None %}<td class="py-2 px-4">{% if user.isAdmin %}<span class="tz-badge tz-badge-danger">Yes</span>{% else %}<span class="tz-badge tz-badge-neutral">No</span>{% endif %}</td>{% endif %}
-                    <td class="py-2 px-4 text-slate-600 dark:text-slate-400">{{ user.highest_authentication_strength|default:"-" }}</td>
-                </tr>
-                {% endfor %}
+            <tbody id="fail-tbody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tr id="fail-loading"><td colspan="5" class="py-6 px-4 text-center text-sm text-slate-400">Loading…</td></tr>
             </tbody>
         </table>
     </div>
-    <div id="failing-pagination" class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400"></div>
+    <div id="fail-footer" class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400"></div>
 </div>
 {% endif %}
 
 <!-- Passing Records -->
-{% if detail.passing_users %}
-<div class="tz-card mb-5">
+{% if detail.passing_count %}
+<div class="tz-card mb-5" id="pass-card">
     <div class="tz-card-header flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-code-green-700 dark:text-code-green-400">Compliant ({{ detail.passing_count }})</h2>
+        <h2 class="text-sm font-semibold text-code-green-700 dark:text-code-green-400">Compliant (<span id="pass-total">{{ detail.passing_count }}</span>)</h2>
+        <select id="pass-size" class="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded px-2 py-1 focus:outline-none">
+            <option value="10">10 / page</option>
+            <option value="25" selected>25 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+            <option value="250">250 / page</option>
+            <option value="500">500 / page</option>
+        </select>
     </div>
     <div class="tz-card-body p-0 overflow-x-auto">
-        <table id="passing-table" class="w-full text-sm">
-            <thead>
+        <table id="pass-table" class="w-full text-sm">
+            <thead id="pass-thead">
                 <tr class="border-b border-slate-200 dark:border-slate-700/50">
                     <th class="text-left py-2 px-4 tz-section-label">UPN</th>
                     <th class="text-left py-2 px-4 tz-section-label">Name</th>
-                    {% if detail.passing_users.0.persona__persona_name is not None %}<th class="text-left py-2 px-4 tz-section-label">Persona</th>{% endif %}
-                    {% if detail.passing_users.0.isAdmin is not None %}<th class="text-left py-2 px-4 tz-section-label">Admin</th>{% endif %}
+                    <th class="text-left py-2 px-4 tz-section-label col-pass-persona" style="display:none">Persona</th>
+                    <th class="text-left py-2 px-4 tz-section-label col-pass-admin" style="display:none">Admin</th>
                     <th class="text-left py-2 px-4 tz-section-label">Auth Methods</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                {% for user in detail.passing_users %}
-                <tr>
-                    <td class="py-2 px-4 text-slate-800 dark:text-slate-200 font-medium">{{ user.upn }}</td>
-                    <td class="py-2 px-4 text-slate-600 dark:text-slate-400">{{ user.given_name }} {{ user.surname }}</td>
-                    {% if user.persona__persona_name is not None %}<td class="py-2 px-4 text-slate-600 dark:text-slate-400">{{ user.persona__persona_name|default:"-" }}</td>{% endif %}
-                    {% if user.isAdmin is not None %}<td class="py-2 px-4">{% if user.isAdmin %}<span class="tz-badge tz-badge-danger">Yes</span>{% else %}<span class="tz-badge tz-badge-neutral">No</span>{% endif %}</td>{% endif %}
-                    <td class="py-2 px-4 text-xs text-slate-500 space-x-1">
-                        {% if user.passKeyDeviceBound_authentication_method %}<span class="tz-badge tz-badge-success">FIDO2</span>{% endif %}
-                        {% if user.passKeyDeviceBoundAuthenticator_authentication_method %}<span class="tz-badge tz-badge-info">Passkey</span>{% endif %}
-                        {% if user.windowsHelloforBusiness_authentication_method %}<span class="tz-badge tz-badge-success">WHfB</span>{% endif %}
-                        {% if user.microsoftAuthenticatorPasswordless_authentication_method %}<span class="tz-badge tz-badge-info">Auth PL</span>{% endif %}
-                        {% if user.microsoftAuthenticatorPush_authentication_method %}<span class="tz-badge tz-badge-info">Push</span>{% endif %}
-                        {% if user.softwareOneTimePasscode_authentication_method %}<span class="tz-badge tz-badge-neutral">OTP</span>{% endif %}
-                        {% if user.mobilePhone_authentication_method %}<span class="tz-badge tz-badge-neutral">Phone</span>{% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
+            <tbody id="pass-tbody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tr id="pass-loading"><td colspan="5" class="py-6 px-4 text-center text-sm text-slate-400">Loading…</td></tr>
             </tbody>
         </table>
     </div>
-    <div id="passing-pagination" class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400"></div>
+    <div id="pass-footer" class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/50 text-xs text-slate-500 dark:text-slate-400"></div>
 </div>
 {% endif %}
 
@@ -411,38 +405,129 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
 </script>
 <script>
 (function () {
-    var PAGE_SIZE = 50;
+    var FINDINGS_URL = '{% url "control_findings_ajax" ctrl.control_id %}';
+    var AUTH_BADGES = {
+        passKeyDeviceBound_authentication_method:            ['tz-badge-success', 'FIDO2'],
+        passKeyDeviceBoundAuthenticator_authentication_method: ['tz-badge-info',    'Passkey'],
+        windowsHelloforBusiness_authentication_method:       ['tz-badge-success', 'WHfB'],
+        microsoftAuthenticatorPasswordless_authentication_method: ['tz-badge-info', 'Auth PL'],
+        microsoftAuthenticatorPush_authentication_method:    ['tz-badge-info',    'Push'],
+        softwareOneTimePasscode_authentication_method:       ['tz-badge-neutral', 'OTP'],
+        mobilePhone_authentication_method:                   ['tz-badge-neutral', 'Phone'],
+    };
 
-    function paginate(tableId, barId) {
-        var table = document.getElementById(tableId);
-        var bar = document.getElementById(barId);
-        if (!table || !bar) return;
-        var rows = Array.from(table.tBodies[0].rows);
-        var total = rows.length;
-        if (total <= PAGE_SIZE) return; // no pagination needed
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function badge(cls, label) { return '<span class="tz-badge ' + cls + '">' + label + '</span>'; }
+
+    function authBadges(row) {
+        var out = '';
+        for (var f in AUTH_BADGES) { if (row[f]) out += badge(AUTH_BADGES[f][0], AUTH_BADGES[f][1]) + ' '; }
+        return out || '<span class="text-slate-400">—</span>';
+    }
+
+    function renderFooter(footer, data) {
+        if (!footer) return;
+        var start = data.page * data.size + 1;
+        var end = Math.min(start + data.size - 1, data.total);
+        var disP = data.page === 0 ? ' disabled' : '';
+        var disN = data.page >= data.pages - 1 ? ' disabled' : '';
+        footer.innerHTML =
+            '<span>' + (data.total > 0 ? start + '–' + end + ' of ' + data.total : '0') + '</span>' +
+            '<span class="flex items-center gap-2">' +
+            '<button class="pgn-prev tz-btn-secondary text-xs py-0.5 px-2"' + disP + '>← Prev</button>' +
+            '<span class="tabular-nums">' + (data.pages > 0 ? (data.page + 1) + ' / ' + data.pages : '—') + '</span>' +
+            '<button class="pgn-next tz-btn-secondary text-xs py-0.5 px-2"' + disN + '>Next →</button>' +
+            '</span>';
+    }
+
+    function initTable(cfg) {
+        /* cfg: { type, tbody, footer, sizeEl, colPersonaCls, colAdminCls } */
         var page = 0;
-        var pages = Math.ceil(total / PAGE_SIZE);
+        var size = 25;
+        var meta = null; /* cached has_persona / has_admin from first response */
 
-        function render() {
-            var start = page * PAGE_SIZE;
-            var end = Math.min(start + PAGE_SIZE, total);
-            rows.forEach(function (r, i) { r.style.display = (i >= start && i < end) ? '' : 'none'; });
-            bar.innerHTML =
-                '<span>' + (start + 1) + '–' + end + ' of ' + total + '</span>' +
-                '<span class="flex gap-2">' +
-                '<button id="' + barId + '-prev" class="tz-btn-secondary text-xs py-0.5 px-2" ' + (page === 0 ? 'disabled' : '') + '>← Prev</button>' +
-                '<span class="py-0.5 px-1">' + (page + 1) + ' / ' + pages + '</span>' +
-                '<button id="' + barId + '-next" class="tz-btn-secondary text-xs py-0.5 px-2" ' + (page >= pages - 1 ? 'disabled' : '') + '>Next →</button>' +
-                '</span>';
-            bar.querySelector('#' + barId + '-prev').addEventListener('click', function () { if (page > 0) { page--; render(); } });
-            bar.querySelector('#' + barId + '-next').addEventListener('click', function () { if (page < pages - 1) { page++; render(); } });
+        function fetch(p, s) {
+            var url = FINDINGS_URL + '?type=' + cfg.type + '&page=' + p + '&size=' + s;
+            window.fetch(url)
+                .then(function(r){ return r.json(); })
+                .then(function(data) {
+                    page = data.page;
+                    size = data.size;
+
+                    /* Apply column visibility on first load */
+                    if (meta === null) {
+                        meta = { has_persona: data.has_persona, has_admin: data.has_admin };
+                        document.querySelectorAll('.' + cfg.colPersonaCls).forEach(function(el){ el.style.display = data.has_persona ? '' : 'none'; });
+                        document.querySelectorAll('.' + cfg.colAdminCls).forEach(function(el){ el.style.display = data.has_admin ? '' : 'none'; });
+                    }
+
+                    /* Build rows */
+                    var html = '';
+                    if (data.rows.length === 0) {
+                        html = '<tr><td colspan="5" class="py-6 px-4 text-center text-sm text-slate-400">No records.</td></tr>';
+                    } else {
+                        data.rows.forEach(function(row) {
+                            var cells =
+                                '<td class="py-2 px-4 text-slate-800 dark:text-slate-200 font-medium">' + esc(row.upn) + '</td>' +
+                                '<td class="py-2 px-4 text-slate-600 dark:text-slate-400">' + esc((row.given_name||'') + ' ' + (row.surname||'')) + '</td>';
+                            if (meta.has_persona) cells += '<td class="py-2 px-4 text-slate-600 dark:text-slate-400 col-' + cfg.type + '-persona">' + esc(row.persona__persona_name||'—') + '</td>';
+                            if (meta.has_admin) cells += '<td class="py-2 px-4 col-' + cfg.type + '-admin">' + (row.isAdmin ? badge('tz-badge-danger','Yes') : badge('tz-badge-neutral','No')) + '</td>';
+                            if (cfg.type === 'failing') {
+                                cells += '<td class="py-2 px-4 text-slate-600 dark:text-slate-400">' + esc(row.highest_authentication_strength||'—') + '</td>';
+                                html += '<tr class="bg-code-red-50/30 dark:bg-code-red-500/5">' + cells + '</tr>';
+                            } else {
+                                cells += '<td class="py-2 px-4 text-xs space-x-1">' + authBadges(row) + '</td>';
+                                html += '<tr>' + cells + '</tr>';
+                            }
+                        });
+                    }
+                    cfg.tbody.innerHTML = html;
+                    renderFooter(cfg.footer, data);
+
+                    /* Wire pagination buttons */
+                    if (cfg.footer) {
+                        var btnP = cfg.footer.querySelector('.pgn-prev');
+                        var btnN = cfg.footer.querySelector('.pgn-next');
+                        if (btnP) btnP.addEventListener('click', function(){ if (page > 0) fetch(page - 1, size); });
+                        if (btnN) btnN.addEventListener('click', function(){ if (page < data.pages - 1) fetch(page + 1, size); });
+                    }
+                })
+                .catch(function(){ cfg.tbody.innerHTML = '<tr><td colspan="5" class="py-4 px-4 text-center text-xs text-slate-400">Failed to load data.</td></tr>'; });
         }
-        render();
+
+        if (cfg.sizeEl) {
+            cfg.sizeEl.addEventListener('change', function(){ fetch(0, parseInt(this.value, 10)); });
+        }
+        fetch(0, size);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        paginate('failing-table', 'failing-pagination');
-        paginate('passing-table', 'passing-pagination');
+        var failTbody = document.getElementById('fail-tbody');
+        if (failTbody) {
+            initTable({
+                type: 'failing',
+                tbody: failTbody,
+                footer: document.getElementById('fail-footer'),
+                sizeEl: document.getElementById('fail-size'),
+                colPersonaCls: 'col-fail-persona',
+                colAdminCls:   'col-fail-admin',
+            });
+        }
+        var passTbody = document.getElementById('pass-tbody');
+        if (passTbody) {
+            initTable({
+                type: 'passing',
+                tbody: passTbody,
+                footer: document.getElementById('pass-footer'),
+                sizeEl: document.getElementById('pass-size'),
+                colPersonaCls: 'col-pass-persona',
+                colAdminCls:   'col-pass-admin',
+            });
+        }
     });
 })();
 </script>
