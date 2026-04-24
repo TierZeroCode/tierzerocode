@@ -538,7 +538,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 <td class="py-2.5 px-4 font-medium tabular-nums"><a href="{% url 'control_detail' ctrl.control_id %}" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a></td>
                                 <td class="py-2.5 px-4">
                                     <p class="text-slate-800 dark:text-slate-200 font-medium leading-snug">{{ ctrl.domain }}</p>
-                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{{ ctrl.statement|truncatechars:90 }}{% if ctrl.source_reference %} <span class="text-slate-400 dark:text-slate-600">· {{ ctrl.source_reference }}</span>{% endif %}</p>
+                                    {% if ctrl.source_reference %}<p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">{{ ctrl.source_reference }}</p>{% endif %}
                                 </td>
                                 <td class="py-2.5 px-4 ctrl-target-cell" data-ctrl-target="{{ ctrl.target }}">
                                     <span class="ctrl-target-display font-medium text-slate-900 dark:text-slate-100 text-sm">{{ ctrl.target }}</span>
