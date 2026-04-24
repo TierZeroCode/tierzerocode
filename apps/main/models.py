@@ -442,6 +442,7 @@ class TailscaleDeviceData(models.Model):
 
 class PersonaTag(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    is_default = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']

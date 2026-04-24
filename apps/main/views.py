@@ -1988,11 +1988,14 @@ def add_persona_tag(request):
 
 @login_required
 def delete_persona_tag(request, tag_id):
-    """Delete a PersonaTag (removes it from all personas)."""
+    """Delete a PersonaTag (removes it from all personas). Default tags cannot be deleted."""
     try:
         tag = PersonaTag.objects.get(pk=tag_id)
-        tag.delete()
-        messages.success(request, f'Tag "{tag.name}" deleted.')
+        if tag.is_default:
+            messages.error(request, f'Tag "{tag.name}" is a default tag and cannot be deleted.')
+        else:
+            tag.delete()
+            messages.success(request, f'Tag "{tag.name}" deleted.')
     except PersonaTag.DoesNotExist:
         messages.error(request, 'Tag not found.')
     return redirect(reverse('general-settings') + '#personas')

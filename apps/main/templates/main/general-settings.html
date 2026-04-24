@@ -433,29 +433,19 @@
                                             </td>
                                             <td class="py-3 px-3 text-slate-900 dark:text-white font-medium">{{ persona.persona_name }}</td>
                                             <td class="py-3 px-3">
-                                                <div class="flex items-center gap-1.5 flex-wrap relative">
-                                                    <div id="tags-{{ persona.id }}" class="flex items-center gap-1 flex-wrap">
-                                                        {% for tag in persona.tags.all %}
-                                                        <span class="persona-tag-badge inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600" data-tag-id="{{ tag.id }}">{{ tag.name }}</span>
-                                                        {% endfor %}
-                                                    </div>
-                                                    {% if persona_tags %}
-                                                    <button type="button" class="tag-toggle-btn inline-flex items-center justify-center w-5 h-5 rounded border border-dashed border-slate-400 dark:border-slate-500 text-slate-400 dark:text-slate-500 hover:border-slate-600 dark:hover:border-slate-300 hover:text-slate-600 dark:hover:text-slate-300 text-xs leading-none flex-shrink-0" data-persona-id="{{ persona.id }}" title="Edit tags">+</button>
-                                                    <div id="tag-dropdown-{{ persona.id }}" class="tag-dropdown hidden absolute left-0 top-7 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-max">
-                                                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-1.5 px-1">Toggle tags</p>
-                                                        <div class="flex flex-col gap-1">
-                                                            {% for tag in persona_tags %}
-                                                            <button type="button"
-                                                                class="tag-pill-btn text-left text-xs px-2 py-1 rounded {% if tag in persona.tags.all %}bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900{% else %}text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700{% endif %}"
-                                                                data-persona-id="{{ persona.id }}"
-                                                                data-tag-id="{{ tag.id }}"
-                                                                data-tag-name="{{ tag.name }}">
-                                                                {{ tag.name }}
-                                                            </button>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                    {% endif %}
+                                                <div class="flex items-center gap-1 flex-wrap" id="tags-{{ persona.id }}">
+                                                    {% for tag in persona_tags %}
+                                                    {% with active=persona.tags.all %}
+                                                    <button type="button"
+                                                        class="tag-pill-btn inline-flex items-center text-xs font-medium px-2 py-0.5 rounded border transition-colors cursor-pointer select-none
+                                                            {% if tag in active %}bg-slate-700 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-700 dark:border-slate-200{% else %}bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:border-slate-500 dark:hover:border-slate-400 hover:text-slate-700 dark:hover:text-slate-200{% endif %}"
+                                                        data-persona-id="{{ persona.id }}"
+                                                        data-tag-id="{{ tag.id }}"
+                                                        data-tag-name="{{ tag.name }}">
+                                                        {{ tag.name }}
+                                                    </button>
+                                                    {% endwith %}
+                                                    {% endfor %}
                                                 </div>
                                             </td>
                                             <td class="py-3 px-3 text-slate-500">{{ persona.created_at|date:"M d, Y" }}</td>
@@ -496,12 +486,19 @@
                             {% if persona_tags %}
                             <div class="flex flex-wrap gap-2">
                                 {% for tag in persona_tags %}
-                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-300">
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border {% if tag.is_default %}border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700{% else %}border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800{% endif %} text-sm text-slate-700 dark:text-slate-300">
+                                    {% if tag.is_default %}
+                                    <svg class="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+                                    </svg>
+                                    {% endif %}
                                     <span>{{ tag.name }}</span>
+                                    {% if not tag.is_default %}
                                     <a href="{% url 'delete_persona_tag' tag.id %}"
                                        class="text-slate-400 hover:text-code-red-500 leading-none"
                                        onclick="return confirm('Delete tag &quot;{{ tag.name }}&quot;? It will be removed from all personas.');"
                                        title="Delete tag">&#x2715;</a>
+                                    {% endif %}
                                 </div>
                                 {% endfor %}
                             </div>
@@ -870,34 +867,30 @@ function updateTabFields(tabName) {
     }
 }
 
-// ── Persona tag dropdowns ─────────────────────────────────────────────────────
+// ── Persona tag inline pills ──────────────────────────────────────────────────
 function getCsrfToken() {
     const el = document.querySelector('[name=csrfmiddlewaretoken]');
     return el ? el.value : '';
 }
 
-document.querySelectorAll('.tag-toggle-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const personaId = this.dataset.personaId;
-        const dropdown = document.getElementById('tag-dropdown-' + personaId);
-        document.querySelectorAll('.tag-dropdown').forEach(d => {
-            if (d !== dropdown) d.classList.add('hidden');
-        });
-        dropdown.classList.toggle('hidden');
-    });
-});
-
-document.addEventListener('click', function() {
-    document.querySelectorAll('.tag-dropdown').forEach(d => d.classList.add('hidden'));
-});
+const ACTIVE_CLASSES   = ['bg-slate-700', 'dark:bg-slate-200', 'text-white', 'dark:text-slate-900', 'border-slate-700', 'dark:border-slate-200'];
+const INACTIVE_CLASSES = ['bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-600', 'hover:border-slate-500', 'dark:hover:border-slate-400', 'hover:text-slate-700', 'dark:hover:text-slate-200'];
 
 document.querySelectorAll('.tag-pill-btn').forEach(btn => {
     btn.addEventListener('click', async function(e) {
-        e.stopPropagation();
+        e.preventDefault();
         const personaId = this.dataset.personaId;
-        const tagId    = this.dataset.tagId;
-        const tagName  = this.dataset.tagName;
+        const tagId     = this.dataset.tagId;
+
+        // Optimistic UI
+        const isActive = this.classList.contains('bg-slate-700');
+        if (isActive) {
+            ACTIVE_CLASSES.forEach(c => this.classList.remove(c));
+            INACTIVE_CLASSES.forEach(c => this.classList.add(c));
+        } else {
+            INACTIVE_CLASSES.forEach(c => this.classList.remove(c));
+            ACTIVE_CLASSES.forEach(c => this.classList.add(c));
+        }
 
         try {
             const resp = await fetch('/toggle-persona-tag/' + personaId, {
@@ -908,24 +901,15 @@ document.querySelectorAll('.tag-pill-btn').forEach(btn => {
                 },
                 body: 'tag_id=' + tagId,
             });
-            const data = await resp.json();
-            if (!resp.ok) return;
-
-            const badgeContainer = document.getElementById('tags-' + personaId);
-
-            if (data.action === 'added') {
-                this.classList.add('bg-slate-700', 'dark:bg-slate-200', 'text-white', 'dark:text-slate-900');
-                this.classList.remove('text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-100', 'dark:hover:bg-slate-700');
-                const badge = document.createElement('span');
-                badge.className = 'persona-tag-badge inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600';
-                badge.dataset.tagId = tagId;
-                badge.textContent = tagName;
-                badgeContainer.appendChild(badge);
-            } else {
-                this.classList.remove('bg-slate-700', 'dark:bg-slate-200', 'text-white', 'dark:text-slate-900');
-                this.classList.add('text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-100', 'dark:hover:bg-slate-700');
-                const badge = badgeContainer.querySelector('[data-tag-id="' + tagId + '"]');
-                if (badge) badge.remove();
+            if (!resp.ok) {
+                // Revert on failure
+                if (isActive) {
+                    INACTIVE_CLASSES.forEach(c => this.classList.remove(c));
+                    ACTIVE_CLASSES.forEach(c => this.classList.add(c));
+                } else {
+                    ACTIVE_CLASSES.forEach(c => this.classList.remove(c));
+                    INACTIVE_CLASSES.forEach(c => this.classList.add(c));
+                }
             }
         } catch (err) {
             console.error('Tag toggle failed:', err);
