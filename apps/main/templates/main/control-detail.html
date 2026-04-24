@@ -38,8 +38,8 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
     <div class="tz-card-header">
         <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Control Definition</h2>
     </div>
-    <div class="tz-card-body">
-        <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+    <div class="tz-card-body flex gap-6">
+        <dl class="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
             <div class="md:col-span-2">
                 <dt class="tz-section-label mb-0.5">Statement</dt>
                 <dd class="text-sm text-slate-800 dark:text-slate-200">{{ ctrl.statement }}</dd>
@@ -61,25 +61,21 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                 <dd class="text-sm text-slate-800 dark:text-slate-200">{{ ctrl.measurement_method|default:"-" }}</dd>
             </div>
         </dl>
-    </div>
-</div>
-
-<!-- Gauge -->
-<div class="tz-card mb-5 flex items-center gap-6 px-5 py-4">
-    <span id="ctrl-gauge-slot"
-        data-current="{{ ctrl.current_value|default:'' }}"
-        data-target="{{ ctrl.target|default:'' }}"
-        data-status="{{ ctrl.status|default:'not_measured' }}">
-    </span>
-    <div>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Current state</p>
-        <p class="text-sm font-semibold
-            {% if ctrl.status == 'passing' %}text-code-green-600 dark:text-code-green-400
-            {% elif ctrl.status == 'failing' %}text-code-red-600 dark:text-code-red-400
-            {% else %}text-slate-500 dark:text-slate-400{% endif %}">
-            {{ ctrl.current_value|default:"Not measured" }}
-        </p>
-        <p class="text-[11px] text-slate-400 mt-0.5">Target: {{ ctrl.target }}</p>
+        <div class="shrink-0 flex flex-col items-center justify-center pl-5 border-l border-slate-200 dark:border-slate-700/50" style="width:128px">
+            <span id="ctrl-gauge-slot"
+                data-current="{{ ctrl.current_value|default:'' }}"
+                data-target="{{ ctrl.target|default:'' }}"
+                data-status="{{ ctrl.status|default:'not_measured' }}">
+            </span>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 mb-0.5 text-center">Current</p>
+            <p class="text-sm font-semibold text-center
+                {% if ctrl.status == 'passing' %}text-code-green-600 dark:text-code-green-400
+                {% elif ctrl.status == 'failing' %}text-code-red-600 dark:text-code-red-400
+                {% else %}text-slate-500 dark:text-slate-400{% endif %}">
+                {{ ctrl.current_value|default:"—" }}
+            </p>
+            <p class="text-[11px] text-slate-400 mt-0.5 text-center">Target: {{ ctrl.target }}</p>
+        </div>
     </div>
 </div>
 
@@ -378,7 +374,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
             var angle = Math.PI - pct * Math.PI;
             var fx = (cx + r * Math.cos(angle)).toFixed(2);
             var fy = (cy - r * Math.sin(angle)).toFixed(2); /* negative sin = correct top arc */
-            var la = pct > 0.5 ? 1 : 0;
+            var la = 0; /* fill arc is always < 180° on a semicircle gauge */
             var fillClass = status === 'passing' ? 'gauge-fill-passing'
                           : pct >= 0.75 ? 'gauge-fill-warning'
                           : 'gauge-fill-failing';
