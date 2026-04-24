@@ -20,10 +20,17 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
 
 <!-- Breadcrumb -->
 <div class="mb-5">
+    {% if request.GET.from == 'ciso' %}
+    <a href="{% url 'reports' %}#ciso" class="text-xs text-code-blue-600 hover:text-code-blue-700 inline-flex items-center gap-1 mb-1">
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        CISO Overview
+    </a>
+    {% else %}
     <a href="{% url 'reports' %}#controls" class="text-xs text-code-blue-600 hover:text-code-blue-700 inline-flex items-center gap-1 mb-1">
         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         Controls Monitoring
     </a>
+    {% endif %}
     <div class="flex items-center gap-3">
         <h1 class="font-display text-lg font-bold text-slate-900 dark:text-slate-100">{{ ctrl.control_id }}</h1>
         {% if ctrl.status == 'passing' %}<span class="tz-badge tz-badge-success">Passing</span>

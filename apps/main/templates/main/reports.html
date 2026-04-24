@@ -326,7 +326,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                             {% for ctrl in failing_controls %}
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/20">
                                 <td class="py-2.5 px-4 font-medium tabular-nums">
-                                    <a href="{% url 'control_detail' ctrl.control_id %}" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a>
+                                    <a href="{% url 'control_detail' ctrl.control_id %}?from=ciso" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a>
                                 </td>
                                 <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">{{ ctrl.domain }}</td>
                                 <td class="py-2.5 px-4 text-xs text-slate-400">{{ ctrl.framework.short_name }}</td>
