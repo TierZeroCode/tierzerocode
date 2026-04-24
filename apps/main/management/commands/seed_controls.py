@@ -144,6 +144,16 @@ class Command(BaseCommand):
                 'evaluator': 'aal_07',
             },
             {
+                'control_id': 'AAL-08',
+                'domain': 'AAL3 Cryptographic Requirement',
+                'statement': 'AAL3 SHALL require multi-factor cryptographic authentication or single-factor cryptographic plus password/biometric. The cryptographic authenticator SHALL have a non-exportable private key and provide phishing resistance.',
+                'source_reference': '800-63B-4 § 2.3.1-2.3.2',
+                'indicator': '% of AAL3 (T0/T1) accounts using hardware-bound phishing-resistant authenticators',
+                'measurement_method': 'Entra ID auth methods for T0/T1 admins; FIDO2 key attestation; WHfB TPM binding',
+                'target': '100%',
+                'evaluator': 'aal_04',
+            },
+            {
                 'control_id': 'AAL-09',
                 'domain': 'AAL3 No Syncable Authenticators',
                 'statement': 'Syncable authenticators (passkeys synced across devices) SHALL NOT be used at AAL3.',
