@@ -48,7 +48,7 @@ HARDWARE_BOUND_Q = (
     Q(windowsHelloforBusiness_authentication_method=True)
 )
 
-# Replay-resistant methods (AAL-08) and intent-demonstrating (AAL-09) — same set
+# Replay-resistant methods (AAL-06) and intent-demonstrating (AAL-07) — same set
 REPLAY_RESISTANT_Q = (
     Q(passKeyDeviceBound_authentication_method=True) |
     Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
@@ -659,42 +659,6 @@ def alm_03_detail():
         'logic': 'Proxy measurement: percentage of sign-ins where Conditional Access was applied. Full measurement requires checking CA policy for security info registration, which needs Microsoft Graph API data not currently stored.',
     }
 
-
-def aal_04_detail():
-    """Return detailed data for AAL-04: privileged users and their hardware auth status."""
-    privileged_users = _get_users_by_aal(3)
-
-    total = privileged_users.count()
-    if total == 0:
-        return {'total': 0, 'passing_count': 0, 'failing_users': [], 'passing_users': [], 'logic': 'No privileged users found.'}
-
-    passing = privileged_users.filter(HARDWARE_BOUND_Q).distinct().values(
-        'upn', 'given_name', 'surname', 'isAdmin',
-        'passKeyDeviceBound_authentication_method',
-        'passKeyDeviceBoundAuthenticator_authentication_method',
-        'windowsHelloforBusiness_authentication_method',
-        'persona__persona_name',
-    )
-    failing = privileged_users.exclude(HARDWARE_BOUND_Q).values(
-        'upn', 'given_name', 'surname', 'isAdmin',
-        'passKeyDeviceBound_authentication_method',
-        'passKeyDeviceBoundAuthenticator_authentication_method',
-        'windowsHelloforBusiness_authentication_method',
-        'microsoftAuthenticatorPush_authentication_method',
-        'softwareOneTimePasscode_authentication_method',
-        'persona__persona_name',
-    )
-
-    return {
-        'total': total,
-        'passing_count': passing.count(),
-        'failing_count': failing.count(),
-        'failing_users': list(failing),
-        'passing_users': list(passing),
-        'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have hardware-bound phishing-resistant authenticators. FIDO2 device-bound keys and Windows Hello for Business qualify. Syncable passkeys do NOT qualify for AAL3.',
-        'qualifying_methods': 'Hardware FIDO2 (passKeyDeviceBound) or Windows Hello for Business (windowsHelloforBusiness)',
-        'disqualifying_methods': 'Syncable passkeys (passKeyDeviceBoundAuthenticator) do not meet AAL3 requirements.',
-    }
 
 
 def aal_12():
