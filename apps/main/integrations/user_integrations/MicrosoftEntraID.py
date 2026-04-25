@@ -792,10 +792,10 @@ def syncSignInMethods(access_token):
     from datetime import timedelta
 
     try:
-        window_start = (timezone.now() - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        window_start_dt = timezone.now() - timedelta(days=30)
         url = (
             'https://graph.microsoft.com/beta/auditLogs/signIns'
-            f'?$filter=status/errorCode eq 0 and createdDateTime ge {window_start}'
+            '?$filter=status/errorCode eq 0'
             '&$select=userPrincipalName,createdDateTime,authenticationDetails'
             '&$top=999'
         )
@@ -823,6 +823,10 @@ def syncSignInMethods(access_token):
                 if not upn:
                     continue
 
+                ts = _parse_timestamp(signin.get('createdDateTime'))
+                if ts and ts < window_start_dt:
+                    continue
+
                 auth_details = signin.get('authenticationDetails') or []
                 used_replay_resistant = any(
                     (step.get('authenticationMethod') or '').lower() in _REPLAY_RESISTANT_METHODS
@@ -841,7 +845,6 @@ def syncSignInMethods(access_token):
                 else:
                     entry['non_replay_resistant'] += 1
 
-                ts = _parse_timestamp(signin.get('createdDateTime'))
                 if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
                     entry['last_signin'] = ts
 
