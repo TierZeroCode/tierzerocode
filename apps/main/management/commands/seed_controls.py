@@ -57,6 +57,30 @@ CONTROLS = [
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'aal_02_6',
     },
+
+    # ── PWD — Password Controls ──────────────────────────────────────────────
+    {
+        'control_id': 'PWD-05',
+        'domain': 'Password Blocklist Enforcement',
+        'statement': (
+            'Verifiers SHALL compare prospective passwords against a blocklist '
+            'of commonly used, expected, or compromised passwords.'
+        ),
+        'source_reference': 'SP 800-63B-4 § 3.1.1.2',
+        'indicator': (
+            'Password blocklist enforcement enabled across all authentication '
+            'endpoints (Entra ID Password Protection — custom + global banned list)'
+        ),
+        'measurement_method': (
+            'Entra ID Password Protection configuration audit — verify domain-level '
+            'protection is in Enforce mode on all DCs; check custom banned password '
+            'list includes organization-specific terms.'
+        ),
+        'target': 'Enabled on all endpoints',
+        'red_threshold': 'Audit mode or not deployed to all DCs',
+        'data_sources': ['Microsoft Entra ID', 'Active Directory'],
+        'evaluator': 'pwd_10',
+    },
 ]
 
 
