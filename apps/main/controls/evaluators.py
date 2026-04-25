@@ -738,6 +738,95 @@ def aal_02_1_detail():
     }
 
 
+def aal_02_6():
+    """AAL-2.6: % of AAL2-scoped accounts with at least one replay-resistant method registered.
+
+    NIST SP 800-63B-4 § 2.2.2: At least one authenticator used at AAL2 SHALL
+    be replay-resistant. FIDO2, WHfB, CBA, and TOTP qualify; push approval
+    alone (without number matching) does not.
+
+    Proxy measurement: registration-based (sign-in log data not stored per event).
+    Target: 100% — amber at <100%, red at <95%.
+    """
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    replay_resistant_q = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+    with_replay = base_qs.filter(replay_resistant_q).count()
+    pct = round(with_replay / total * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 95:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{with_replay}/{total} ({pct}%)', status)
+
+
+def aal_02_6_detail():
+    """Return detailed data for AAL-2.6: AAL2 accounts with a replay-resistant method registered."""
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return {
+            'total': 0,
+            'passing_count': 0,
+            'failing_count': 0,
+            '_fail_qs': None,
+            '_fail_fields': (),
+            '_pass_qs': None,
+            '_pass_fields': (),
+            'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
+        }
+
+    replay_resistant_q = (
+        Q(passKeyDeviceBound_authentication_method=True) |
+        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+        Q(windowsHelloforBusiness_authentication_method=True) |
+        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+        Q(softwareOneTimePasscode_authentication_method=True)
+    )
+    passing_qs = base_qs.filter(replay_resistant_q).distinct()
+    failing_qs = base_qs.exclude(replay_resistant_q).distinct()
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'isMfaRegistered',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'logic': '',
+        'qualifying_methods': 'FIDO2 (device-bound passkey), FIDO2 (device-bound authenticator), Windows Hello for Business, MS Authenticator (passwordless), Software OTP/TOTP',
+        'disqualifying_methods': 'MS Authenticator push (without number matching), SMS/Mobile Phone, Email — not replay-resistant',
+        'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
+    }
+
+
 def alm_03_detail():
     """Return detailed data for ALM-02."""
     summary = SignInSummary.objects.first()

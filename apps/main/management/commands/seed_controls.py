@@ -36,6 +36,26 @@ CONTROLS = [
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'aal_02_1',
     },
+    {
+        'control_id': 'AAL-2.6',
+        'domain': 'AAL2 — Replay Resistance',
+        'statement': (
+            'At least one authenticator used at AAL2 SHALL be replay-resistant '
+            '(FIDO2, WHfB, CBA, TOTP are replay-resistant; push approval alone is not).'
+        ),
+        'source_reference': 'SP 800-63B-4 § 2.2.2',
+        'indicator': '% of AAL2 sign-ins using a replay-resistant authenticator',
+        'measurement_method': (
+            'Entra ID sign-in logs — check authenticationMethodUsed; '
+            'FIDO2/WHfB/CBA/TOTP = replay-resistant; push without number matching = not. '
+            'Proxy: registration-based (sign-in log data not stored per event).'
+        ),
+        'target': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'aal_02_6',
+    },
 ]
 
 
