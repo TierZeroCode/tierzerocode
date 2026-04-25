@@ -165,6 +165,46 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         <p class="text-xs text-slate-400">This control requires manual attestation — no automated evaluator configured.</p>
         {% endif %}
 
+        <!-- AAL-2.6 specific: per-sign-in replay-resistance aggregate -->
+        {% if detail.signin_stats %}
+        <div class="mt-4">
+            <div class="flex items-center justify-between mb-2">
+                <p class="tz-section-label">Sign-in Breakdown — Last 30 Days</p>
+                {% if detail.signin_data_synced_at %}
+                <span class="text-[11px] text-slate-400">Synced {{ detail.signin_data_synced_at|timesince }} ago</span>
+                {% endif %}
+            </div>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700/50">
+                        <th class="text-left py-2 px-3 tz-section-label">Category</th>
+                        <th class="text-right py-2 px-3 tz-section-label">Sign-ins</th>
+                        <th class="text-right py-2 px-3 tz-section-label">%</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    <tr>
+                        <td class="py-2 px-3 text-slate-700 dark:text-slate-300">Replay-resistant (FIDO2, WHfB, OTP, Passwordless, CBA)</td>
+                        <td class="py-2 px-3 text-right tabular-nums font-medium text-code-green-700 dark:text-code-green-400">{{ detail.signin_stats.replay_signins|default:0 }}</td>
+                        <td class="py-2 px-3 text-right tabular-nums text-code-green-700 dark:text-code-green-400">{{ detail.signin_stats.pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-3 text-slate-700 dark:text-slate-300">Non-replay-resistant (Push, SMS, Email)</td>
+                        <td class="py-2 px-3 text-right tabular-nums font-medium text-code-red-700 dark:text-code-red-400">{{ detail.signin_stats.non_replay_signins|default:0 }}</td>
+                        <td class="py-2 px-3 text-right tabular-nums text-code-red-700 dark:text-code-red-400">{% if detail.signin_stats.total_signins %}{% widthratio detail.signin_stats.non_replay_signins detail.signin_stats.total_signins 100 %}{% else %}0{% endif %}%</td>
+                    </tr>
+                    <tr class="font-semibold">
+                        <td class="py-2 px-3 text-slate-800 dark:text-slate-200">Total AAL2 sign-ins analyzed</td>
+                        <td class="py-2 px-3 text-right tabular-nums text-slate-900 dark:text-slate-100" colspan="2">{{ detail.signin_stats.total_signins|default:0 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            {% if detail.no_signin_count %}
+            <p class="text-[11px] text-slate-400 mt-2">{{ detail.no_signin_count }} AAL2 user{{ detail.no_signin_count|pluralize }} had no sign-in activity in the 30-day window and are excluded.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <!-- ALM-02 specific: sign-in breakdown -->
         {% if detail.ca_mfa is not None %}
         <div class="mt-4">

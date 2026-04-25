@@ -44,15 +44,16 @@ CONTROLS = [
             '(FIDO2, WHfB, CBA, TOTP are replay-resistant; push approval alone is not).'
         ),
         'source_reference': 'SP 800-63B-4 § 2.2.2',
-        'indicator': '% of AAL2 sign-ins using a replay-resistant authenticator',
+        'indicator': '% of AAL2 sign-ins that used a replay-resistant authenticator (last 30 days)',
         'measurement_method': (
-            'Entra ID sign-in logs — check authenticationMethodUsed; '
-            'FIDO2/WHfB/CBA/TOTP = replay-resistant; push without number matching = not. '
-            'Proxy: registration-based (sign-in log data not stored per event).'
+            'Entra ID sign-in logs — authenticationDetails per event; '
+            'FIDO2/WHfB/CBA/Software OTP/Passwordless = replay-resistant; push = not. '
+            'Aggregate: replay-resistant sign-in events ÷ total AAL2 sign-in events '
+            'in the 30-day window. Requires AuditLog.Read.All and syncSignInMethods().'
         ),
         'target': '100%',
-        'amber_threshold': '< 100%',
-        'red_threshold': '< 95%',
+        'amber_threshold': '< 90%',
+        'red_threshold': '< 75%',
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'aal_02_6',
     },
