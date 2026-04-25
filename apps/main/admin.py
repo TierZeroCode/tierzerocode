@@ -4,6 +4,7 @@ from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
 from apps.main.models import (
+    EntraSignInMethodStat,
     PasswordPolicy,
     CloudflareZeroTrustDeviceData,
     ConditionalAccessPolicy,
@@ -376,6 +377,14 @@ class UserDataAdmin(ImportExportModelAdmin):
 @admin.register(SignInSummary)
 class SignInSummaryAdmin(ImportExportModelAdmin):
     resource_class = SignInSummaryResource
+
+
+@admin.register(EntraSignInMethodStat)
+class EntraSignInMethodStatAdmin(admin.ModelAdmin):
+    list_display = ('upn', 'total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'last_signin_at', 'synced_at')
+    search_fields = ('upn',)
+    ordering = ('-total_signins',)
+    readonly_fields = ('synced_at',)
 
 
 @admin.register(Notification)

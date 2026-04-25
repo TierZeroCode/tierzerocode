@@ -818,7 +818,10 @@ def syncSignInMethods(access_token):
                 return
 
             page = response.json()
-            for signin in page.get('value', []):
+            records = page.get('value', [])
+            page_had_recent = False
+
+            for signin in records:
                 upn = (signin.get('userPrincipalName') or '').lower()
                 if not upn:
                     continue
@@ -827,6 +830,7 @@ def syncSignInMethods(access_token):
                 if ts and ts < window_start_dt:
                     continue
 
+                page_had_recent = True
                 auth_details = signin.get('authenticationDetails') or []
                 used_replay_resistant = any(
                     (step.get('authenticationMethod') or '').lower() in _REPLAY_RESISTANT_METHODS
@@ -847,6 +851,11 @@ def syncSignInMethods(access_token):
 
                 if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
                     entry['last_signin'] = ts
+
+            # Results are newest-first. If no record on this page fell within
+            # the 30-day window, every subsequent page will be even older — stop.
+            if records and not page_had_recent:
+                break
 
             url = page.get('@odata.nextLink')
 
