@@ -551,6 +551,28 @@ class SignInSummary(models.Model):
     def __str__(self):
         return f"Sign-In Summary ({self.synced_at})"
 
+
+class EntraSignInMethodStat(models.Model):
+    """Per-user sign-in method aggregation from Entra ID sign-in logs (last 30 days).
+
+    Populated by syncSignInMethods(). Used by AAL-2.6 as the primary measurement
+    source (replaces the registration-based proxy when populated).
+    """
+    upn = models.CharField(max_length=256, unique=True, db_index=True)
+    total_signins = models.IntegerField(default=0)
+    replay_resistant_signins = models.IntegerField(default=0)
+    non_replay_resistant_signins = models.IntegerField(default=0)
+    last_signin_at = models.DateTimeField(null=True, blank=True)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Entra Sign-In Method Stat"
+        verbose_name_plural = "Entra Sign-In Method Stats"
+
+    def __str__(self):
+        return f"{self.upn} ({self.total_signins} sign-ins)"
+
+
 class Notification(models.Model):
     title = models.CharField(max_length=200, null=True)
     status = models.TextField(null=True)

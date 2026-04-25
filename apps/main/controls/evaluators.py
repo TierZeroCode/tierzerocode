@@ -9,7 +9,7 @@ The function name must match the Control.evaluator field value.
 """
 from django.db.models import Q, Case, When, IntegerField, Value
 from django.db.models.functions import Coalesce
-from apps.main.models import UserData, Device, Integration, SignInSummary, Persona, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
+from apps.main.models import UserData, Device, Integration, SignInSummary, EntraSignInMethodStat, Persona, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
 from apps.authhandler.models import SSOIntegration
 
 
@@ -738,14 +738,24 @@ def aal_02_1_detail():
     }
 
 
+_AAL2_6_REPLAY_RESISTANT_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True) |
+    Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+    Q(softwareOneTimePasscode_authentication_method=True)
+)
+
+
 def aal_02_6():
-    """AAL-2.6: % of AAL2-scoped accounts with at least one replay-resistant method registered.
+    """AAL-2.6: % of AAL2-scoped accounts that used a replay-resistant method when signing in.
 
     NIST SP 800-63B-4 § 2.2.2: At least one authenticator used at AAL2 SHALL
     be replay-resistant. FIDO2, WHfB, CBA, and TOTP qualify; push approval
     alone (without number matching) does not.
 
-    Proxy measurement: registration-based (sign-in log data not stored per event).
+    Primary: sign-in log data from EntraSignInMethodStat (real method used per sign-in).
+    Fallback: registration-based proxy when sign-in log data is not yet available.
     Target: 100% — amber at <100%, red at <95%.
     """
     base_qs = UserData.objects.filter(persona__aal_level=2)
@@ -753,26 +763,41 @@ def aal_02_6():
     if total == 0:
         return ('-', 'not_measured')
 
-    replay_resistant_q = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-    with_replay = base_qs.filter(replay_resistant_q).count()
-    pct = round(with_replay / total * 100)
+    if EntraSignInMethodStat.objects.exists():
+        # Real measurement: scope to AAL2 users with sign-in records in the window
+        upns_with_signins = list(
+            EntraSignInMethodStat.objects.filter(
+                upn__in=base_qs.values_list('upn', flat=True)
+            ).values_list('upn', flat=True)
+        )
+        total_measured = len(upns_with_signins)
+        if total_measured == 0:
+            return ('-', 'not_measured')
+
+        replay_upns = list(
+            EntraSignInMethodStat.objects.filter(
+                replay_resistant_signins__gt=0,
+                upn__in=upns_with_signins,
+            ).values_list('upn', flat=True)
+        )
+        with_replay = len(replay_upns)
+    else:
+        # Registration proxy: fall back to method-registered check
+        with_replay = base_qs.filter(_AAL2_6_REPLAY_RESISTANT_Q).count()
+        total_measured = total
+
+    pct = round(with_replay / total_measured * 100)
     if pct >= 100:
         status = 'passing'
     elif pct >= 95:
         status = 'warning'
     else:
         status = 'failing'
-    return (f'{with_replay}/{total} ({pct}%)', status)
+    return (f'{with_replay}/{total_measured} ({pct}%)', status)
 
 
 def aal_02_6_detail():
-    """Return detailed data for AAL-2.6: AAL2 accounts with a replay-resistant method registered."""
+    """Return detailed data for AAL-2.6: replay-resistant sign-in usage per AAL2 account."""
     base_qs = UserData.objects.filter(persona__aal_level=2)
     total = base_qs.count()
     if total == 0:
@@ -787,16 +812,6 @@ def aal_02_6_detail():
             'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
         }
 
-    replay_resistant_q = (
-        Q(passKeyDeviceBound_authentication_method=True) |
-        Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
-        Q(windowsHelloforBusiness_authentication_method=True) |
-        Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
-        Q(softwareOneTimePasscode_authentication_method=True)
-    )
-    passing_qs = base_qs.filter(replay_resistant_q).distinct()
-    failing_qs = base_qs.exclude(replay_resistant_q).distinct()
-
     _fields = (
         'upn', 'given_name', 'surname', 'persona__persona_name',
         'highest_authentication_strength', 'isMfaRegistered',
@@ -810,16 +825,60 @@ def aal_02_6_detail():
         'email_authentication_method',
     )
 
+    if EntraSignInMethodStat.objects.exists():
+        data_source = 'sign_in_logs'
+        upns_with_signins = list(
+            EntraSignInMethodStat.objects.filter(
+                upn__in=base_qs.values_list('upn', flat=True)
+            ).values_list('upn', flat=True)
+        )
+        replay_upns = list(
+            EntraSignInMethodStat.objects.filter(
+                replay_resistant_signins__gt=0,
+                upn__in=upns_with_signins,
+            ).values_list('upn', flat=True)
+        )
+        passing_qs = base_qs.filter(upn__in=replay_upns)
+        failing_qs = base_qs.filter(upn__in=upns_with_signins).exclude(upn__in=replay_upns)
+        no_signin_count = base_qs.exclude(upn__in=upns_with_signins).count()
+        total_measured = len(upns_with_signins)
+        logic = (
+            'Measured from Entra ID sign-in logs (last 30 days). Each sign-in event '
+            'is classified as replay-resistant if any authentication step used FIDO2, '
+            'WHfB, Certificate-Based Auth, Software OTP, or Passwordless Authenticator. '
+            'Push notifications alone do not qualify. '
+            f'{no_signin_count} AAL2 user(s) had no sign-in activity in the 30-day window and are excluded from the count.'
+        )
+    else:
+        data_source = 'registration_proxy'
+        passing_qs = base_qs.filter(_AAL2_6_REPLAY_RESISTANT_Q).distinct()
+        failing_qs = base_qs.exclude(_AAL2_6_REPLAY_RESISTANT_Q).distinct()
+        no_signin_count = 0
+        total_measured = total
+        logic = (
+            'Proxy measurement: sign-in log data not yet available. '
+            'Evaluating whether each AAL2 user has at least one replay-resistant '
+            'method registered. Run the Entra ID user sync or '
+            '"python manage.py sync_entra_sign_in_methods" to populate real sign-in data.'
+        )
+
+    stat = EntraSignInMethodStat.objects.order_by('-synced_at').first()
+    synced_at = stat.synced_at if stat else None
+
     return {
         'total': total,
+        'total_measured': total_measured,
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
+        'no_signin_count': no_signin_count,
         '_fail_qs': failing_qs,
         '_fail_fields': _fields,
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
-        'logic': '',
-        'qualifying_methods': 'FIDO2 (device-bound passkey), FIDO2 (device-bound authenticator), Windows Hello for Business, MS Authenticator (passwordless), Software OTP/TOTP',
+        'data_source': data_source,
+        'signin_data_synced_at': synced_at,
+        'logic': logic,
+        'qualifying_methods': 'FIDO2 (device-bound passkey), FIDO2 (device-bound authenticator), Windows Hello for Business, MS Authenticator (passwordless), Software OTP/TOTP, Certificate-Based Authentication',
         'disqualifying_methods': 'MS Authenticator push (without number matching), SMS/Mobile Phone, Email — not replay-resistant',
         'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
         'amber_threshold': '< 100%',
