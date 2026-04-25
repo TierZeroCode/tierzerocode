@@ -5,7 +5,7 @@ from datetime import datetime
 from django.contrib import messages
 from django.utils.timezone import make_aware
 # Import Models
-from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy, PasswordPolicy
+from apps.main.models import Integration, UserData, Persona, PersonaGroup, Notification, SignInSummary, EntraSignInMethodStat, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy, PasswordPolicy
 # Import Function Scripts
 from apps.main.integrations.device_integrations.ReusedFunctions import _fetch_paginated_data
 from apps.code_packages.microsoft import getMicrosoftGraphAccessToken
@@ -764,6 +764,139 @@ def syncPasswordPolicy(access_token):
                   f"Password policy sync error: {str(e)}")
 
 
+_REPLAY_RESISTANT_METHODS = frozenset({
+    'fido2 security key',
+    'passwordless phone sign-in',
+    'passwordless microsoft authenticator app',
+    'windows hello for business',
+    'windows hello',
+    'x.509 certificate',
+    'certificate-based authentication',
+    'software oath token',
+    'hardware oath token',
+})
+
+
+def syncSignInMethods(access_token):
+    """Aggregate per-user replay-resistant sign-in counts from Entra sign-in logs.
+
+    Fetches the last 30 days of successful sign-ins using authenticationDetails,
+    classifies each sign-in as replay-resistant or not, and bulk-upserts one
+    EntraSignInMethodStat row per UPN. Stale rows (UPNs absent from the window)
+    are deleted so the table always reflects the live 30-day window.
+
+    Requires AuditLog.Read.All permission.
+    """
+    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
+    import time
+    from datetime import timedelta
+
+    try:
+        window_start = (timezone.now() - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        url = (
+            'https://graph.microsoft.com/beta/auditLogs/signIns'
+            f'?$filter=status/errorCode eq 0 and createdDateTime ge {window_start}'
+            '&$select=userPrincipalName,createdDateTime,authenticationDetails'
+            '&$top=999'
+        )
+        headers = {'Authorization': access_token}
+
+        # upn → {total, replay_resistant, non_replay_resistant, last_signin}
+        stats: dict = {}
+
+        while url:
+            response = requests.get(url, headers=headers)
+
+            if response.status_code == 429:
+                retry_after = int(response.headers.get('Retry-After', 60))
+                time.sleep(retry_after)
+                continue
+
+            if response.status_code != 200:
+                _sync_log('Microsoft Entra ID', '1518', 'Failure',
+                          f'Sign-in methods fetch failed: {response.status_code} - {response.text[:500]}')
+                return
+
+            page = response.json()
+            for signin in page.get('value', []):
+                upn = (signin.get('userPrincipalName') or '').lower()
+                if not upn:
+                    continue
+
+                auth_details = signin.get('authenticationDetails') or []
+                used_replay_resistant = any(
+                    (step.get('authenticationMethod') or '').lower() in _REPLAY_RESISTANT_METHODS
+                    for step in auth_details
+                )
+
+                entry = stats.setdefault(upn, {
+                    'total': 0,
+                    'replay_resistant': 0,
+                    'non_replay_resistant': 0,
+                    'last_signin': None,
+                })
+                entry['total'] += 1
+                if used_replay_resistant:
+                    entry['replay_resistant'] += 1
+                else:
+                    entry['non_replay_resistant'] += 1
+
+                ts = _parse_timestamp(signin.get('createdDateTime'))
+                if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
+                    entry['last_signin'] = ts
+
+            url = page.get('@odata.nextLink')
+
+        if not stats:
+            _sync_log('Microsoft Entra ID', '1518', 'Warning',
+                      'No sign-in records returned for sign-in methods sync')
+            return
+
+        existing = {
+            obj.upn: obj
+            for obj in EntraSignInMethodStat.objects.filter(upn__in=stats.keys())
+        }
+        to_create = []
+        to_update = []
+
+        for upn, entry in stats.items():
+            if upn in existing:
+                obj = existing[upn]
+                obj.total_signins = entry['total']
+                obj.replay_resistant_signins = entry['replay_resistant']
+                obj.non_replay_resistant_signins = entry['non_replay_resistant']
+                obj.last_signin_at = entry['last_signin']
+                to_update.append(obj)
+            else:
+                to_create.append(EntraSignInMethodStat(
+                    upn=upn,
+                    total_signins=entry['total'],
+                    replay_resistant_signins=entry['replay_resistant'],
+                    non_replay_resistant_signins=entry['non_replay_resistant'],
+                    last_signin_at=entry['last_signin'],
+                ))
+
+        if to_create:
+            EntraSignInMethodStat.objects.bulk_create(to_create)
+        if to_update:
+            EntraSignInMethodStat.objects.bulk_update(
+                to_update,
+                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'last_signin_at'],
+                batch_size=500,
+            )
+
+        # Remove UPNs that have fallen outside the 30-day window
+        EntraSignInMethodStat.objects.exclude(upn__in=stats.keys()).delete()
+
+        replay_total = sum(e['replay_resistant'] for e in stats.values())
+        _sync_log('Microsoft Entra ID', '1518', 'Success',
+                  f'Sign-in methods synced: {len(stats)} users, {replay_total} replay-resistant sign-ins')
+
+    except Exception as e:
+        _sync_log('Microsoft Entra ID', '1519', 'Failure',
+                  f'Sign-in methods sync error: {str(e)}')
+
+
 def syncMicrosoftEntraIDUser():
     """Synchronize Microsoft Entra ID users and update the local database."""
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
@@ -785,6 +918,9 @@ def syncMicrosoftEntraIDUser():
 
     # Sync CA+MFA sign-in analysis (requires AuditLog.Read.All)
     syncSignInSummary(access_token)
+
+    # Sync per-user replay-resistant sign-in stats for AAL-2.6 (requires AuditLog.Read.All)
+    syncSignInMethods(access_token)
 
     # Sync Conditional Access policies (requires Policy.Read.All)
     syncConditionalAccessPolicies(access_token)
