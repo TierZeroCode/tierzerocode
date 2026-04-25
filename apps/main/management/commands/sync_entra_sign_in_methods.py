@@ -77,7 +77,6 @@ class Command(BaseCommand):
         url = (
             'https://graph.microsoft.com/beta/auditLogs/signIns'
             '?$filter=status/errorCode eq 0'
-            '&$select=userPrincipalName,createdDateTime,authenticationDetails'
             '&$top=10'
         )
         headers = {'Authorization': access_token}

@@ -793,10 +793,11 @@ def syncSignInMethods(access_token):
 
     try:
         window_start_dt = timezone.now() - timedelta(days=30)
+        # Graph beta rejects `$select=authenticationDetails` with "Unsupported Query".
+        # Drop $select entirely and let the response include all properties.
         url = (
             'https://graph.microsoft.com/beta/auditLogs/signIns'
             '?$filter=status/errorCode eq 0'
-            '&$select=userPrincipalName,createdDateTime,authenticationDetails'
             '&$top=999'
         )
         headers = {'Authorization': access_token}
