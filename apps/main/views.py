@@ -868,7 +868,7 @@ def control_detail(request, control_id):
 	# Build data source tiles (name + logo path)
 	data_source_tiles = [
 		{'name': name, 'logo': _DATA_SOURCE_LOGOS.get(name)}
-		for name in (ctrl.data_sources or [])
+		for name in dict.fromkeys(ctrl.data_sources or [])  # dict.fromkeys preserves order and deduplicates
 	]
 
 	context = {
