@@ -739,16 +739,21 @@ def aal_02_1_detail():
 
 
 def aal_02_6():
-    """AAL-2.6: % of AAL2-scoped accounts that used a replay-resistant method when signing in.
+    """AAL-2.6: % of AAL2 sign-ins that used a replay-resistant authenticator.
 
     NIST SP 800-63B-4 § 2.2.2: At least one authenticator used at AAL2 SHALL
     be replay-resistant. FIDO2, WHfB, CBA, and TOTP qualify; push approval
     alone (without number matching) does not.
 
+    Metric: replay_resistant_signins / total_signins across all AAL2 users
+    in the 30-day window. Each sign-in event counts individually.
+
     Requires EntraSignInMethodStat to be populated via syncSignInMethods().
     Returns not_measured until sign-in log data is available.
-    Target: 100% — amber at <100%, red at <95%.
+    Target: 100% — amber at <90%, red at <75%.
     """
+    from django.db.models import Sum
+
     if not EntraSignInMethodStat.objects.exists():
         return ('-', 'not_measured')
 
@@ -756,45 +761,42 @@ def aal_02_6():
     if not base_qs.exists():
         return ('-', 'not_measured')
 
-    upns_with_signins = list(
-        EntraSignInMethodStat.objects.filter(
-            upn__in=base_qs.values_list('upn', flat=True)
-        ).values_list('upn', flat=True)
+    agg = EntraSignInMethodStat.objects.filter(
+        upn__in=base_qs.values_list('upn', flat=True)
+    ).aggregate(
+        total=Sum('total_signins'),
+        replay=Sum('replay_resistant_signins'),
     )
-    total_measured = len(upns_with_signins)
-    if total_measured == 0:
+    total_signins = agg['total'] or 0
+    replay_signins = agg['replay'] or 0
+
+    if total_signins == 0:
         return ('-', 'not_measured')
 
-    replay_upns = list(
-        EntraSignInMethodStat.objects.filter(
-            replay_resistant_signins__gt=0,
-            upn__in=upns_with_signins,
-        ).values_list('upn', flat=True)
-    )
-    with_replay = len(replay_upns)
-    pct = round(with_replay / total_measured * 100)
+    pct = round(replay_signins / total_signins * 100)
     if pct >= 100:
         status = 'passing'
-    elif pct >= 95:
+    elif pct >= 90:
         status = 'warning'
     else:
         status = 'failing'
-    return (f'{with_replay}/{total_measured} ({pct}%)', status)
+    return (f'{replay_signins:,}/{total_signins:,} sign-ins ({pct}%)', status)
 
 
 def aal_02_6_detail():
-    """Return detailed data for AAL-2.6: replay-resistant sign-in usage per AAL2 account."""
-    _not_measured = {
+    """Return detailed data for AAL-2.6: per-sign-in replay-resistance aggregate for AAL2 accounts."""
+    from django.db.models import Sum
+
+    _empty = {
         'total': 0, 'total_measured': 0,
         'passing_count': 0, 'failing_count': 0, 'no_signin_count': 0,
         '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (),
-        'data_source': 'sign_in_logs',
-        'signin_data_synced_at': None,
+        'signin_stats': None, 'signin_data_synced_at': None,
     }
 
     if not EntraSignInMethodStat.objects.exists():
         return {
-            **_not_measured,
+            **_empty,
             'logic': (
                 'No sign-in log data available. Run the Entra ID user sync or '
                 '"python manage.py sync_entra_sign_in_methods" to populate data. '
@@ -806,26 +808,29 @@ def aal_02_6_detail():
     total = base_qs.count()
     if total == 0:
         return {
-            **_not_measured,
+            **_empty,
             'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
         }
 
-    upns_with_signins = list(
-        EntraSignInMethodStat.objects.filter(
-            upn__in=base_qs.values_list('upn', flat=True)
-        ).values_list('upn', flat=True)
-    )
-    replay_upns = list(
-        EntraSignInMethodStat.objects.filter(
-            replay_resistant_signins__gt=0,
-            upn__in=upns_with_signins,
-        ).values_list('upn', flat=True)
-    )
+    aal2_upns = base_qs.values_list('upn', flat=True)
+    stat_qs = EntraSignInMethodStat.objects.filter(upn__in=aal2_upns)
 
+    agg = stat_qs.aggregate(
+        total=Sum('total_signins'),
+        replay=Sum('replay_resistant_signins'),
+        non_replay=Sum('non_replay_resistant_signins'),
+    )
+    total_signins = agg['total'] or 0
+    replay_signins = agg['replay'] or 0
+    non_replay_signins = agg['non_replay'] or 0
+
+    upns_with_signins = list(stat_qs.values_list('upn', flat=True))
+    replay_upns = list(stat_qs.filter(replay_resistant_signins__gt=0).values_list('upn', flat=True))
+
+    # Per-user breakdown: failing = signed in but never replay-resistant
     passing_qs = base_qs.filter(upn__in=replay_upns)
     failing_qs = base_qs.filter(upn__in=upns_with_signins).exclude(upn__in=replay_upns)
     no_signin_count = base_qs.exclude(upn__in=upns_with_signins).count()
-    total_measured = len(upns_with_signins)
 
     _fields = (
         'upn', 'given_name', 'surname', 'persona__persona_name',
@@ -840,11 +845,12 @@ def aal_02_6_detail():
         'email_authentication_method',
     )
 
-    stat = EntraSignInMethodStat.objects.order_by('-synced_at').first()
+    stat = stat_qs.order_by('-synced_at').first()
+    pct = round(replay_signins / total_signins * 100) if total_signins > 0 else 0
 
     return {
         'total': total,
-        'total_measured': total_measured,
+        'total_measured': len(upns_with_signins),
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
         'no_signin_count': no_signin_count,
@@ -852,20 +858,29 @@ def aal_02_6_detail():
         '_fail_fields': _fields,
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
-        'data_source': 'sign_in_logs',
+        'signin_stats': {
+            'total_signins': total_signins,
+            'replay_signins': replay_signins,
+            'non_replay_signins': non_replay_signins,
+            'pct': pct,
+        },
         'signin_data_synced_at': stat.synced_at if stat else None,
         'logic': (
-            'Measured from Entra ID sign-in logs (last 30 days). A user passes if at least '
-            'one of their sign-ins used a replay-resistant authenticator. '
-            'Push notifications alone do not qualify. '
+            'Measured from Entra ID sign-in logs (last 30 days). '
+            'Each sign-in event is classified individually — '
+            'replay-resistant if any authentication step used FIDO2, WHfB, CBA, Software OTP, '
+            'or Passwordless Authenticator. Push notifications alone do not qualify. '
+            'The headline percentage is aggregate sign-ins, not per-user. '
+            'The user tables below show who has never signed in with a replay-resistant '
+            f'method (failing) vs at least once (passing). '
             f'{no_signin_count} AAL2 user(s) had no sign-in activity in the 30-day window '
-            'and are excluded from the denominator.'
+            'and are excluded entirely.'
         ),
         'qualifying_methods': 'FIDO2 (device-bound passkey), FIDO2 (device-bound authenticator), Windows Hello for Business, MS Authenticator (passwordless), Software OTP/TOTP, Certificate-Based Authentication',
         'disqualifying_methods': 'MS Authenticator push (without number matching), SMS/Mobile Phone, Email — not replay-resistant',
         'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
-        'amber_threshold': '< 100%',
-        'red_threshold': '< 95%',
+        'amber_threshold': '< 90%',
+        'red_threshold': '< 75%',
     }
 
 
