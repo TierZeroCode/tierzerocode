@@ -729,7 +729,7 @@ def aal_02_1_detail():
         '_fail_fields': _fields,
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
-        'logic': '',
+        'logic': 'NIST SP 800-63B-4 § 2.2.1: AAL2 authentication SHALL use either a multi-factor authenticator or a combination of two separate authenticators. Scoped to personas with aal_level=2. A user is compliant if Entra ID reports isMfaRegistered=True (≥1 approved non-password MFA method bound to the account). Target: 100%.',
         'qualifying_methods': 'isMfaRegistered flag from Entra ID registration report (any non-password MFA method: FIDO2, WHfB, MS Authenticator passwordless/push, Software OTP, Mobile Phone, Email)',
         'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
         'threshold': '100%',
