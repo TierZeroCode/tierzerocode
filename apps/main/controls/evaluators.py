@@ -7,7 +7,7 @@ Each function takes no arguments and returns a tuple of (current_value, status).
 
 The function name must match the Control.evaluator field value.
 """
-from django.db.models import Q, Case, When, IntegerField, Value
+from django.db.models import Q, Case, When, IntegerField, Value, F
 from django.db.models.functions import Coalesce
 from apps.main.models import UserData, Device, Integration, SignInSummary, EntraSignInMethodStat, Persona, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
 from apps.authhandler.models import SSOIntegration
@@ -733,6 +733,143 @@ def aal_02_1_detail():
         'qualifying_methods': 'isMfaRegistered flag from Entra ID registration report (any non-password MFA method: FIDO2, WHfB, MS Authenticator passwordless/push, Software OTP, Mobile Phone, Email)',
         'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
         'threshold': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
+    }
+
+
+def aal_02_3():
+    """AAL-2.3: % of AAL2 sign-ins that satisfied MFA in the last 30 days.
+
+    NIST SP 800-63B-4 § 2.2.1: AAL2 authentication SHALL use MFA. A drop in
+    the MFA-satisfaction rate may indicate bypass paths or legacy auth leakage.
+
+    Metric: mfa_satisfied_signins / total_signins across all AAL2 users in the
+    30-day window. authenticationRequirement = 'multiFactorAuthentication' on
+    the sign-in event is the source of truth.
+
+    Requires EntraSignInMethodStat to be populated via syncSignInMethods().
+    Target: 100% — amber at <100%, red at <95%.
+    """
+    from django.db.models import Sum
+
+    if not EntraSignInMethodStat.objects.exists():
+        return ('-', 'not_measured')
+
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    if not base_qs.exists():
+        return ('-', 'not_measured')
+
+    agg = EntraSignInMethodStat.objects.filter(
+        upn__in=base_qs.values_list('upn', flat=True)
+    ).aggregate(
+        total=Sum('total_signins'),
+        mfa=Sum('mfa_satisfied_signins'),
+    )
+    total_signins = agg['total'] or 0
+    mfa_signins = agg['mfa'] or 0
+
+    if total_signins == 0:
+        return ('-', 'not_measured')
+
+    pct = round(mfa_signins / total_signins * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 95:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{mfa_signins:,}/{total_signins:,} sign-ins ({pct}%)', status)
+
+
+def aal_02_3_detail():
+    """Return detailed data for AAL-2.3: per-sign-in MFA satisfaction for AAL2 accounts."""
+    from django.db.models import Sum
+
+    _empty = {
+        'total': 0, 'total_measured': 0,
+        'passing_count': 0, 'failing_count': 0, 'no_signin_count': 0,
+        '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (),
+        'signin_stats': None, 'signin_data_synced_at': None,
+    }
+
+    if not EntraSignInMethodStat.objects.exists():
+        return {
+            **_empty,
+            'logic': (
+                'No sign-in log data available. Run the Entra ID user sync or '
+                '"python manage.py sync_entra_sign_in_methods" to populate data. '
+                'Requires AuditLog.Read.All permission.'
+            ),
+        }
+
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return {
+            **_empty,
+            'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
+        }
+
+    aal2_upns = base_qs.values_list('upn', flat=True)
+    stat_qs = EntraSignInMethodStat.objects.filter(upn__in=aal2_upns)
+
+    agg = stat_qs.aggregate(
+        total=Sum('total_signins'),
+        mfa=Sum('mfa_satisfied_signins'),
+    )
+    total_signins = agg['total'] or 0
+    mfa_signins = agg['mfa'] or 0
+    non_mfa_signins = total_signins - mfa_signins
+
+    upns_with_signins = list(stat_qs.values_list('upn', flat=True))
+    full_mfa_upns = list(
+        stat_qs.filter(mfa_satisfied_signins=F('total_signins'))
+               .values_list('upn', flat=True)
+    )
+
+    passing_qs = base_qs.filter(upn__in=full_mfa_upns)
+    failing_qs = base_qs.filter(upn__in=upns_with_signins).exclude(upn__in=full_mfa_upns)
+    no_signin_count = base_qs.exclude(upn__in=upns_with_signins).count()
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'isMfaRegistered',
+    )
+
+    stat = stat_qs.order_by('-synced_at').first()
+    pct = round(mfa_signins / total_signins * 100) if total_signins > 0 else 0
+
+    return {
+        'total': total,
+        'total_measured': len(upns_with_signins),
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'no_signin_count': no_signin_count,
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'signin_stats': {
+            'total_signins': total_signins,
+            'mfa_signins': mfa_signins,
+            'non_mfa_signins': non_mfa_signins,
+            'pct': pct,
+        },
+        'signin_data_synced_at': stat.synced_at if stat else None,
+        'logic': (
+            'Measured from Entra ID sign-in logs (last 30 days). '
+            'A sign-in is counted as MFA-satisfied when its '
+            "authenticationRequirement field equals 'multiFactorAuthentication'. "
+            'The headline percentage is aggregate sign-ins. '
+            'The user tables below show users whose every sign-in satisfied MFA '
+            '(passing) vs users with at least one single-factor sign-in (failing). '
+            f'{no_signin_count} AAL2 user(s) had no sign-in activity in the 30-day '
+            'window and are excluded entirely.'
+        ),
+        'qualifying_methods': "authenticationRequirement = 'multiFactorAuthentication' on the sign-in event",
+        'disqualifying_methods': "authenticationRequirement = 'singleFactorAuthentication' (password-only or token-only sign-in)",
+        'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
         'amber_threshold': '< 100%',
         'red_threshold': '< 95%',
     }

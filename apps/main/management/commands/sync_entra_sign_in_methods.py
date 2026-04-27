@@ -35,7 +35,9 @@ class Command(BaseCommand):
         self.stdout.write(f'  UserData rows with persona.aal_level=2: {aal2_count}')
 
         if pre_count > 0:
-            sample_stats = list(EntraSignInMethodStat.objects.values('upn', 'total_signins', 'replay_resistant_signins')[:5])
+            sample_stats = list(EntraSignInMethodStat.objects.values(
+                'upn', 'total_signins', 'replay_resistant_signins', 'mfa_satisfied_signins',
+            )[:5])
             self.stdout.write(f'  Sample stat rows: {sample_stats}')
 
         if aal2_count > 0:
@@ -153,10 +155,12 @@ class Command(BaseCommand):
             total_agg = EntraSignInMethodStat.objects.aggregate(
                 total=Sum('total_signins'),
                 replay=Sum('replay_resistant_signins'),
+                mfa=Sum('mfa_satisfied_signins'),
             )
             self.stdout.write(
                 f'  Aggregate sign-ins (all users): '
-                f"total={total_agg['total']}, replay-resistant={total_agg['replay']}"
+                f"total={total_agg['total']}, replay-resistant={total_agg['replay']}, "
+                f"mfa-satisfied={total_agg['mfa']}"
             )
 
             if aal2_count > 0:
@@ -165,21 +169,25 @@ class Command(BaseCommand):
                 ).aggregate(
                     total=Sum('total_signins'),
                     replay=Sum('replay_resistant_signins'),
+                    mfa=Sum('mfa_satisfied_signins'),
                 )
                 aal2_t = aal2_agg['total'] or 0
                 aal2_r = aal2_agg['replay'] or 0
-                pct = round(aal2_r / aal2_t * 100) if aal2_t > 0 else 0
+                aal2_m = aal2_agg['mfa'] or 0
+                rr_pct = round(aal2_r / aal2_t * 100) if aal2_t > 0 else 0
+                mfa_pct = round(aal2_m / aal2_t * 100) if aal2_t > 0 else 0
                 self.stdout.write(
-                    f'  AAL2-scoped aggregate: '
-                    f'total={aal2_t}, replay-resistant={aal2_r} ({pct}%)'
+                    f'  AAL2-scoped aggregate: total={aal2_t}\n'
+                    f'    AAL-2.6 (replay-resistant): {aal2_r}/{aal2_t} ({rr_pct}%)\n'
+                    f'    AAL-2.3 (mfa-satisfied):    {aal2_m}/{aal2_t} ({mfa_pct}%)'
                 )
                 if aal2_t == 0:
                     self.stdout.write(self.style.WARNING(
                         '  → No AAL2-scoped users had sign-ins in the 30-day window. '
-                        'AAL-2.6 will show "Not Measured".'
+                        'AAL-2.3 and AAL-2.6 will show "Not Measured".'
                     ))
                 else:
-                    self.stdout.write(self.style.SUCCESS('  → AAL-2.6 should now evaluate.'))
+                    self.stdout.write(self.style.SUCCESS('  → AAL-2.3 and AAL-2.6 should now evaluate.'))
             else:
                 self.stdout.write(self.style.WARNING(
                     '  → No AAL2-scoped users in UserData. AAL-2.6 will show "Not Measured".'

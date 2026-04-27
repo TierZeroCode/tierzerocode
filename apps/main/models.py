@@ -562,6 +562,7 @@ class EntraSignInMethodStat(models.Model):
     total_signins = models.IntegerField(default=0)
     replay_resistant_signins = models.IntegerField(default=0)
     non_replay_resistant_signins = models.IntegerField(default=0)
+    mfa_satisfied_signins = models.IntegerField(default=0)
     last_signin_at = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)
 

@@ -837,11 +837,13 @@ def syncSignInMethods(access_token):
                     (step.get('authenticationMethod') or '').lower() in _REPLAY_RESISTANT_METHODS
                     for step in auth_details
                 )
+                mfa_satisfied = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
 
                 entry = stats.setdefault(upn, {
                     'total': 0,
                     'replay_resistant': 0,
                     'non_replay_resistant': 0,
+                    'mfa_satisfied': 0,
                     'last_signin': None,
                 })
                 entry['total'] += 1
@@ -849,6 +851,8 @@ def syncSignInMethods(access_token):
                     entry['replay_resistant'] += 1
                 else:
                     entry['non_replay_resistant'] += 1
+                if mfa_satisfied:
+                    entry['mfa_satisfied'] += 1
 
                 if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
                     entry['last_signin'] = ts
@@ -878,6 +882,7 @@ def syncSignInMethods(access_token):
                 obj.total_signins = entry['total']
                 obj.replay_resistant_signins = entry['replay_resistant']
                 obj.non_replay_resistant_signins = entry['non_replay_resistant']
+                obj.mfa_satisfied_signins = entry['mfa_satisfied']
                 obj.last_signin_at = entry['last_signin']
                 to_update.append(obj)
             else:
@@ -886,6 +891,7 @@ def syncSignInMethods(access_token):
                     total_signins=entry['total'],
                     replay_resistant_signins=entry['replay_resistant'],
                     non_replay_resistant_signins=entry['non_replay_resistant'],
+                    mfa_satisfied_signins=entry['mfa_satisfied'],
                     last_signin_at=entry['last_signin'],
                 ))
 
@@ -894,7 +900,7 @@ def syncSignInMethods(access_token):
         if to_update:
             EntraSignInMethodStat.objects.bulk_update(
                 to_update,
-                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'last_signin_at'],
+                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'mfa_satisfied_signins', 'last_signin_at'],
                 batch_size=500,
             )
 
