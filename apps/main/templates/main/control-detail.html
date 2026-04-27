@@ -330,8 +330,8 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         <h2 class="text-sm font-semibold text-code-red-700 dark:text-code-red-400">Non-Compliant (<span id="fail-total">{{ detail.failing_count }}</span>)</h2>
         <div class="flex items-center gap-2">
             <select id="fail-size" class="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded px-2 py-1 focus:outline-none">
-                <option value="10">10 / page</option>
-                <option value="25" selected>25 / page</option>
+                <option value="10" selected>10 / page</option>
+                <option value="25">25 / page</option>
                 <option value="50">50 / page</option>
                 <option value="100">100 / page</option>
                 <option value="250">250 / page</option>
@@ -366,8 +366,8 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
     <div class="tz-card-header flex items-center justify-between">
         <h2 class="text-sm font-semibold text-code-green-700 dark:text-code-green-400">Compliant (<span id="pass-total">{{ detail.passing_count }}</span>)</h2>
         <select id="pass-size" class="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded px-2 py-1 focus:outline-none">
-            <option value="10">10 / page</option>
-            <option value="25" selected>25 / page</option>
+            <option value="10" selected>10 / page</option>
+            <option value="25">25 / page</option>
             <option value="50">50 / page</option>
             <option value="100">100 / page</option>
             <option value="250">250 / page</option>
@@ -521,7 +521,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
     function initTable(cfg) {
         /* cfg: { type, tbody, footer, sizeEl, colPersonaCls, colAdminCls } */
         var page = 0;
-        var size = 25;
+        var size = 10;
         var meta = null; /* cached has_persona / has_admin from first response */
 
         function fetch(p, s) {

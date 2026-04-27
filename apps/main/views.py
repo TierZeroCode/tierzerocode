@@ -895,11 +895,11 @@ def control_findings_ajax(request, control_id):
     which = request.GET.get('type', 'failing')
     try:
         page = max(0, int(request.GET.get('page', 0)))
-        size = int(request.GET.get('size', 25))
+        size = int(request.GET.get('size', 10))
         if size not in (10, 25, 50, 100, 250, 500):
-            size = 25
+            size = 10
     except (ValueError, TypeError):
-        page, size = 0, 25
+        page, size = 0, 10
 
     detail_func_name = f'{ctrl.evaluator}_detail' if ctrl.evaluator else None
     if not detail_func_name:
