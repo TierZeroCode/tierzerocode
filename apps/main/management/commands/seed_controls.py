@@ -22,16 +22,20 @@ from apps.main.models import ControlFramework, Control
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Canonical framework definitions — keyed by short_name.
+# `display_order` controls UI sort: lower = earlier. Custom is pinned to 100
+# so it always lands at the bottom of any framework listing.
 FRAMEWORKS = {
     'NIST SP 800-63-4': {
         'name': 'NIST Special Publication 800-63 Revision 4 — Digital Identity Guidelines',
         'version': 'Revision 4',
         'url': 'https://pages.nist.gov/800-63-4/',
+        'display_order': 0,
     },
     'Custom': {
         'name': 'Custom Controls',
         'version': 'v1',
         'url': '',
+        'display_order': 100,
     },
 }
 

@@ -595,7 +595,7 @@ def reports(request):
 
 	framework_stats = []
 	controls_grouped = []
-	for fw in frameworks.order_by('name'):
+	for fw in frameworks.order_by('display_order', 'name'):
 		fw_controls_qs = controls.filter(framework=fw)
 		fw_total = fw_controls_qs.count()
 		if fw_total == 0:
@@ -649,7 +649,7 @@ def reports(request):
 			'categories': categories,
 		})
 
-	failing_controls = controls.filter(status='failing').order_by('framework__name', 'control_id')
+	failing_controls = controls.filter(status='failing').order_by('framework__display_order', 'framework__name', 'control_id')
 
 	context = {
 		'page': 'reports',

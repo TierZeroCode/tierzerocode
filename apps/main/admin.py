@@ -408,9 +408,10 @@ class NotificationAdmin(ImportExportModelAdmin):
 
 @admin.register(ControlFramework)
 class ControlFrameworkAdmin(admin.ModelAdmin):
-    list_display = ('name', 'short_name', 'version', 'url')
+    list_display = ('display_order', 'name', 'short_name', 'version', 'url')
+    list_editable = ('display_order',)
     search_fields = ('name', 'short_name')
-    ordering = ('name',)
+    ordering = ('display_order', 'name')
 
 
 @admin.register(Control)

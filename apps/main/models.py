@@ -595,8 +595,15 @@ class ControlFramework(models.Model):
     short_name = models.CharField(max_length=50)
     version = models.CharField(max_length=50, null=True, blank=True)
     url = models.URLField(max_length=500, null=True, blank=True)
+    # Lower = appears earlier in UI listings. Standard frameworks (NIST, etc.)
+    # default to 0; Custom Controls default to 100 so they always sit at the
+    # bottom. Pick numbers in between for future frameworks.
+    display_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    class Meta:
+        ordering = ['display_order', 'name']
 
     def __str__(self):
         return f"{self.short_name} {self.version or ''}".strip()
