@@ -750,16 +750,19 @@ def syncSignInLogs(access_token):
 
     try:
         window_start_dt = timezone.now() - timedelta(days=30)
-        # Server-side filters cut the volume dramatically on busy tenants:
+        # Server-side filters cut the volume on busy tenants while preserving
+        # every authentication moment that's meaningful for AAL measurement:
         #   - status/errorCode eq 0          → only successful sign-ins
         #   - createdDateTime ge {30d ago}   → date floor; Graph stops returning
         #                                      pages older than the window
-        #   - signInEventTypes/any(t:t eq 'interactiveUser') → drops non-interactive
-        #     refreshes/service principals — most of those are the SSO-cached
-        #     "Previously Satisfied" events that AAL controls don't measure anyway.
+        #   - signInEventTypes ∈ {interactiveUser, nonInteractiveUser}
+        #     Includes refresh-token flows and background app re-auth (Outlook,
+        #     Teams, OneDrive) — these exercise the user's authenticator even
+        #     though no UI was shown. Service principal events are still excluded
+        #     (they're 'servicePrincipal' / 'managedIdentity' types, not user auth).
         # We can't filter on authenticationDetails directly (Graph doesn't allow
-        # OData expressions on that collection-typed property), so any residual
-        # Previously Satisfied events that DO come back are filtered in Python below.
+        # OData expressions on that collection-typed property), so SSO-cached
+        # "Previously Satisfied" events are filtered in Python below.
         # Drop $select — Graph beta rejects authenticationDetails as a select target;
         # all properties come back by default.
         window_iso = window_start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -767,7 +770,8 @@ def syncSignInLogs(access_token):
             'https://graph.microsoft.com/beta/auditLogs/signIns'
             "?$filter=status/errorCode eq 0"
             f" and createdDateTime ge {window_iso}"
-            " and signInEventTypes/any(t:t eq 'interactiveUser')"
+            " and (signInEventTypes/any(t:t eq 'interactiveUser')"
+            " or signInEventTypes/any(t:t eq 'nonInteractiveUser'))"
             '&$top=999'
         )
         headers = {'Authorization': access_token}
