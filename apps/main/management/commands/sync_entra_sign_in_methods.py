@@ -116,8 +116,13 @@ class Command(BaseCommand):
                 method = step.get('authenticationMethod')
                 requirement = step.get('authenticationStepRequirement')
                 succeeded = step.get('succeeded')
-                in_set = (method or '').lower() in _REPLAY_RESISTANT_METHODS
-                marker = self.style.SUCCESS('REPLAY-RESISTANT') if in_set else self.style.WARNING('not classified RR')
+                method_lc = (method or '').lower()
+                if method_lc == 'previously satisfied':
+                    marker = self.style.WARNING('SSO-CACHED (excluded from RR/HB rates)')
+                elif method_lc in _REPLAY_RESISTANT_METHODS:
+                    marker = self.style.SUCCESS('REPLAY-RESISTANT')
+                else:
+                    marker = self.style.WARNING('not classified RR')
                 self.stdout.write(f'      - method={method!r} req={requirement!r} ok={succeeded} → {marker}')
 
             unique_methods = set()
@@ -157,11 +162,13 @@ class Command(BaseCommand):
                 replay=Sum('replay_resistant_signins'),
                 mfa=Sum('mfa_satisfied_signins'),
                 hw=Sum('hardware_bound_signins'),
+                prev=Sum('previously_satisfied_signins'),
             )
             self.stdout.write(
                 f'  Aggregate sign-ins (all users): '
                 f"total={total_agg['total']}, replay-resistant={total_agg['replay']}, "
-                f"mfa-satisfied={total_agg['mfa']}, hardware-bound={total_agg['hw']}"
+                f"mfa-satisfied={total_agg['mfa']}, hardware-bound={total_agg['hw']}, "
+                f"previously-satisfied={total_agg['prev']}"
             )
 
             if aal2_count > 0:

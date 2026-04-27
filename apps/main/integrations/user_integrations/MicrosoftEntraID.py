@@ -853,6 +853,13 @@ def syncSignInLogs(access_token):
 
                 auth_details = signin.get('authenticationDetails') or []
                 step_methods = [(step.get('authenticationMethod') or '').lower() for step in auth_details]
+                # "Previously satisfied" = MFA was cached from a prior session (SSO refresh).
+                # We can't tell what authenticator was originally used, so these events should
+                # be excluded from the AAL-2.6 / AAL-3.2 denominator entirely. AAL-2.3 still
+                # counts them via authenticationRequirement (the policy gate was met).
+                previously_satisfied_only = bool(step_methods) and all(
+                    m == 'previously satisfied' for m in step_methods
+                )
                 used_replay_resistant = any(m in _REPLAY_RESISTANT_METHODS for m in step_methods)
                 used_hardware_bound = any(m in _HARDWARE_BOUND_METHODS for m in step_methods)
 
@@ -862,17 +869,24 @@ def syncSignInLogs(access_token):
                     'non_replay_resistant': 0,
                     'mfa_satisfied': 0,
                     'hardware_bound': 0,
+                    'previously_satisfied': 0,
                     'last_signin': None,
                 })
                 entry['total'] += 1
-                if used_replay_resistant:
-                    entry['replay_resistant'] += 1
-                else:
-                    entry['non_replay_resistant'] += 1
                 if mfa_required:
                     entry['mfa_satisfied'] += 1
-                if used_hardware_bound:
-                    entry['hardware_bound'] += 1
+                if previously_satisfied_only:
+                    entry['previously_satisfied'] += 1
+                else:
+                    # Only fresh-auth events are classified for replay-resistance and
+                    # hardware-bound — cached sessions don't tell us which authenticator
+                    # was originally used, so we don't count them either way.
+                    if used_replay_resistant:
+                        entry['replay_resistant'] += 1
+                    else:
+                        entry['non_replay_resistant'] += 1
+                    if used_hardware_bound:
+                        entry['hardware_bound'] += 1
 
                 if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
                     entry['last_signin'] = ts
@@ -940,6 +954,7 @@ def syncSignInLogs(access_token):
                 obj.non_replay_resistant_signins = entry['non_replay_resistant']
                 obj.mfa_satisfied_signins = entry['mfa_satisfied']
                 obj.hardware_bound_signins = entry['hardware_bound']
+                obj.previously_satisfied_signins = entry['previously_satisfied']
                 obj.last_signin_at = entry['last_signin']
                 to_update.append(obj)
             else:
@@ -950,6 +965,7 @@ def syncSignInLogs(access_token):
                     non_replay_resistant_signins=entry['non_replay_resistant'],
                     mfa_satisfied_signins=entry['mfa_satisfied'],
                     hardware_bound_signins=entry['hardware_bound'],
+                    previously_satisfied_signins=entry['previously_satisfied'],
                     last_signin_at=entry['last_signin'],
                 ))
 
@@ -959,7 +975,8 @@ def syncSignInLogs(access_token):
             EntraSignInMethodStat.objects.bulk_update(
                 to_update,
                 ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins',
-                 'mfa_satisfied_signins', 'hardware_bound_signins', 'last_signin_at'],
+                 'mfa_satisfied_signins', 'hardware_bound_signins', 'previously_satisfied_signins',
+                 'last_signin_at'],
                 batch_size=500,
             )
 

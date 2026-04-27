@@ -381,7 +381,7 @@ class SignInSummaryAdmin(ImportExportModelAdmin):
 
 @admin.register(EntraSignInMethodStat)
 class EntraSignInMethodStatAdmin(admin.ModelAdmin):
-    list_display = ('upn', 'total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'mfa_satisfied_signins', 'hardware_bound_signins', 'last_signin_at', 'synced_at')
+    list_display = ('upn', 'total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'mfa_satisfied_signins', 'hardware_bound_signins', 'previously_satisfied_signins', 'last_signin_at', 'synced_at')
     search_fields = ('upn',)
     ordering = ('-total_signins',)
     readonly_fields = ('synced_at',)
