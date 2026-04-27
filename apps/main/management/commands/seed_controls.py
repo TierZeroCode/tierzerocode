@@ -59,6 +59,28 @@ CONTROLS = [
         'evaluator': 'aal_02_3',
     },
     {
+        'control_id': 'AAL-2.4',
+        'domain': 'AAL2 — Phishing-Resistant MFA Adoption',
+        'statement': (
+            'Verifiers SHALL offer at least one phishing-resistant authentication '
+            'option at AAL2.'
+        ),
+        'source_reference': 'SP 800-63B-4 § 2.2.2',
+        'indicator': (
+            '% of AAL2 using phishing-resistant MFA (FIDO2/WHfB/CBA) as primary '
+            'AAL2 method'
+        ),
+        'measurement_method': (
+            'Entra ID authentication methods report — filter to AAL2 accounts, '
+            'count those with FIDO2, WHfB, or CBA as a registered method.'
+        ),
+        'target': '100%',
+        'amber_threshold': '< 80%',
+        'red_threshold': '< 60%',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'aal_02_4',
+    },
+    {
         'control_id': 'AAL-2.6',
         'domain': 'AAL2 — Replay Resistance',
         'statement': (
