@@ -733,155 +733,220 @@ _HARDWARE_BOUND_METHODS = frozenset({
 })
 
 
-def syncSignInLogs(access_token):
-    """Single-pass sign-in log sync — replaces syncSignInSummary + syncSignInMethods.
+_SIGNIN_WINDOW_WORKERS = 6
+_SIGNIN_PAGE_RETRIES = 5
+_SIGNIN_BACKOFF_BASE_SECS = 2
 
-    Paginates the beta /auditLogs/signIns endpoint ONCE and feeds every record
-    into both aggregations:
-      - SignInSummary  (org-wide CA × MFA matrix)
-      - EntraSignInMethodStat  (per-user replay-resistant / MFA / hardware-bound)
+
+def _fetch_signin_window(window_start_dt, window_end_dt, headers):
+    """Fetch and aggregate sign-ins within [window_start_dt, window_end_dt).
+
+    Each worker runs this independently for its assigned time slice. Returns
+    locally-aggregated tenant totals + per-user stats; the caller merges across
+    workers. Each worker owns its own retry/backoff budget so a stuck window
+    cannot block the others.
+    """
+    import time
+
+    window_start_iso = window_start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    window_end_iso = window_end_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    url = (
+        'https://graph.microsoft.com/beta/auditLogs/signIns'
+        "?$filter=status/errorCode eq 0"
+        f" and createdDateTime ge {window_start_iso}"
+        f" and createdDateTime lt {window_end_iso}"
+        " and (signInEventTypes/any(t:t eq 'interactiveUser')"
+        " or signInEventTypes/any(t:t eq 'nonInteractiveUser'))"
+        '&$top=999'
+    )
+
+    ca_mfa = ca_no_mfa = no_ca_mfa = no_ca_no_mfa = total = 0
+    stats: dict = {}
+    completed = True
+    page_count = 0
+    last_error = None
+
+    while url:
+        page = None
+        for attempt in range(_SIGNIN_PAGE_RETRIES + 1):
+            try:
+                response = requests.get(url, headers=headers, timeout=120)
+            except requests.exceptions.RequestException as e:
+                if attempt < _SIGNIN_PAGE_RETRIES:
+                    time.sleep(_SIGNIN_BACKOFF_BASE_SECS * (2 ** attempt))
+                    continue
+                last_error = f'request error after {_SIGNIN_PAGE_RETRIES + 1} attempts: {e}'
+                completed = False
+                break
+
+            if response.status_code == 429:
+                retry_after = int(response.headers.get('Retry-After', 60))
+                time.sleep(retry_after)
+                continue  # Don't count 429s against the retry budget
+
+            if 500 <= response.status_code < 600:
+                if attempt < _SIGNIN_PAGE_RETRIES:
+                    time.sleep(_SIGNIN_BACKOFF_BASE_SECS * (2 ** attempt))
+                    continue
+                last_error = (f'{response.status_code} after {_SIGNIN_PAGE_RETRIES + 1} '
+                              f'attempts: {response.text[:300]}')
+                completed = False
+                break
+
+            if response.status_code != 200:
+                last_error = f'{response.status_code} - {response.text[:500]}'
+                completed = False
+                break
+
+            page = response.json()
+            break
+
+        if page is None:
+            break
+
+        records = page.get('value', [])
+        page_count += 1
+
+        for signin in records:
+            ts = _parse_timestamp(signin.get('createdDateTime'))
+            # Defensive: with both ge/lt bounds set, every record should be
+            # in-window — but skip anything outside just in case.
+            if ts and (ts < window_start_dt or ts >= window_end_dt):
+                continue
+
+            # ── SignInSummary aggregation (every record, including service principals) ──
+            total += 1
+            ca_applied = signin.get('conditionalAccessStatus') == 'success'
+            mfa_required = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
+            if ca_applied and mfa_required:
+                ca_mfa += 1
+            elif ca_applied:
+                ca_no_mfa += 1
+            elif mfa_required:
+                no_ca_mfa += 1
+            else:
+                no_ca_no_mfa += 1
+
+            # ── EntraSignInMethodStat per-user ──
+            # Skip records without a UPN, and skip SSO-cached "Previously
+            # Satisfied" events entirely — those don't represent an
+            # authenticator being exercised, so they would only add noise
+            # to AAL-2.x / AAL-3.x rate measurements. SignInSummary above
+            # still counts them as raw activity volume.
+            upn = (signin.get('userPrincipalName') or '').lower()
+            if not upn:
+                continue
+
+            auth_details = signin.get('authenticationDetails') or []
+            step_methods = [(step.get('authenticationMethod') or '').lower() for step in auth_details]
+            if step_methods and all(m == 'previously satisfied' for m in step_methods):
+                continue
+
+            used_replay_resistant = any(m in _REPLAY_RESISTANT_METHODS for m in step_methods)
+            used_hardware_bound = any(m in _HARDWARE_BOUND_METHODS for m in step_methods)
+
+            entry = stats.setdefault(upn, {
+                'total': 0,
+                'replay_resistant': 0,
+                'non_replay_resistant': 0,
+                'mfa_satisfied': 0,
+                'hardware_bound': 0,
+                'last_signin': None,
+            })
+            entry['total'] += 1
+            if mfa_required:
+                entry['mfa_satisfied'] += 1
+            if used_replay_resistant:
+                entry['replay_resistant'] += 1
+            else:
+                entry['non_replay_resistant'] += 1
+            if used_hardware_bound:
+                entry['hardware_bound'] += 1
+
+            if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
+                entry['last_signin'] = ts
+
+        url = page.get('@odata.nextLink')
+
+    return {
+        'totals': {
+            'total': total,
+            'ca_mfa': ca_mfa,
+            'ca_no_mfa': ca_no_mfa,
+            'no_ca_mfa': no_ca_mfa,
+            'no_ca_no_mfa': no_ca_no_mfa,
+        },
+        'stats': stats,
+        'completed': completed,
+        'page_count': page_count,
+        'window': (window_start_iso, window_end_iso),
+        'error': last_error,
+    }
+
+
+def syncSignInLogs(access_token):
+    """Sign-in log sync — paginates the beta /auditLogs/signIns endpoint across
+    N parallel time windows, aggregates per-user and tenant-wide counts, and
+    persists to SignInSummary + EntraSignInMethodStat.
+
+    Splits the 30-day window into _SIGNIN_WINDOW_WORKERS slices fetched
+    concurrently; each worker is independent (own retry budget, own page
+    iterator, own local aggregates) so a failure in one slice doesn't poison
+    the others. Throttling stays well under Graph's per-app/per-tenant signIns
+    limit (~12 RPS) at 6 workers.
 
     Requires AuditLog.Read.All. Tenant-scoped writes are isolated so a failure
     in one bucket cannot corrupt the other.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
-    import time
     from datetime import timedelta
 
     try:
-        window_start_dt = timezone.now() - timedelta(days=30)
-        # Server-side filters cut the volume on busy tenants while preserving
-        # every authentication moment that's meaningful for AAL measurement:
-        #   - status/errorCode eq 0          → only successful sign-ins
-        #   - createdDateTime ge {30d ago}   → date floor; Graph stops returning
-        #                                      pages older than the window
-        #   - signInEventTypes ∈ {interactiveUser, nonInteractiveUser}
-        #     Includes refresh-token flows and background app re-auth (Outlook,
-        #     Teams, OneDrive) — these exercise the user's authenticator even
-        #     though no UI was shown. Service principal events are still excluded
-        #     (they're 'servicePrincipal' / 'managedIdentity' types, not user auth).
-        # We can't filter on authenticationDetails directly (Graph doesn't allow
-        # OData expressions on that collection-typed property), so SSO-cached
-        # "Previously Satisfied" events are filtered in Python below.
-        # Drop $select — Graph beta rejects authenticationDetails as a select target;
-        # all properties come back by default.
-        window_iso = window_start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-        url = (
-            'https://graph.microsoft.com/beta/auditLogs/signIns'
-            "?$filter=status/errorCode eq 0"
-            f" and createdDateTime ge {window_iso}"
-            " and (signInEventTypes/any(t:t eq 'interactiveUser')"
-            " or signInEventTypes/any(t:t eq 'nonInteractiveUser'))"
-            '&$top=999'
-        )
+        window_end_dt = timezone.now()
+        window_start_dt = window_end_dt - timedelta(days=30)
+
+        chunk = (window_end_dt - window_start_dt) / _SIGNIN_WINDOW_WORKERS
+        chunks = [
+            (window_start_dt + i * chunk,
+             window_start_dt + (i + 1) * chunk if i < _SIGNIN_WINDOW_WORKERS - 1 else window_end_dt)
+            for i in range(_SIGNIN_WINDOW_WORKERS)
+        ]
         headers = {'Authorization': access_token}
 
-        # SignInSummary aggregates (org-wide)
-        ca_mfa = ca_no_mfa = no_ca_mfa = no_ca_no_mfa = 0
-        total = 0
-
-        # EntraSignInMethodStat per-user dict: upn → {total, replay_resistant, ...}
-        stats: dict = {}
-
-        # Track whether the fetch finished cleanly. False means we bailed early
-        # (transient API failure) and should NOT prune UPNs from the table —
-        # partial stats would otherwise wipe legitimate users.
-        completed = True
-        # Diagnostics
-        page_count = 0
-        # Retry budget per page for transient 5xx / connection failures.
-        MAX_PAGE_RETRIES = 5
-        BACKOFF_BASE_SECS = 2  # 2, 4, 8, 16, 32 — total ~60s of backoff before giving up
-
-        while url:
-            page = None
-            for attempt in range(MAX_PAGE_RETRIES + 1):
+        results = []
+        with ThreadPoolExecutor(max_workers=_SIGNIN_WINDOW_WORKERS) as ex:
+            futures = [ex.submit(_fetch_signin_window, s, e, headers) for s, e in chunks]
+            for f in as_completed(futures):
                 try:
-                    response = requests.get(url, headers=headers, timeout=120)
-                except requests.exceptions.RequestException as e:
-                    # Connection reset / read timeout — treat as transient
-                    if attempt < MAX_PAGE_RETRIES:
-                        time.sleep(BACKOFF_BASE_SECS * (2 ** attempt))
-                        continue
+                    results.append(f.result())
+                except Exception as e:
                     _sync_log('Microsoft Entra ID', '1518', 'Warning',
-                              f'Sign-in logs request failed after {MAX_PAGE_RETRIES + 1} attempts: {e}. '
-                              f'Saving partial stats from {page_count} pages.')
-                    completed = False
-                    break
+                              f'A sign-in log worker raised: {e}. Continuing with other windows.')
+                    results.append({
+                        'totals': {'total': 0, 'ca_mfa': 0, 'ca_no_mfa': 0,
+                                   'no_ca_mfa': 0, 'no_ca_no_mfa': 0},
+                        'stats': {},
+                        'completed': False,
+                        'page_count': 0,
+                        'window': None,
+                        'error': str(e),
+                    })
 
-                if response.status_code == 429:
-                    retry_after = int(response.headers.get('Retry-After', 60))
-                    time.sleep(retry_after)
-                    continue  # Don't count 429s against the retry budget
+        # ── Merge worker results ──
+        total = sum(r['totals']['total'] for r in results)
+        ca_mfa = sum(r['totals']['ca_mfa'] for r in results)
+        ca_no_mfa = sum(r['totals']['ca_no_mfa'] for r in results)
+        no_ca_mfa = sum(r['totals']['no_ca_mfa'] for r in results)
+        no_ca_no_mfa = sum(r['totals']['no_ca_no_mfa'] for r in results)
+        page_count = sum(r['page_count'] for r in results)
+        completed = all(r['completed'] for r in results)
+        failed_windows = [r for r in results if not r['completed']]
 
-                if 500 <= response.status_code < 600:
-                    # Transient server-side: 502/503/504 etc. Back off and retry.
-                    if attempt < MAX_PAGE_RETRIES:
-                        time.sleep(BACKOFF_BASE_SECS * (2 ** attempt))
-                        continue
-                    _sync_log('Microsoft Entra ID', '1518', 'Warning',
-                              f'Sign-in logs fetch failed after {MAX_PAGE_RETRIES + 1} attempts: '
-                              f'{response.status_code} - {response.text[:300]}. '
-                              f'Saving partial stats from {page_count} pages.')
-                    completed = False
-                    break
-
-                if response.status_code != 200:
-                    # 4xx — non-transient; abort and persist what we have
-                    _sync_log('Microsoft Entra ID', '1518', 'Failure',
-                              f'Sign-in logs fetch failed: {response.status_code} - {response.text[:500]}')
-                    completed = False
-                    break
-
-                page = response.json()
-                break  # success — exit retry loop
-
-            if page is None:
-                # Fall through to persist what we have so far
-                break
-
-            records = page.get('value', [])
-            page_count += 1
-            page_had_recent = False
-
-            for signin in records:
-                ts = _parse_timestamp(signin.get('createdDateTime'))
-                if ts and ts < window_start_dt:
-                    continue
-                page_had_recent = True
-
-                # ── SignInSummary aggregation (every record, including service principals) ──
-                total += 1
-                ca_applied = signin.get('conditionalAccessStatus') == 'success'
-                mfa_required = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
-                if ca_applied and mfa_required:
-                    ca_mfa += 1
-                elif ca_applied:
-                    ca_no_mfa += 1
-                elif mfa_required:
-                    no_ca_mfa += 1
-                else:
-                    no_ca_no_mfa += 1
-
-                # ── EntraSignInMethodStat per-user ──
-                # Skip records without a UPN, and skip SSO-cached "Previously
-                # Satisfied" events entirely — those don't represent an
-                # authenticator being exercised, so they would only add noise
-                # to AAL-2.x / AAL-3.x rate measurements. SignInSummary above
-                # still counts them as raw activity volume.
-                upn = (signin.get('userPrincipalName') or '').lower()
-                if not upn:
-                    continue
-
-                auth_details = signin.get('authenticationDetails') or []
-                step_methods = [(step.get('authenticationMethod') or '').lower() for step in auth_details]
-                if step_methods and all(m == 'previously satisfied' for m in step_methods):
-                    continue
-
-                used_replay_resistant = any(m in _REPLAY_RESISTANT_METHODS for m in step_methods)
-                used_hardware_bound = any(m in _HARDWARE_BOUND_METHODS for m in step_methods)
-
-                entry = stats.setdefault(upn, {
+        stats: dict = {}
+        for r in results:
+            for upn, entry in r['stats'].items():
+                merged = stats.setdefault(upn, {
                     'total': 0,
                     'replay_resistant': 0,
                     'non_replay_resistant': 0,
@@ -889,27 +954,26 @@ def syncSignInLogs(access_token):
                     'hardware_bound': 0,
                     'last_signin': None,
                 })
-                entry['total'] += 1
-                if mfa_required:
-                    entry['mfa_satisfied'] += 1
-                if used_replay_resistant:
-                    entry['replay_resistant'] += 1
-                else:
-                    entry['non_replay_resistant'] += 1
-                if used_hardware_bound:
-                    entry['hardware_bound'] += 1
+                merged['total'] += entry['total']
+                merged['replay_resistant'] += entry['replay_resistant']
+                merged['non_replay_resistant'] += entry['non_replay_resistant']
+                merged['mfa_satisfied'] += entry['mfa_satisfied']
+                merged['hardware_bound'] += entry['hardware_bound']
+                if entry['last_signin'] and (
+                    merged['last_signin'] is None or entry['last_signin'] > merged['last_signin']
+                ):
+                    merged['last_signin'] = entry['last_signin']
 
-                if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
-                    entry['last_signin'] = ts
-
-            # Results are newest-first. If no record on this page fell within
-            # the 30-day window, every subsequent page will be even older — stop.
-            if records and not page_had_recent:
-                break
-
-            url = page.get('@odata.nextLink')
-
-        partial_tag = '' if completed else ' (PARTIAL — fetch was interrupted)'
+        partial_tag = '' if completed else (
+            f' (PARTIAL — {len(failed_windows)}/{_SIGNIN_WINDOW_WORKERS} '
+            f'windows interrupted)'
+        )
+        if failed_windows:
+            _sync_log('Microsoft Entra ID', '1518', 'Warning',
+                      f'{len(failed_windows)} of {_SIGNIN_WINDOW_WORKERS} sign-in windows '
+                      f'failed: ' + '; '.join(
+                          f'{r.get("window")}: {r.get("error")}' for r in failed_windows
+                      ))
 
         # ── Persist SignInSummary ──
         # Only overwrite the table on a clean run. A partial fetch would under-count
@@ -929,7 +993,7 @@ def syncSignInLogs(access_token):
                 _sync_log('Microsoft Entra ID', '1506', 'Success',
                           f'Sign-in summary: {total} sign-ins (CA+MFA={ca_mfa}, '
                           f'CA-only={ca_no_mfa}, MFA-only={no_ca_mfa}, Neither={no_ca_no_mfa}) '
-                          f'across {page_count} pages')
+                          f'across {page_count} pages / {_SIGNIN_WINDOW_WORKERS} windows')
             except Exception as e:
                 _sync_log('Microsoft Entra ID', '1507', 'Failure',
                           f'Sign-in summary persist error: {str(e)}')
@@ -943,7 +1007,7 @@ def syncSignInLogs(access_token):
 
         # ── Persist EntraSignInMethodStat ──
         # Per-user partial saves are still useful — each UPN's counts come from
-        # the pages we did fetch, just with fewer total events. We just skip the
+        # the windows we did fetch, just with fewer total events. We just skip the
         # stale-UPN cleanup so we don't delete users whose recent sign-ins
         # haven't been fetched yet.
         if not stats:
@@ -989,14 +1053,14 @@ def syncSignInLogs(access_token):
             )
 
         # Only prune UPNs absent from the current sync on a clean run — partial
-        # data would otherwise wipe legitimate users whose pages we didn't reach.
+        # data would otherwise wipe legitimate users whose windows we didn't complete.
         if completed:
             EntraSignInMethodStat.objects.exclude(upn__in=stats.keys()).delete()
 
         replay_total = sum(e['replay_resistant'] for e in stats.values())
         _sync_log('Microsoft Entra ID', '1518', 'Success',
                   f'Sign-in methods synced: {len(stats)} users, {replay_total} replay-resistant '
-                  f'sign-ins across {page_count} pages{partial_tag}')
+                  f'sign-ins across {page_count} pages / {_SIGNIN_WINDOW_WORKERS} windows{partial_tag}')
 
     except Exception as e:
         _sync_log('Microsoft Entra ID', '1519', 'Failure',
