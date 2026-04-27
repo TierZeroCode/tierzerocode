@@ -21,7 +21,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from apps.main.integrations.user_integrations.MicrosoftEntraID import (
-            syncSignInMethods, _REPLAY_RESISTANT_METHODS,
+            syncSignInLogs, _REPLAY_RESISTANT_METHODS,
         )
 
         diagnose_only = options['diagnose']
@@ -136,11 +136,11 @@ class Command(BaseCommand):
             return
 
         # ── Step 4: Run the full sync ──────────────────────────────────────
-        self.stdout.write(self.style.MIGRATE_HEADING('\n── Full sync ──'))
+        self.stdout.write(self.style.MIGRATE_HEADING('\n── Full sync (combined SignInSummary + EntraSignInMethodStat) ──'))
         try:
-            syncSignInMethods(access_token)
+            syncSignInLogs(access_token)
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'  syncSignInMethods raised: {e}'))
+            self.stdout.write(self.style.ERROR(f'  syncSignInLogs raised: {e}'))
             import traceback
             self.stdout.write(traceback.format_exc())
             return

@@ -361,66 +361,8 @@ def updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
     UserData.objects.filter(integration=integration).exclude(upn__in=incoming_upns).delete()
 
 def syncSignInSummary(access_token):
-    """Fetch sign-in logs and compute CA+MFA summary. Requires AuditLog.Read.All permission."""
-    from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
-
-    try:
-        # Fetch successful sign-ins — beta endpoint (authenticationRequirement not available on v1.0)
-        url = (
-            "https://graph.microsoft.com/beta/auditLogs/signIns"
-            "?$filter=status/errorCode eq 0"
-            "&$select=conditionalAccessStatus,authenticationRequirement"
-            "&$top=999"
-        )
-        headers = {'Authorization': access_token}
-
-        ca_mfa = 0
-        ca_no_mfa = 0
-        no_ca_mfa = 0
-        no_ca_no_mfa = 0
-        total = 0
-
-        while url:
-            response = requests.get(url, headers=headers)
-            if response.status_code != 200:
-                _sync_log("Microsoft Entra ID", "1507", "Failure",
-                          f"Sign-in logs fetch failed: {response.status_code} - {response.text[:500]}")
-                break
-            data = response.json()
-            for signin in data.get('value', []):
-                total += 1
-                ca_applied = signin.get('conditionalAccessStatus') == 'success'
-                mfa_required = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
-
-                if ca_applied and mfa_required:
-                    ca_mfa += 1
-                elif ca_applied and not mfa_required:
-                    ca_no_mfa += 1
-                elif not ca_applied and mfa_required:
-                    no_ca_mfa += 1
-                else:
-                    no_ca_no_mfa += 1
-
-            url = data.get('@odata.nextLink')
-
-        if total > 0:
-            SignInSummary.objects.update_or_create(
-                id=1,
-                defaults={
-                    'ca_mfa': ca_mfa,
-                    'ca_no_mfa': ca_no_mfa,
-                    'no_ca_mfa': no_ca_mfa,
-                    'no_ca_no_mfa': no_ca_no_mfa,
-                    'total_signins': total,
-                }
-            )
-            _sync_log("Microsoft Entra ID", "1506", "Success",
-                      f"Sign-in summary: {total} sign-ins (CA+MFA={ca_mfa}, CA-only={ca_no_mfa}, MFA-only={no_ca_mfa}, Neither={no_ca_no_mfa})")
-        else:
-            _sync_log("Microsoft Entra ID", "1506", "Warning", "No sign-in records returned from Graph API")
-
-    except Exception as e:
-        _sync_log("Microsoft Entra ID", "1507", "Failure", f"Sign-in summary sync error: {str(e)}")
+    """DEPRECATED — calls syncSignInLogs(). Kept as alias for backwards compat."""
+    syncSignInLogs(access_token)
 
 def syncConditionalAccessPolicies(access_token):
     """Fetch Conditional Access policies from Microsoft Graph. Requires Policy.Read.All permission."""
@@ -791,15 +733,16 @@ _HARDWARE_BOUND_METHODS = frozenset({
 })
 
 
-def syncSignInMethods(access_token):
-    """Aggregate per-user replay-resistant sign-in counts from Entra sign-in logs.
+def syncSignInLogs(access_token):
+    """Single-pass sign-in log sync — replaces syncSignInSummary + syncSignInMethods.
 
-    Fetches the last 30 days of successful sign-ins using authenticationDetails,
-    classifies each sign-in as replay-resistant or not, and bulk-upserts one
-    EntraSignInMethodStat row per UPN. Stale rows (UPNs absent from the window)
-    are deleted so the table always reflects the live 30-day window.
+    Paginates the beta /auditLogs/signIns endpoint ONCE and feeds every record
+    into both aggregations:
+      - SignInSummary  (org-wide CA × MFA matrix)
+      - EntraSignInMethodStat  (per-user replay-resistant / MFA / hardware-bound)
 
-    Requires AuditLog.Read.All permission.
+    Requires AuditLog.Read.All. Tenant-scoped writes are isolated so a failure
+    in one bucket cannot corrupt the other.
     """
     from apps.main.integrations.device_integrations.ReusedFunctions import _sync_log
     import time
@@ -807,8 +750,8 @@ def syncSignInMethods(access_token):
 
     try:
         window_start_dt = timezone.now() - timedelta(days=30)
-        # Graph beta rejects `$select=authenticationDetails` with "Unsupported Query".
-        # Drop $select entirely and let the response include all properties.
+        # Drop $select — Graph beta rejects authenticationDetails as a select target;
+        # all properties come back by default.
         url = (
             'https://graph.microsoft.com/beta/auditLogs/signIns'
             '?$filter=status/errorCode eq 0'
@@ -816,7 +759,11 @@ def syncSignInMethods(access_token):
         )
         headers = {'Authorization': access_token}
 
-        # upn → {total, replay_resistant, non_replay_resistant, last_signin}
+        # SignInSummary aggregates (org-wide)
+        ca_mfa = ca_no_mfa = no_ca_mfa = no_ca_no_mfa = 0
+        total = 0
+
+        # EntraSignInMethodStat per-user dict: upn → {total, replay_resistant, ...}
         stats: dict = {}
 
         while url:
@@ -829,7 +776,7 @@ def syncSignInMethods(access_token):
 
             if response.status_code != 200:
                 _sync_log('Microsoft Entra ID', '1518', 'Failure',
-                          f'Sign-in methods fetch failed: {response.status_code} - {response.text[:500]}')
+                          f'Sign-in logs fetch failed: {response.status_code} - {response.text[:500]}')
                 return
 
             page = response.json()
@@ -837,20 +784,33 @@ def syncSignInMethods(access_token):
             page_had_recent = False
 
             for signin in records:
+                ts = _parse_timestamp(signin.get('createdDateTime'))
+                if ts and ts < window_start_dt:
+                    continue
+                page_had_recent = True
+
+                # ── SignInSummary aggregation (every record, including service principals) ──
+                total += 1
+                ca_applied = signin.get('conditionalAccessStatus') == 'success'
+                mfa_required = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
+                if ca_applied and mfa_required:
+                    ca_mfa += 1
+                elif ca_applied:
+                    ca_no_mfa += 1
+                elif mfa_required:
+                    no_ca_mfa += 1
+                else:
+                    no_ca_no_mfa += 1
+
+                # ── EntraSignInMethodStat per-user (skip records without a UPN) ──
                 upn = (signin.get('userPrincipalName') or '').lower()
                 if not upn:
                     continue
 
-                ts = _parse_timestamp(signin.get('createdDateTime'))
-                if ts and ts < window_start_dt:
-                    continue
-
-                page_had_recent = True
                 auth_details = signin.get('authenticationDetails') or []
                 step_methods = [(step.get('authenticationMethod') or '').lower() for step in auth_details]
                 used_replay_resistant = any(m in _REPLAY_RESISTANT_METHODS for m in step_methods)
                 used_hardware_bound = any(m in _HARDWARE_BOUND_METHODS for m in step_methods)
-                mfa_satisfied = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
 
                 entry = stats.setdefault(upn, {
                     'total': 0,
@@ -865,7 +825,7 @@ def syncSignInMethods(access_token):
                     entry['replay_resistant'] += 1
                 else:
                     entry['non_replay_resistant'] += 1
-                if mfa_satisfied:
+                if mfa_required:
                     entry['mfa_satisfied'] += 1
                 if used_hardware_bound:
                     entry['hardware_bound'] += 1
@@ -880,9 +840,33 @@ def syncSignInMethods(access_token):
 
             url = page.get('@odata.nextLink')
 
+        # ── Persist SignInSummary ──
+        if total > 0:
+            try:
+                SignInSummary.objects.update_or_create(
+                    id=1,
+                    defaults={
+                        'ca_mfa': ca_mfa,
+                        'ca_no_mfa': ca_no_mfa,
+                        'no_ca_mfa': no_ca_mfa,
+                        'no_ca_no_mfa': no_ca_no_mfa,
+                        'total_signins': total,
+                    }
+                )
+                _sync_log('Microsoft Entra ID', '1506', 'Success',
+                          f'Sign-in summary: {total} sign-ins (CA+MFA={ca_mfa}, '
+                          f'CA-only={ca_no_mfa}, MFA-only={no_ca_mfa}, Neither={no_ca_no_mfa})')
+            except Exception as e:
+                _sync_log('Microsoft Entra ID', '1507', 'Failure',
+                          f'Sign-in summary persist error: {str(e)}')
+        else:
+            _sync_log('Microsoft Entra ID', '1506', 'Warning',
+                      'No sign-in records returned from Graph API')
+
+        # ── Persist EntraSignInMethodStat ──
         if not stats:
             _sync_log('Microsoft Entra ID', '1518', 'Warning',
-                      'No sign-in records returned for sign-in methods sync')
+                      'No per-user sign-in records returned for sign-in methods sync')
             return
 
         existing = {
@@ -891,7 +875,6 @@ def syncSignInMethods(access_token):
         }
         to_create = []
         to_update = []
-
         for upn, entry in stats.items():
             if upn in existing:
                 obj = existing[upn]
@@ -918,11 +901,11 @@ def syncSignInMethods(access_token):
         if to_update:
             EntraSignInMethodStat.objects.bulk_update(
                 to_update,
-                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'mfa_satisfied_signins', 'hardware_bound_signins', 'last_signin_at'],
+                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins',
+                 'mfa_satisfied_signins', 'hardware_bound_signins', 'last_signin_at'],
                 batch_size=500,
             )
 
-        # Remove UPNs that have fallen outside the 30-day window
         EntraSignInMethodStat.objects.exclude(upn__in=stats.keys()).delete()
 
         replay_total = sum(e['replay_resistant'] for e in stats.values())
@@ -931,50 +914,93 @@ def syncSignInMethods(access_token):
 
     except Exception as e:
         _sync_log('Microsoft Entra ID', '1519', 'Failure',
-                  f'Sign-in methods sync error: {str(e)}')
+                  f'Sign-in logs sync error: {str(e)}')
 
 
-def syncMicrosoftEntraIDUser():
-    """Synchronize Microsoft Entra ID users and update the local database."""
+def syncSignInMethods(access_token):
+    """DEPRECATED — calls syncSignInLogs(). Kept as alias for backwards compat."""
+    syncSignInLogs(access_token)
+
+
+def _get_entra_user_access_token():
+    """Fetch Entra ID User integration credentials and acquire a Graph token.
+
+    Returns (Integration, access_token). Raises if integration is missing or
+    the token request fails. Used by every per-phase sync entry point.
+    """
     data = Integration.objects.get(integration_type="Microsoft Entra ID", integration_context="User")
-    
-    # Validate integration data
     if not data.client_id or not data.client_secret or not data.tenant_id:
         raise Exception("Microsoft Entra ID integration is not properly configured. Missing client_id, client_secret, or tenant_id.")
-    
-    access_token = getMicrosoftGraphAccessToken(data.client_id, data.client_secret, data.tenant_id, ["https://graph.microsoft.com/.default"])
-    
-    # Check if access_token is an error dictionary
+    access_token = getMicrosoftGraphAccessToken(
+        data.client_id, data.client_secret, data.tenant_id,
+        ["https://graph.microsoft.com/.default"],
+    )
     if isinstance(access_token, dict) and 'error' in access_token:
-        error_msg = str(access_token['error'])
-        raise Exception(f"Failed to get access token: {error_msg}")
-    
+        raise Exception(f"Failed to get access token: {access_token['error']}")
+    return data, access_token
+
+
+# ── Per-phase entry points (each independently invokable from a task/command) ──
+
+def syncEntraUsers():
+    """Phase: directory + auth methods + persona memberships → UserData."""
+    data, access_token = _get_entra_user_access_token()
     users = getMicrosoftEntraIDUsers(access_token)
     authentication_data = getMicrosoftEntraIDUserAuthenticationMethods(access_token)
     updateMicrosoftEntraIDUserDatabase(users, authentication_data, access_token)
-
-    # Sync CA+MFA sign-in analysis (requires AuditLog.Read.All)
-    syncSignInSummary(access_token)
-
-    # Sync per-user replay-resistant sign-in stats for AAL-2.6 (requires AuditLog.Read.All)
-    syncSignInMethods(access_token)
-
-    # Sync Conditional Access policies (requires Policy.Read.All)
-    syncConditionalAccessPolicies(access_token)
-
-    # Sync tenant security configuration (requires Directory.Read.All)
-    syncTenantSecurityConfig(access_token)
-
-    # Sync authentication methods policy and SSPR config (requires Policy.Read.All)
-    syncAuthMethodsPolicy(access_token)
-
-    # Sync password policy per verified domain (requires Domain.Read.All or Directory.Read.All)
-    syncPasswordPolicy(access_token)
-
-    # Assign each user to their effective password policy
-    from apps.main.integrations.password_policy_assignment import assign_user_password_policies
-    assign_user_password_policies()
-
     data.last_synced_at = timezone.now()
     data.save()
+    return True
+
+
+def syncEntraSignIns():
+    """Phase: combined sign-in log analysis → SignInSummary + EntraSignInMethodStat."""
+    _, access_token = _get_entra_user_access_token()
+    syncSignInLogs(access_token)
+    return True
+
+
+def syncEntraCaPolicies():
+    """Phase: Conditional Access policy snapshot → ConditionalAccessPolicy."""
+    _, access_token = _get_entra_user_access_token()
+    syncConditionalAccessPolicies(access_token)
+    return True
+
+
+def syncEntraTenantConfig():
+    """Phase: tenant security configuration → TenantSecurityConfig."""
+    _, access_token = _get_entra_user_access_token()
+    syncTenantSecurityConfig(access_token)
+    return True
+
+
+def syncEntraAuthMethodsPolicy():
+    """Phase: auth methods + SSPR policy → TenantAuthMethodsPolicy."""
+    _, access_token = _get_entra_user_access_token()
+    syncAuthMethodsPolicy(access_token)
+    return True
+
+
+def syncEntraPasswordPolicy():
+    """Phase: password policy per verified domain + per-user assignment → PasswordPolicy."""
+    _, access_token = _get_entra_user_access_token()
+    syncPasswordPolicy(access_token)
+    from apps.main.integrations.password_policy_assignment import assign_user_password_policies
+    assign_user_password_policies()
+    return True
+
+
+def syncMicrosoftEntraIDUser():
+    """Umbrella: synchronize all Entra ID phases sequentially.
+
+    Kept for the existing one-shot UI button and management command. Each phase
+    is its own function above and can be invoked independently — see tasks.py
+    for the queued counterparts.
+    """
+    syncEntraUsers()
+    syncEntraSignIns()
+    syncEntraCaPolicies()
+    syncEntraTenantConfig()
+    syncEntraAuthMethodsPolicy()
+    syncEntraPasswordPolicy()
     return True

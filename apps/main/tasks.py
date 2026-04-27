@@ -1,6 +1,14 @@
 import logging
 from django_tasks import task
-from apps.main.integrations.user_integrations.MicrosoftEntraID import syncMicrosoftEntraIDUser
+from apps.main.integrations.user_integrations.MicrosoftEntraID import (
+    syncMicrosoftEntraIDUser,
+    syncEntraUsers,
+    syncEntraSignIns,
+    syncEntraCaPolicies,
+    syncEntraTenantConfig,
+    syncEntraAuthMethodsPolicy,
+    syncEntraPasswordPolicy,
+)
 from apps.main.integrations.user_integrations.ActiveDirectory import syncActiveDirectoryUsers
 from apps.main.integrations.device_integrations.MicrosoftEntraID import syncMicrosoftEntraIDDevice
 from apps.main.integrations.device_integrations.MicrosoftIntune import syncMicrosoftIntuneDevice
@@ -87,24 +95,96 @@ def deviceIntegrationSyncTask(user_email, ip_address, user_agent, browser, opera
                   user_email, ip_address, user_agent, browser, operating_system)
 
 
-@task(queue_name='default')
-def microsoftEntraIDUserSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
-    """Run Microsoft Entra ID user sync in a background thread."""
-    obj = _get_or_create_notification(notification_id, "Microsoft Entra ID User Integration Sync")
+def _run_entra_phase_task(notification_id, title, sync_fn, audit_label,
+                          user_email, ip_address, user_agent, browser, operating_system):
+    """Shared body for every Entra ID phase task: notification + audit log + run."""
+    obj = _get_or_create_notification(notification_id, title)
     _update_notification(obj, "In Progress")
-
     try:
-        syncMicrosoftEntraIDUser()
-
+        sync_fn()
         _update_notification(obj, "Success")
-        _safe_log("1505", "Success", "Microsoft Entra ID User",
+        _safe_log("1505", "Success", audit_label,
                   user_email, ip_address, user_agent, browser, operating_system)
     except Exception as e:
-        logger.error("Error syncing Microsoft Entra ID users: %s", e)
-
+        logger.error("Error in %s: %s", title, e)
         _update_notification(obj, "Failure")
-        _safe_log("1505", "Failure", f"Microsoft Entra ID User - {e}",
+        _safe_log("1505", "Failure", f"{audit_label} - {e}",
                   user_email, ip_address, user_agent, browser, operating_system)
+
+
+@task(queue_name='default')
+def microsoftEntraIDUserSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Umbrella task — runs every Entra ID phase sequentially in one job.
+
+    Kept for backwards compat with the existing 'Sync Now' UI button. Prefer
+    the per-phase tasks below for granular scheduling and faster per-phase
+    feedback.
+    """
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID User Integration Sync",
+        syncMicrosoftEntraIDUser, "Microsoft Entra ID User",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
+
+
+@task(queue_name='default')
+def entraUsersSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Phase task: directory + auth methods + persona memberships."""
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID — Users Sync",
+        syncEntraUsers, "Microsoft Entra ID Users",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
+
+
+@task(queue_name='default')
+def entraSignInsSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Phase task: combined sign-in log analysis (SignInSummary + EntraSignInMethodStat)."""
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID — Sign-In Logs Sync",
+        syncEntraSignIns, "Microsoft Entra ID Sign-In Logs",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
+
+
+@task(queue_name='default')
+def entraCaPoliciesSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Phase task: Conditional Access policy snapshot."""
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID — CA Policies Sync",
+        syncEntraCaPolicies, "Microsoft Entra ID CA Policies",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
+
+
+@task(queue_name='default')
+def entraTenantConfigSyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Phase task: tenant security configuration."""
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID — Tenant Security Config Sync",
+        syncEntraTenantConfig, "Microsoft Entra ID Tenant Security Config",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
+
+
+@task(queue_name='default')
+def entraAuthMethodsPolicySyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Phase task: authentication methods + SSPR policy."""
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID — Auth Methods Policy Sync",
+        syncEntraAuthMethodsPolicy, "Microsoft Entra ID Auth Methods Policy",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
+
+
+@task(queue_name='default')
+def entraPasswordPolicySyncTask(user_email, ip_address, user_agent, browser, operating_system, notification_id=None):
+    """Phase task: password policy per verified domain + per-user assignment."""
+    _run_entra_phase_task(
+        notification_id, "Microsoft Entra ID — Password Policy Sync",
+        syncEntraPasswordPolicy, "Microsoft Entra ID Password Policy",
+        user_email, ip_address, user_agent, browser, operating_system,
+    )
 
 
 @task(queue_name='default')
