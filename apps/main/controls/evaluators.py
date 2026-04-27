@@ -997,6 +997,172 @@ def aal_02_4_detail():
     }
 
 
+def aal_03_2():
+    """AAL-3.2: % of AAL3 sign-ins satisfied by a hardware-bound phishing-resistant authenticator.
+
+    NIST SP 800-63B-4 § 2.3.1–2.3.2: AAL3 authentication SHALL use a
+    cryptographic authenticator with a non-exportable key in dedicated hardware.
+    Syncable passkeys SHALL NOT be used.
+
+    Metric: hardware_bound_signins / total_signins across all AAL3+ users
+    (UserData where isAdmin=True OR persona.aal_level >= 3) in the 30-day window.
+
+    Hardware-bound = FIDO2 security key, Windows Hello for Business, CBA, or
+    Microsoft Authenticator passkey (Microsoft classifies the Authenticator
+    passkey as device-resident, distinct from passKeySynced).
+
+    Requires EntraSignInMethodStat to be populated via syncSignInMethods().
+    Target: 100% — amber at <100%, red at <90%.
+    """
+    from django.db.models import Sum
+
+    if not EntraSignInMethodStat.objects.exists():
+        return ('-', 'not_measured')
+
+    base_qs = _get_users_by_aal(3)
+    if not base_qs.exists():
+        return ('-', 'not_measured')
+
+    agg = EntraSignInMethodStat.objects.filter(
+        upn__in=base_qs.values_list('upn', flat=True)
+    ).aggregate(
+        total=Sum('total_signins'),
+        hw=Sum('hardware_bound_signins'),
+    )
+    total_signins = agg['total'] or 0
+    hw_signins = agg['hw'] or 0
+
+    if total_signins == 0:
+        return ('-', 'not_measured')
+
+    pct = round(hw_signins / total_signins * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 90:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{hw_signins:,}/{total_signins:,} sign-ins ({pct}%)', status)
+
+
+def aal_03_2_detail():
+    """Return detailed data for AAL-3.2: per-sign-in hardware-bound aggregate for AAL3+ accounts."""
+    from django.db.models import Sum
+
+    _empty = {
+        'total': 0, 'total_measured': 0,
+        'passing_count': 0, 'failing_count': 0, 'no_signin_count': 0,
+        '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (),
+        'signin_stats': None, 'signin_data_synced_at': None,
+    }
+
+    if not EntraSignInMethodStat.objects.exists():
+        return {
+            **_empty,
+            'logic': (
+                'No sign-in log data available. Run the Entra ID user sync or '
+                '"python manage.py sync_entra_sign_in_methods" to populate data. '
+                'Requires AuditLog.Read.All permission.'
+            ),
+        }
+
+    base_qs = _get_users_by_aal(3)
+    total = base_qs.count()
+    if total == 0:
+        return {
+            **_empty,
+            'logic': 'No AAL3+ accounts found (no admins and no persona.aal_level >= 3).',
+        }
+
+    aal3_upns = base_qs.values_list('upn', flat=True)
+    stat_qs = EntraSignInMethodStat.objects.filter(upn__in=aal3_upns)
+
+    agg = stat_qs.aggregate(
+        total=Sum('total_signins'),
+        hw=Sum('hardware_bound_signins'),
+    )
+    total_signins = agg['total'] or 0
+    hw_signins = agg['hw'] or 0
+    non_hw_signins = total_signins - hw_signins
+
+    upns_with_signins = list(stat_qs.values_list('upn', flat=True))
+    full_hw_upns = list(
+        stat_qs.filter(hardware_bound_signins=F('total_signins'))
+               .values_list('upn', flat=True)
+    )
+
+    passing_qs = base_qs.filter(upn__in=full_hw_upns)
+    failing_qs = base_qs.filter(upn__in=upns_with_signins).exclude(upn__in=full_hw_upns)
+    no_signin_count = base_qs.exclude(upn__in=upns_with_signins).count()
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'highest_authentication_strength',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'passKeySynced_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+    )
+
+    stat = stat_qs.order_by('-synced_at').first()
+    pct = round(hw_signins / total_signins * 100) if total_signins > 0 else 0
+
+    return {
+        'total': total,
+        'total_measured': len(upns_with_signins),
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        'no_signin_count': no_signin_count,
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'signin_stats': {
+            'total': total_signins,
+            'total_label': 'Total AAL3+ sign-ins analyzed',
+            'pct': pct,
+            'rows': [
+                {
+                    'label': 'Hardware-bound (FIDO2, WHfB, CBA, Authenticator passkey)',
+                    'count': hw_signins,
+                    'pct': pct,
+                    'tone': 'good',
+                },
+                {
+                    'label': 'Not hardware-bound (Synced passkey, Push, OTP, SMS, Email)',
+                    'count': non_hw_signins,
+                    'pct': (100 - pct) if total_signins > 0 else 0,
+                    'tone': 'bad',
+                },
+            ],
+        },
+        'signin_data_synced_at': stat.synced_at if stat else None,
+        'logic': (
+            'Measured from Entra ID sign-in logs (last 30 days). Each sign-in is '
+            'classified hardware-bound if any authentication step used FIDO2, WHfB, '
+            'CBA (X.509 cert), or the Microsoft Authenticator passkey. Synced passkeys '
+            '(passKeySynced) are explicitly disqualified per § 2.3.2. Microsoft '
+            'distinguishes Authenticator passkey from synced passkey, so the device-'
+            'resident Authenticator passkey is treated as hardware-bound. '
+            'The headline percentage is aggregate sign-ins, not per-user. '
+            f'{no_signin_count} AAL3+ user(s) had no sign-in activity in the 30-day '
+            'window and are excluded entirely.'
+        ),
+        'qualifying_methods': (
+            'FIDO2 security key, Windows Hello for Business, X.509 certificate / '
+            'Certificate-Based Authentication, Passkey (Microsoft Authenticator)'
+        ),
+        'disqualifying_methods': (
+            'Synced passkey (cloud-backed via iCloud/Google/1Password), '
+            'MS Authenticator push, software OTP, SMS/voice phone, email — '
+            'none of these are hardware-bound under § 2.3.2'
+        ),
+        'scope': 'AAL3+ accounts (isAdmin=True OR persona.aal_level >= 3)',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 90%',
+    }
+
+
 def aal_02_6():
     """AAL-2.6: % of AAL2 sign-ins that used a replay-resistant authenticator.
 

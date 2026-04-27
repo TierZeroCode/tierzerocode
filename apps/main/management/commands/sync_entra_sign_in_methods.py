@@ -156,11 +156,12 @@ class Command(BaseCommand):
                 total=Sum('total_signins'),
                 replay=Sum('replay_resistant_signins'),
                 mfa=Sum('mfa_satisfied_signins'),
+                hw=Sum('hardware_bound_signins'),
             )
             self.stdout.write(
                 f'  Aggregate sign-ins (all users): '
                 f"total={total_agg['total']}, replay-resistant={total_agg['replay']}, "
-                f"mfa-satisfied={total_agg['mfa']}"
+                f"mfa-satisfied={total_agg['mfa']}, hardware-bound={total_agg['hw']}"
             )
 
             if aal2_count > 0:

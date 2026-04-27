@@ -776,6 +776,20 @@ _REPLAY_RESISTANT_METHODS = frozenset({
     'hardware oath token',
 })
 
+# Hardware-bound phishing-resistant methods (AAL-3.2). NIST § 2.3.2 disqualifies
+# syncable passkeys at AAL3. Microsoft's authenticationMethods report distinguishes
+# passKeySynced (cloud-synced — disqualified) from passKeyDeviceBoundAuthenticator
+# (Authenticator app, device-resident — qualifies per Microsoft's classification).
+_HARDWARE_BOUND_METHODS = frozenset({
+    'fido2 security key',
+    'windows hello for business',
+    'windows hello',
+    'x.509 certificate',
+    'certificate-based authentication',
+    'passkey (microsoft authenticator)',
+    'passkey (microsoft authenticator app)',
+})
+
 
 def syncSignInMethods(access_token):
     """Aggregate per-user replay-resistant sign-in counts from Entra sign-in logs.
@@ -833,10 +847,9 @@ def syncSignInMethods(access_token):
 
                 page_had_recent = True
                 auth_details = signin.get('authenticationDetails') or []
-                used_replay_resistant = any(
-                    (step.get('authenticationMethod') or '').lower() in _REPLAY_RESISTANT_METHODS
-                    for step in auth_details
-                )
+                step_methods = [(step.get('authenticationMethod') or '').lower() for step in auth_details]
+                used_replay_resistant = any(m in _REPLAY_RESISTANT_METHODS for m in step_methods)
+                used_hardware_bound = any(m in _HARDWARE_BOUND_METHODS for m in step_methods)
                 mfa_satisfied = signin.get('authenticationRequirement') == 'multiFactorAuthentication'
 
                 entry = stats.setdefault(upn, {
@@ -844,6 +857,7 @@ def syncSignInMethods(access_token):
                     'replay_resistant': 0,
                     'non_replay_resistant': 0,
                     'mfa_satisfied': 0,
+                    'hardware_bound': 0,
                     'last_signin': None,
                 })
                 entry['total'] += 1
@@ -853,6 +867,8 @@ def syncSignInMethods(access_token):
                     entry['non_replay_resistant'] += 1
                 if mfa_satisfied:
                     entry['mfa_satisfied'] += 1
+                if used_hardware_bound:
+                    entry['hardware_bound'] += 1
 
                 if ts and (entry['last_signin'] is None or ts > entry['last_signin']):
                     entry['last_signin'] = ts
@@ -883,6 +899,7 @@ def syncSignInMethods(access_token):
                 obj.replay_resistant_signins = entry['replay_resistant']
                 obj.non_replay_resistant_signins = entry['non_replay_resistant']
                 obj.mfa_satisfied_signins = entry['mfa_satisfied']
+                obj.hardware_bound_signins = entry['hardware_bound']
                 obj.last_signin_at = entry['last_signin']
                 to_update.append(obj)
             else:
@@ -892,6 +909,7 @@ def syncSignInMethods(access_token):
                     replay_resistant_signins=entry['replay_resistant'],
                     non_replay_resistant_signins=entry['non_replay_resistant'],
                     mfa_satisfied_signins=entry['mfa_satisfied'],
+                    hardware_bound_signins=entry['hardware_bound'],
                     last_signin_at=entry['last_signin'],
                 ))
 
@@ -900,7 +918,7 @@ def syncSignInMethods(access_token):
         if to_update:
             EntraSignInMethodStat.objects.bulk_update(
                 to_update,
-                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'mfa_satisfied_signins', 'last_signin_at'],
+                ['total_signins', 'replay_resistant_signins', 'non_replay_resistant_signins', 'mfa_satisfied_signins', 'hardware_bound_signins', 'last_signin_at'],
                 batch_size=500,
             )
 
