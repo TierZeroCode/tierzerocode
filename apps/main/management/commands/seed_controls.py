@@ -37,6 +37,28 @@ CONTROLS = [
         'evaluator': 'aal_02_1',
     },
     {
+        'control_id': 'AAL-2.3',
+        'domain': 'AAL2 — MFA Usage Rate',
+        'statement': (
+            'AAL2 sign-ins should demonstrate MFA satisfaction; a drop in MFA '
+            'usage rate may indicate bypass or legacy auth leakage.'
+        ),
+        'source_reference': 'SP 800-63B-4 § 2.2.1',
+        'indicator': (
+            "% of AAL2 sign-ins with authenticationRequirement = "
+            "'multiFactorAuthentication' in last 30 days"
+        ),
+        'measurement_method': (
+            'Entra ID sign-in logs — query authenticationRequirement field, '
+            'filter to AAL2 app sign-ins, calculate % satisfying MFA vs total.'
+        ),
+        'target': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'aal_02_3',
+    },
+    {
         'control_id': 'AAL-2.6',
         'domain': 'AAL2 — Replay Resistance',
         'statement': (
