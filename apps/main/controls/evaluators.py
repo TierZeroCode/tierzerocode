@@ -888,6 +888,115 @@ def aal_02_3_detail():
     }
 
 
+# CBA (Certificate-Based Authentication) is named in AAL-2.4 alongside FIDO2 and WHfB,
+# but Entra ID's authenticationMethods registration report does not currently expose a
+# distinct "softwareCertificate" boolean we sync into UserData. Until that field is
+# added to the model and sync, AAL-2.4 measures FIDO2 + WHfB + Authenticator passkey
+# only — users who authenticate exclusively via CBA will be undercounted as failing.
+_AAL2_4_PR_NOTE = (
+    'Note: CBA (Certificate-Based Authentication) qualifies under § 2.2.2 but is not '
+    'yet tracked as a registered method in UserData. Users authenticating only via CBA '
+    'are currently shown as failing. Extend the Entra ID user sync with a '
+    'softwareCertificate field to remove this limitation.'
+)
+
+
+def aal_02_4():
+    """AAL-2.4: % of AAL2-scoped users with phishing-resistant MFA registered.
+
+    NIST SP 800-63B-4 § 2.2.2: verifiers SHALL offer at least one phishing-resistant
+    authentication option at AAL2. Measured as the share of strict AAL2 users
+    (persona.aal_level=2) who have at least one phishing-resistant authenticator
+    registered.
+
+    Qualifying methods: FIDO2 device-bound, Windows Hello for Business, MS
+    Authenticator passkey (passKeyDeviceBoundAuthenticator). CBA is NOT yet
+    tracked — see _AAL2_4_PR_NOTE.
+
+    Target: 100% — amber at <80%, red at <60%.
+    """
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    with_pr = base_qs.filter(PHISHING_RESISTANT_Q).distinct().count()
+    pct = round(with_pr / total * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 80:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{with_pr}/{total} ({pct}%)', status)
+
+
+def aal_02_4_detail():
+    """Return detailed data for AAL-2.4: AAL2-scoped users and phishing-resistant MFA."""
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return {
+            'total': 0,
+            'passing_count': 0,
+            'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (),
+            '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
+        }
+
+    passing_qs = base_qs.filter(PHISHING_RESISTANT_Q).distinct()
+    failing_qs = base_qs.exclude(PHISHING_RESISTANT_Q).distinct()
+
+    _pass_fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+    )
+
+    _fail_fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fail_fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _pass_fields,
+        'logic': (
+            'AAL2-scoped users (persona.aal_level=2 only — admins are NOT included; '
+            'they are measured by AAL-04 / PHR-04) must have at least one '
+            'phishing-resistant authenticator registered. FIDO2 device-bound keys, '
+            'Authenticator passkeys, and Windows Hello for Business qualify under '
+            'NIST SP 800-63B-4 § 2.2.2. ' + _AAL2_4_PR_NOTE
+        ),
+        'qualifying_methods': (
+            'FIDO2 device-bound key (passKeyDeviceBound), '
+            'Passkey via Authenticator (passKeyDeviceBoundAuthenticator), '
+            'Windows Hello for Business (windowsHelloforBusiness)'
+        ),
+        'disqualifying_methods': (
+            'Push notifications, software OTP, phone/SMS, and email are NOT '
+            'phishing-resistant. CBA (Certificate-Based Authentication) qualifies '
+            'under NIST but is not currently tracked — see logic note.'
+        ),
+        'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
+        'amber_threshold': '< 80%',
+        'red_threshold': '< 60%',
+        'limitations': _AAL2_4_PR_NOTE,
+    }
+
+
 def aal_02_6():
     """AAL-2.6: % of AAL2 sign-ins that used a replay-resistant authenticator.
 
