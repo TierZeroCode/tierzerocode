@@ -739,14 +739,15 @@ def aal_02_1_detail():
 
 
 def aal_02_3():
-    """AAL-2.3: % of AAL2 sign-ins that satisfied MFA in the last 30 days.
+    """AAL-2.3: % of AAL2 fresh-auth sign-ins that required MFA in the last 30 days.
 
     NIST SP 800-63B-4 § 2.2.1: AAL2 authentication SHALL use MFA. A drop in
-    the MFA-satisfaction rate may indicate bypass paths or legacy auth leakage.
+    the MFA-enforcement rate may indicate bypass paths or legacy auth leakage.
 
     Metric: mfa_satisfied_signins / total_signins across all AAL2 users in the
-    30-day window. authenticationRequirement = 'multiFactorAuthentication' on
-    the sign-in event is the source of truth.
+    30-day window. The sync layer excludes SSO-cached "Previously Satisfied"
+    events from both fields, so the rate measures policy enforcement on actual
+    authentication moments rather than session-caching behavior.
 
     Requires EntraSignInMethodStat to be populated via syncSignInMethods().
     Target: 100% — amber at <100%, red at <95%.
@@ -852,7 +853,7 @@ def aal_02_3_detail():
         '_pass_fields': _fields,
         'signin_stats': {
             'total': total_signins,
-            'total_label': 'Total AAL2 sign-ins analyzed',
+            'total_label': 'Fresh-auth AAL2 sign-ins analyzed',
             'pct': pct,
             'rows': [
                 {
@@ -872,12 +873,15 @@ def aal_02_3_detail():
         'signin_data_synced_at': stat.synced_at if stat else None,
         'logic': (
             'Measured from Entra ID sign-in logs (last 30 days). '
-            'A sign-in is counted as MFA-satisfied when its '
+            'A fresh-auth sign-in is counted as MFA-satisfied when its '
             "authenticationRequirement field equals 'multiFactorAuthentication'. "
-            'The headline percentage is aggregate sign-ins. '
-            'The user tables below show users whose every sign-in satisfied MFA '
-            '(passing) vs users with at least one single-factor sign-in (failing). '
-            f'{no_signin_count} AAL2 user(s) had no sign-in activity in the 30-day '
+            'SSO-cached "Previously Satisfied" events are excluded at the sync layer — '
+            'they do not represent a fresh authentication moment, so they would only '
+            'add noise to the policy-enforcement rate. The headline percentage is '
+            'aggregate fresh-auth sign-ins. The user tables below show users whose '
+            'every fresh-auth sign-in required MFA (passing) vs users with at least '
+            'one single-factor fresh-auth sign-in (failing). '
+            f'{no_signin_count} AAL2 user(s) had no fresh-auth activity in the 30-day '
             'window and are excluded entirely.'
         ),
         'qualifying_methods': "authenticationRequirement = 'multiFactorAuthentication' on the sign-in event",
@@ -1028,24 +1032,21 @@ def aal_03_2():
     ).aggregate(
         total=Sum('total_signins'),
         hw=Sum('hardware_bound_signins'),
-        prev=Sum('previously_satisfied_signins'),
     )
     total_signins = agg['total'] or 0
     hw_signins = agg['hw'] or 0
-    prev_signins = agg['prev'] or 0
-    fresh_total = total_signins - prev_signins
 
-    if fresh_total <= 0:
+    if total_signins <= 0:
         return ('-', 'not_measured')
 
-    pct = round(hw_signins / fresh_total * 100)
+    pct = round(hw_signins / total_signins * 100)
     if pct >= 100:
         status = 'passing'
     elif pct >= 90:
         status = 'warning'
     else:
         status = 'failing'
-    return (f'{hw_signins:,}/{fresh_total:,} fresh sign-ins ({pct}%)', status)
+    return (f'{hw_signins:,}/{total_signins:,} fresh sign-ins ({pct}%)', status)
 
 
 def aal_03_2_detail():
@@ -1083,19 +1084,16 @@ def aal_03_2_detail():
     agg = stat_qs.aggregate(
         total=Sum('total_signins'),
         hw=Sum('hardware_bound_signins'),
-        prev=Sum('previously_satisfied_signins'),
     )
     total_signins = agg['total'] or 0
     hw_signins = agg['hw'] or 0
-    prev_signins = agg['prev'] or 0
-    fresh_total = total_signins - prev_signins
-    non_hw_signins = fresh_total - hw_signins
+    non_hw_signins = total_signins - hw_signins
 
     upns_with_signins = list(stat_qs.values_list('upn', flat=True))
-    # Per-user pass: every fresh-auth event was hardware-bound
-    # (i.e. hardware_bound_signins == total_signins - previously_satisfied_signins)
+    # Per-user pass: every fresh-auth event was hardware-bound. total_signins on
+    # the row is already fresh-auth-only (sync layer excluded Previously Satisfied).
     full_hw_upns = list(
-        stat_qs.filter(hardware_bound_signins=F('total_signins') - F('previously_satisfied_signins'))
+        stat_qs.filter(hardware_bound_signins=F('total_signins'))
                .values_list('upn', flat=True)
     )
 
@@ -1113,9 +1111,8 @@ def aal_03_2_detail():
     )
 
     stat = stat_qs.order_by('-synced_at').first()
-    pct = round(hw_signins / fresh_total * 100) if fresh_total > 0 else 0
-    non_hw_pct = round(non_hw_signins / fresh_total * 100) if fresh_total > 0 else 0
-    prev_pct = round(prev_signins / total_signins * 100) if total_signins > 0 else 0
+    pct = round(hw_signins / total_signins * 100) if total_signins > 0 else 0
+    non_hw_pct = round(non_hw_signins / total_signins * 100) if total_signins > 0 else 0
 
     return {
         'total': total,
@@ -1128,8 +1125,8 @@ def aal_03_2_detail():
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
         'signin_stats': {
-            'total': fresh_total,
-            'total_label': 'Fresh-auth AAL3+ sign-ins analyzed (excludes Previously Satisfied)',
+            'total': total_signins,
+            'total_label': 'Fresh-auth AAL3+ sign-ins analyzed',
             'pct': pct,
             'rows': [
                 {
@@ -1144,12 +1141,6 @@ def aal_03_2_detail():
                     'pct': non_hw_pct,
                     'tone': 'bad',
                 },
-                {
-                    'label': f'Previously Satisfied — SSO-cached, excluded from rate ({prev_pct}% of all sign-ins)',
-                    'count': prev_signins,
-                    'pct': prev_pct,
-                    'tone': 'neutral',
-                },
             ],
         },
         'signin_data_synced_at': stat.synced_at if stat else None,
@@ -1160,11 +1151,10 @@ def aal_03_2_detail():
             '(passKeySynced) are explicitly disqualified per § 2.3.2. Microsoft '
             'distinguishes Authenticator passkey from synced passkey, so the device-'
             'resident Authenticator passkey is treated as hardware-bound. '
-            '"Previously Satisfied" sign-ins (where MFA was inherited from a prior SSO '
-            'session) are excluded from both numerator and denominator — Microsoft does '
-            'not report which authenticator was originally used, so they cannot be classified. '
-            'The headline percentage is aggregate fresh-auth sign-ins, not per-user. '
-            f'{no_signin_count} AAL3+ user(s) had no sign-in activity in the 30-day '
+            'SSO-cached "Previously Satisfied" events are excluded at the sync layer — they '
+            'do not represent an authenticator being exercised, so they would only add noise '
+            'to the rate. The headline percentage is aggregate fresh-auth sign-ins, not per-user. '
+            f'{no_signin_count} AAL3+ user(s) had no fresh-auth activity in the 30-day '
             'window and are excluded entirely.'
         ),
         'qualifying_methods': (
@@ -1183,18 +1173,15 @@ def aal_03_2_detail():
 
 
 def aal_02_6():  # noqa: E302  (kept here so the module stays grouped by control id)
-    """AAL-2.6: % of AAL2 *fresh-auth* sign-ins that used a replay-resistant authenticator.
+    """AAL-2.6: % of AAL2 fresh-auth sign-ins that used a replay-resistant authenticator.
 
     NIST SP 800-63B-4 § 2.2.2: At least one authenticator used at AAL2 SHALL
     be replay-resistant. FIDO2, WHfB, CBA, and TOTP qualify; push approval
     alone (without number matching) does not.
 
-    Denominator: total_signins − previously_satisfied_signins. Microsoft Graph
-    reports authenticationMethod="Previously satisfied" for SSO-cached sign-ins
-    where MFA was inherited from a prior session — we cannot tell which
-    authenticator was originally used, so those events are excluded from both
-    numerator and denominator. AAL-2.3 (MFA usage rate) keeps them via
-    authenticationRequirement, since the policy gate IS satisfied.
+    Denominator: total fresh-auth sign-ins (the sync layer has already excluded
+    Microsoft's "Previously Satisfied" SSO-cached events, since they don't
+    represent an authenticator being exercised).
 
     Requires EntraSignInMethodStat to be populated via syncSignInMethods().
     Target: 100% — amber at <90%, red at <75%.
@@ -1213,24 +1200,21 @@ def aal_02_6():  # noqa: E302  (kept here so the module stays grouped by control
     ).aggregate(
         total=Sum('total_signins'),
         replay=Sum('replay_resistant_signins'),
-        prev=Sum('previously_satisfied_signins'),
     )
     total_signins = agg['total'] or 0
     replay_signins = agg['replay'] or 0
-    prev_signins = agg['prev'] or 0
-    fresh_total = total_signins - prev_signins
 
-    if fresh_total <= 0:
+    if total_signins <= 0:
         return ('-', 'not_measured')
 
-    pct = round(replay_signins / fresh_total * 100)
+    pct = round(replay_signins / total_signins * 100)
     if pct >= 100:
         status = 'passing'
     elif pct >= 90:
         status = 'warning'
     else:
         status = 'failing'
-    return (f'{replay_signins:,}/{fresh_total:,} fresh sign-ins ({pct}%)', status)
+    return (f'{replay_signins:,}/{total_signins:,} fresh sign-ins ({pct}%)', status)
 
 
 def aal_02_6_detail():
@@ -1269,13 +1253,10 @@ def aal_02_6_detail():
         total=Sum('total_signins'),
         replay=Sum('replay_resistant_signins'),
         non_replay=Sum('non_replay_resistant_signins'),
-        prev=Sum('previously_satisfied_signins'),
     )
     total_signins = agg['total'] or 0
     replay_signins = agg['replay'] or 0
     non_replay_signins = agg['non_replay'] or 0
-    prev_signins = agg['prev'] or 0
-    fresh_total = total_signins - prev_signins
 
     upns_with_signins = list(stat_qs.values_list('upn', flat=True))
     replay_upns = list(stat_qs.filter(replay_resistant_signins__gt=0).values_list('upn', flat=True))
@@ -1299,9 +1280,8 @@ def aal_02_6_detail():
     )
 
     stat = stat_qs.order_by('-synced_at').first()
-    pct = round(replay_signins / fresh_total * 100) if fresh_total > 0 else 0
-    non_replay_pct = round(non_replay_signins / fresh_total * 100) if fresh_total > 0 else 0
-    prev_pct = round(prev_signins / total_signins * 100) if total_signins > 0 else 0
+    pct = round(replay_signins / total_signins * 100) if total_signins > 0 else 0
+    non_replay_pct = round(non_replay_signins / total_signins * 100) if total_signins > 0 else 0
 
     return {
         'total': total,
@@ -1314,8 +1294,8 @@ def aal_02_6_detail():
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
         'signin_stats': {
-            'total': fresh_total,
-            'total_label': 'Fresh-auth AAL2 sign-ins analyzed (excludes Previously Satisfied)',
+            'total': total_signins,
+            'total_label': 'Fresh-auth AAL2 sign-ins analyzed',
             'pct': pct,
             'rows': [
                 {
@@ -1330,27 +1310,20 @@ def aal_02_6_detail():
                     'pct': non_replay_pct,
                     'tone': 'bad',
                 },
-                {
-                    'label': f'Previously Satisfied — SSO-cached, excluded from rate ({prev_pct}% of all sign-ins)',
-                    'count': prev_signins,
-                    'pct': prev_pct,
-                    'tone': 'neutral',
-                },
             ],
         },
         'signin_data_synced_at': stat.synced_at if stat else None,
         'logic': (
             'Measured from Entra ID sign-in logs (last 30 days). '
-            'Each sign-in event is classified individually — '
+            'Each fresh-auth sign-in event is classified individually — '
             'replay-resistant if any authentication step used FIDO2, WHfB, CBA, Software OTP, '
             'or Passwordless Authenticator. Push notifications alone do not qualify. '
-            '"Previously Satisfied" sign-ins (where MFA was inherited from a prior SSO session) '
-            'are excluded from both numerator and denominator — Microsoft does not report which '
-            'authenticator was originally used, so they cannot be classified. '
-            'The headline percentage is aggregate fresh-auth sign-ins, not per-user. '
+            'SSO-cached "Previously Satisfied" events are excluded at the sync layer — they '
+            'do not represent an authenticator being exercised, so they would only add noise '
+            'to the rate. The headline percentage is aggregate fresh-auth sign-ins, not per-user. '
             'The user tables below show who has never signed in with a replay-resistant '
             f'method (failing) vs at least once (passing). '
-            f'{no_signin_count} AAL2 user(s) had no sign-in activity in the 30-day window '
+            f'{no_signin_count} AAL2 user(s) had no fresh-auth activity in the 30-day window '
             'and are excluded entirely.'
         ),
         'qualifying_methods': 'FIDO2 (device-bound passkey), FIDO2 (device-bound authenticator), Windows Hello for Business, MS Authenticator (passwordless), Software OTP/TOTP, Certificate-Based Authentication',

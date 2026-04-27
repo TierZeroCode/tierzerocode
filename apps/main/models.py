@@ -559,12 +559,15 @@ class EntraSignInMethodStat(models.Model):
     source (replaces the registration-based proxy when populated).
     """
     upn = models.CharField(max_length=256, unique=True, db_index=True)
+    # All counters below cover fresh-auth sign-in events only.
+    # SSO-cached "Previously Satisfied" events are excluded at the sync layer —
+    # they do not represent an authenticator being exercised, so they would
+    # only add noise to AAL-2.x / AAL-3.x rate measurements.
     total_signins = models.IntegerField(default=0)
     replay_resistant_signins = models.IntegerField(default=0)
     non_replay_resistant_signins = models.IntegerField(default=0)
     mfa_satisfied_signins = models.IntegerField(default=0)
     hardware_bound_signins = models.IntegerField(default=0)
-    previously_satisfied_signins = models.IntegerField(default=0)
     last_signin_at = models.DateTimeField(null=True, blank=True)
     synced_at = models.DateTimeField(auto_now=True)
 
