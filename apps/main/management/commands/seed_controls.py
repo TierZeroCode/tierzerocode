@@ -81,6 +81,28 @@ CONTROLS = [
         'data_sources': ['Microsoft Entra ID', 'Active Directory'],
         'evaluator': 'pwd_10',
     },
+    {
+        'control_id': 'PWD-07',
+        'domain': 'No Password Hints or KBA',
+        'statement': (
+            'Verifiers SHALL NOT permit password hints accessible to unauthenticated '
+            'claimants. SHALL NOT use knowledge-based authentication (security '
+            'questions) as a recovery factor.'
+        ),
+        'source_reference': 'SP 800-63B-4 § 3.1.1.2(7–8)',
+        'indicator': (
+            'Number of applications using password hints or security questions '
+            'for password selection or recovery'
+        ),
+        'measurement_method': (
+            'Application authentication configuration review — audit Entra ID SSPR '
+            'configuration; review custom applications using KBA.'
+        ),
+        'target': '0',
+        'red_threshold': '>= 1',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'pwd_08',
+    },
 ]
 
 
