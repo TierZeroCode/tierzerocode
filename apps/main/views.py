@@ -1719,7 +1719,27 @@ def custom_403(request, exception):
 
 ############################################################################################
 
-from apps.main.tasks import deviceIntegrationSyncTask, microsoftEntraIDUserSyncTask, activeDirectoryUserSyncTask
+from apps.main.tasks import (
+	deviceIntegrationSyncTask,
+	microsoftEntraIDUserSyncTask,
+	activeDirectoryUserSyncTask,
+	entraUsersSyncTask,
+	entraSignInsSyncTask,
+	entraCaPoliciesSyncTask,
+	entraTenantConfigSyncTask,
+	entraAuthMethodsPolicySyncTask,
+	entraPasswordPolicySyncTask,
+)
+
+
+_ENTRA_PHASE_TASKS = [
+	(entraUsersSyncTask, "Microsoft Entra ID — Users Sync"),
+	(entraSignInsSyncTask, "Microsoft Entra ID — Sign-In Logs Sync"),
+	(entraCaPoliciesSyncTask, "Microsoft Entra ID — CA Policies Sync"),
+	(entraTenantConfigSyncTask, "Microsoft Entra ID — Tenant Security Config Sync"),
+	(entraAuthMethodsPolicySyncTask, "Microsoft Entra ID — Auth Methods Policy Sync"),
+	(entraPasswordPolicySyncTask, "Microsoft Entra ID — Password Policy Sync"),
+]
 
 @login_required
 def syncDevices(request, integration):
@@ -1755,10 +1775,17 @@ def syncUsers(request, integration):
 	operating_system = request.META.get('HTTP_USER_AGENT', 'unknown') if hasattr(request, 'META') else 'unknown'
 	#X6969
 	if integration == 'microsoft-entra-id':
-		print ("Syncing Microsoft Entra ID Users")
-		messages.info(request, 'Microsoft Entra ID User Integration Sync in Progress')
-		result = microsoftEntraIDUserSyncTask.enqueue(user_email, ip_address, user_agent, browser, operating_system)
-		logger.info("Task enqueued: %s", result.id)
+		print ("Syncing Microsoft Entra ID Users — fanning out to per-phase tasks")
+		messages.info(request, 'Microsoft Entra ID — sync started: 6 phase tasks enqueued')
+		for task_fn, title in _ENTRA_PHASE_TASKS:
+			notification = Notification.objects.create(
+				title=title,
+				status="Queued",
+				created_at=timezone.now(),
+				updated_at=timezone.now(),
+			)
+			result = task_fn.enqueue(user_email, ip_address, user_agent, browser, operating_system, notification.id)
+			logger.info("Entra phase task enqueued: %s -> notification %s, job %s", title, notification.id, result.id)
 	elif integration == 'active-directory':
 		print ("Syncing Active Directory Users")
 		messages.info(request, 'Active Directory User Integration Sync in Progress')
