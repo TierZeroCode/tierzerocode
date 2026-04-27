@@ -750,11 +750,24 @@ def syncSignInLogs(access_token):
 
     try:
         window_start_dt = timezone.now() - timedelta(days=30)
+        # Server-side filters cut the volume dramatically on busy tenants:
+        #   - status/errorCode eq 0          → only successful sign-ins
+        #   - createdDateTime ge {30d ago}   → date floor; Graph stops returning
+        #                                      pages older than the window
+        #   - signInEventTypes/any(t:t eq 'interactiveUser') → drops non-interactive
+        #     refreshes/service principals — most of those are the SSO-cached
+        #     "Previously Satisfied" events that AAL controls don't measure anyway.
+        # We can't filter on authenticationDetails directly (Graph doesn't allow
+        # OData expressions on that collection-typed property), so any residual
+        # Previously Satisfied events that DO come back are filtered in Python below.
         # Drop $select — Graph beta rejects authenticationDetails as a select target;
         # all properties come back by default.
+        window_iso = window_start_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
         url = (
             'https://graph.microsoft.com/beta/auditLogs/signIns'
-            '?$filter=status/errorCode eq 0'
+            "?$filter=status/errorCode eq 0"
+            f" and createdDateTime ge {window_iso}"
+            " and signInEventTypes/any(t:t eq 'interactiveUser')"
             '&$top=999'
         )
         headers = {'Authorization': access_token}
