@@ -165,7 +165,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         <p class="text-xs text-slate-400">This control requires manual attestation — no automated evaluator configured.</p>
         {% endif %}
 
-        <!-- AAL-2.6 specific: per-sign-in replay-resistance aggregate -->
+        <!-- Per-sign-in breakdown panel (data-driven; populated by detail funcs that aggregate sign-in events) -->
         {% if detail.signin_stats %}
         <div class="mt-4">
             <div class="flex items-center justify-between mb-2">
@@ -183,19 +183,16 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                    {% for row in detail.signin_stats.rows %}
                     <tr>
-                        <td class="py-2 px-3 text-slate-700 dark:text-slate-300">Replay-resistant (FIDO2, WHfB, OTP, Passwordless, CBA)</td>
-                        <td class="py-2 px-3 text-right tabular-nums font-medium text-code-green-700 dark:text-code-green-400">{{ detail.signin_stats.replay_signins|default:0 }}</td>
-                        <td class="py-2 px-3 text-right tabular-nums text-code-green-700 dark:text-code-green-400">{{ detail.signin_stats.pct }}%</td>
+                        <td class="py-2 px-3 text-slate-700 dark:text-slate-300">{{ row.label }}</td>
+                        <td class="py-2 px-3 text-right tabular-nums font-medium {% if row.tone == 'good' %}text-code-green-700 dark:text-code-green-400{% elif row.tone == 'bad' %}text-code-red-700 dark:text-code-red-400{% else %}text-slate-700 dark:text-slate-300{% endif %}">{{ row.count|default:0 }}</td>
+                        <td class="py-2 px-3 text-right tabular-nums {% if row.tone == 'good' %}text-code-green-700 dark:text-code-green-400{% elif row.tone == 'bad' %}text-code-red-700 dark:text-code-red-400{% else %}text-slate-700 dark:text-slate-300{% endif %}">{{ row.pct }}%</td>
                     </tr>
-                    <tr>
-                        <td class="py-2 px-3 text-slate-700 dark:text-slate-300">Non-replay-resistant (Push, SMS, Email)</td>
-                        <td class="py-2 px-3 text-right tabular-nums font-medium text-code-red-700 dark:text-code-red-400">{{ detail.signin_stats.non_replay_signins|default:0 }}</td>
-                        <td class="py-2 px-3 text-right tabular-nums text-code-red-700 dark:text-code-red-400">{% if detail.signin_stats.total_signins %}{% widthratio detail.signin_stats.non_replay_signins detail.signin_stats.total_signins 100 %}{% else %}0{% endif %}%</td>
-                    </tr>
+                    {% endfor %}
                     <tr class="font-semibold">
-                        <td class="py-2 px-3 text-slate-800 dark:text-slate-200">Total AAL2 sign-ins analyzed</td>
-                        <td class="py-2 px-3 text-right tabular-nums text-slate-900 dark:text-slate-100" colspan="2">{{ detail.signin_stats.total_signins|default:0 }}</td>
+                        <td class="py-2 px-3 text-slate-800 dark:text-slate-200">{{ detail.signin_stats.total_label|default:"Total sign-ins analyzed" }}</td>
+                        <td class="py-2 px-3 text-right tabular-nums text-slate-900 dark:text-slate-100" colspan="2">{{ detail.signin_stats.total|default:0 }}</td>
                     </tr>
                 </tbody>
             </table>

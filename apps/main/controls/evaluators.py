@@ -851,10 +851,23 @@ def aal_02_3_detail():
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
         'signin_stats': {
-            'total_signins': total_signins,
-            'mfa_signins': mfa_signins,
-            'non_mfa_signins': non_mfa_signins,
+            'total': total_signins,
+            'total_label': 'Total AAL2 sign-ins analyzed',
             'pct': pct,
+            'rows': [
+                {
+                    'label': 'MFA-satisfied (authenticationRequirement = multiFactorAuthentication)',
+                    'count': mfa_signins,
+                    'pct': pct,
+                    'tone': 'good',
+                },
+                {
+                    'label': 'Single-factor (password-only or token-only)',
+                    'count': non_mfa_signins,
+                    'pct': (100 - pct) if total_signins > 0 else 0,
+                    'tone': 'bad',
+                },
+            ],
         },
         'signin_data_synced_at': stat.synced_at if stat else None,
         'logic': (
@@ -996,10 +1009,23 @@ def aal_02_6_detail():
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
         'signin_stats': {
-            'total_signins': total_signins,
-            'replay_signins': replay_signins,
-            'non_replay_signins': non_replay_signins,
+            'total': total_signins,
+            'total_label': 'Total AAL2 sign-ins analyzed',
             'pct': pct,
+            'rows': [
+                {
+                    'label': 'Replay-resistant (FIDO2, WHfB, OTP, Passwordless, CBA)',
+                    'count': replay_signins,
+                    'pct': pct,
+                    'tone': 'good',
+                },
+                {
+                    'label': 'Non-replay-resistant (Push, SMS, Email)',
+                    'count': non_replay_signins,
+                    'pct': (100 - pct) if total_signins > 0 else 0,
+                    'tone': 'bad',
+                },
+            ],
         },
         'signin_data_synced_at': stat.synced_at if stat else None,
         'logic': (
