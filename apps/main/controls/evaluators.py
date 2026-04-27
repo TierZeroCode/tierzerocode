@@ -2008,25 +2008,33 @@ def alm_11():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_PRIVILEGED_TAG_NAME = 'Privileged'
+
+
 def custom_admin_no_privileged_persona():
-    """PRIV-01: count of Entra ID admins not assigned to a Privileged Persona.
+    """PRIV-01: % of Entra ID admins assigned to a Privileged-tagged Persona.
 
-    "Privileged Persona" = persona.aal_level >= 3, the convention used elsewhere
-    in this codebase. An admin without a Privileged Persona means the account
-    has elevated rights in Entra but isn't being managed under any of the AAL3
-    controls (PHR-04, AAL-04, AAL-09, AAL-3.2, etc.) — a tracking gap.
+    "Privileged Persona" = a Persona whose tag set includes the 'Privileged'
+    PersonaTag. Admins not assigned to one are operating outside the
+    privileged-account control envelope (PHR-04, AAL-04, AAL-09, AAL-3.2)
+    and represent a tracking gap.
 
-    Target: 0 admins missing a Privileged Persona.
+    Target: 100% — amber at <100%, red at <95%.
     """
     admin_qs = UserData.objects.filter(isAdmin=True)
     total_admins = admin_qs.count()
     if total_admins == 0:
         return ('-', 'not_measured')
 
-    misaligned = admin_qs.exclude(persona__aal_level__gte=3).count()
-    if misaligned == 0:
-        return (f'0/{total_admins} admins', 'passing')
-    return (f'{misaligned}/{total_admins} admins', 'failing')
+    compliant = admin_qs.filter(persona__tags__name=_PRIVILEGED_TAG_NAME).distinct().count()
+    pct = round(compliant / total_admins * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 95:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{compliant}/{total_admins} ({pct}%)', status)
 
 
 def custom_admin_no_privileged_persona_detail():
@@ -2041,14 +2049,24 @@ def custom_admin_no_privileged_persona_detail():
             'logic': 'No Entra ID admins found in UserData.',
         }
 
-    failing_qs = admin_qs.exclude(persona__aal_level__gte=3)
-    passing_qs = admin_qs.filter(persona__aal_level__gte=3)
+    tag_exists = PersonaTag.objects.filter(name=_PRIVILEGED_TAG_NAME).exists()
+
+    passing_qs = admin_qs.filter(persona__tags__name=_PRIVILEGED_TAG_NAME).distinct()
+    failing_qs = admin_qs.exclude(persona__tags__name=_PRIVILEGED_TAG_NAME).distinct()
 
     _fields = (
         'upn', 'given_name', 'surname', 'isAdmin',
         'persona__persona_name', 'persona__aal_level',
         'highest_authentication_strength', 'isMfaRegistered',
     )
+
+    setup_note = ''
+    if not tag_exists:
+        setup_note = (
+            ' SETUP REQUIRED: no PersonaTag named "Privileged" exists yet — '
+            'create one in Settings → Persona Tags and apply it to the personas '
+            'that hold privileged accounts.'
+        )
 
     return {
         'total': total_admins,
@@ -2059,14 +2077,16 @@ def custom_admin_no_privileged_persona_detail():
         '_pass_qs': passing_qs,
         '_pass_fields': _fields,
         'logic': (
-            'Entra ID admin accounts (UserData.isAdmin = True) are checked for '
-            'a Privileged Persona assignment (persona.aal_level >= 3). Admins '
-            'without one are operating outside the AAL3 control envelope used '
-            'by PHR-04, AAL-04, AAL-09, and AAL-3.2 — they should either be '
-            'reassigned to a privileged persona or have their admin role '
-            'removed if no longer required.'
+            'Entra ID admin accounts (UserData.isAdmin = True) are checked for a '
+            'Persona whose tag set includes "Privileged". Admins without one are '
+            'operating outside the privileged-account control envelope used by '
+            'PHR-04, AAL-04, AAL-09, and AAL-3.2 — they should either be '
+            'reassigned to a Privileged persona or have admin removed if the '
+            'role is no longer required.' + setup_note
         ),
-        'qualifying_methods': 'Persona with aal_level = 3 (or higher) assigned to the admin account',
-        'disqualifying_methods': 'No persona assigned, or persona with aal_level < 3',
+        'qualifying_methods': 'Persona tagged "Privileged" assigned to the admin account',
+        'disqualifying_methods': 'No persona assigned, or persona without the "Privileged" tag',
         'scope': 'Every UserData row where isAdmin = True',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
     }

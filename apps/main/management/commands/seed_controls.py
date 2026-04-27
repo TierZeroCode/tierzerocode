@@ -208,21 +208,21 @@ CONTROLS = [
         'control_id': 'PRIV-01',
         'domain': 'Admin Account Privileged Persona Alignment',
         'statement': (
-            'Entra ID administrative accounts must be assigned to a Privileged '
-            'Persona (persona.aal_level = 3 or higher) so they are properly '
-            'scoped under privileged-account controls.'
+            'Entra ID administrative accounts must be assigned to a Persona '
+            'tagged "Privileged" so they are properly scoped under '
+            'privileged-account controls.'
         ),
         'source_reference': 'Internal — Tier Zero C.O.D.E. Custom',
         'indicator': (
-            'Number of Entra ID admins not assigned to a Privileged Persona '
-            '(missing or aal_level < 3)'
+            '% of Entra ID admins assigned to a Persona tagged "Privileged"'
         ),
         'measurement_method': (
-            'UserData query: count rows where isAdmin=True and persona is null '
-            'or persona.aal_level < 3.'
+            'UserData query: of all rows where isAdmin=True, the share whose '
+            'persona has the "Privileged" PersonaTag applied.'
         ),
-        'target': '0',
-        'red_threshold': '>= 1',
+        'target': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 95%',
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'custom_admin_no_privileged_persona',
     },
