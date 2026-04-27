@@ -2001,3 +2001,72 @@ def alm_11():
     Returns not_measured until a manual review result is recorded.
     """
     return ('-', 'not_measured')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Custom (non-framework) controls
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def custom_admin_no_privileged_persona():
+    """PRIV-01: count of Entra ID admins not assigned to a Privileged Persona.
+
+    "Privileged Persona" = persona.aal_level >= 3, the convention used elsewhere
+    in this codebase. An admin without a Privileged Persona means the account
+    has elevated rights in Entra but isn't being managed under any of the AAL3
+    controls (PHR-04, AAL-04, AAL-09, AAL-3.2, etc.) — a tracking gap.
+
+    Target: 0 admins missing a Privileged Persona.
+    """
+    admin_qs = UserData.objects.filter(isAdmin=True)
+    total_admins = admin_qs.count()
+    if total_admins == 0:
+        return ('-', 'not_measured')
+
+    misaligned = admin_qs.exclude(persona__aal_level__gte=3).count()
+    if misaligned == 0:
+        return (f'0/{total_admins} admins', 'passing')
+    return (f'{misaligned}/{total_admins} admins', 'failing')
+
+
+def custom_admin_no_privileged_persona_detail():
+    """Return detailed data for PRIV-01."""
+    admin_qs = UserData.objects.filter(isAdmin=True)
+    total_admins = admin_qs.count()
+    if total_admins == 0:
+        return {
+            'total': 0, 'passing_count': 0, 'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (),
+            '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No Entra ID admins found in UserData.',
+        }
+
+    failing_qs = admin_qs.exclude(persona__aal_level__gte=3)
+    passing_qs = admin_qs.filter(persona__aal_level__gte=3)
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'isAdmin',
+        'persona__persona_name', 'persona__aal_level',
+        'highest_authentication_strength', 'isMfaRegistered',
+    )
+
+    return {
+        'total': total_admins,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'logic': (
+            'Entra ID admin accounts (UserData.isAdmin = True) are checked for '
+            'a Privileged Persona assignment (persona.aal_level >= 3). Admins '
+            'without one are operating outside the AAL3 control envelope used '
+            'by PHR-04, AAL-04, AAL-09, and AAL-3.2 — they should either be '
+            'reassigned to a privileged persona or have their admin role '
+            'removed if no longer required.'
+        ),
+        'qualifying_methods': 'Persona with aal_level = 3 (or higher) assigned to the admin account',
+        'disqualifying_methods': 'No persona assigned, or persona with aal_level < 3',
+        'scope': 'Every UserData row where isAdmin = True',
+    }

@@ -5,19 +5,40 @@ from apps.main.models import ControlFramework, Control
 # New-generation controls (v2+).
 #
 # Each entry is the full canonical definition for one control.
-# All fields map directly to the Control model.
+# All fields map directly to the Control model. Each control is tagged with
+# a `framework_short_name` that maps to one of the entries in FRAMEWORKS.
 #
-# Required:  control_id, domain, statement, source_reference,
-#            indicator, measurement_method, target, evaluator
+# Required:  control_id, framework_short_name, domain, statement,
+#            source_reference, indicator, measurement_method, target,
+#            evaluator
 # Optional:  amber_threshold, red_threshold  (tiered alert thresholds)
+#
+# Re-seed behavior: a user-edited `target` is NEVER overwritten on re-seed.
+# Other fields update normally. Drop the field from the seed entry if you
+# want first-create defaulting only.
 #
 # Run via:   python manage.py seed_controls
 # UI button: Settings → Seed Controls (superuser only)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Canonical framework definitions — keyed by short_name.
+FRAMEWORKS = {
+    'NIST SP 800-63-4': {
+        'name': 'NIST Special Publication 800-63 Revision 4 — Digital Identity Guidelines',
+        'version': 'Revision 4',
+        'url': 'https://pages.nist.gov/800-63-4/',
+    },
+    'Custom': {
+        'name': 'Custom Controls',
+        'version': 'v1',
+        'url': '',
+    },
+}
+
 CONTROLS = [
     # ── AAL — Authentication Assurance Level ─────────────────────────────────
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'AAL-2.1',
         'domain': 'AAL2 — MFA Registration',
         'statement': (
@@ -37,6 +58,7 @@ CONTROLS = [
         'evaluator': 'aal_02_1',
     },
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'AAL-2.3',
         'domain': 'AAL2 — MFA Usage Rate',
         'statement': (
@@ -59,6 +81,7 @@ CONTROLS = [
         'evaluator': 'aal_02_3',
     },
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'AAL-2.4',
         'domain': 'AAL2 — Phishing-Resistant MFA Adoption',
         'statement': (
@@ -81,6 +104,7 @@ CONTROLS = [
         'evaluator': 'aal_02_4',
     },
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'AAL-2.6',
         'domain': 'AAL2 — Replay Resistance',
         'statement': (
@@ -103,6 +127,7 @@ CONTROLS = [
     },
 
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'AAL-3.2',
         'domain': 'AAL3 — PHR-MFA Enforcement',
         'statement': (
@@ -127,6 +152,7 @@ CONTROLS = [
 
     # ── PWD — Password Controls ──────────────────────────────────────────────
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'PWD-05',
         'domain': 'Password Blocklist Enforcement',
         'statement': (
@@ -149,6 +175,7 @@ CONTROLS = [
         'evaluator': 'pwd_10',
     },
     {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'PWD-07',
         'domain': 'No Password Hints or KBA',
         'statement': (
@@ -170,6 +197,31 @@ CONTROLS = [
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'pwd_08',
     },
+
+    # ── Custom — non-framework controls ──────────────────────────────────────
+    {
+        'framework_short_name': 'Custom',
+        'control_id': 'PRIV-01',
+        'domain': 'Admin Account Privileged Persona Alignment',
+        'statement': (
+            'Entra ID administrative accounts must be assigned to a Privileged '
+            'Persona (persona.aal_level = 3 or higher) so they are properly '
+            'scoped under privileged-account controls.'
+        ),
+        'source_reference': 'Internal — Tier Zero C.O.D.E. Custom',
+        'indicator': (
+            'Number of Entra ID admins not assigned to a Privileged Persona '
+            '(missing or aal_level < 3)'
+        ),
+        'measurement_method': (
+            'UserData query: count rows where isAdmin=True and persona is null '
+            'or persona.aal_level < 3.'
+        ),
+        'target': '0',
+        'red_threshold': '>= 1',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'custom_admin_no_privileged_persona',
+    },
 ]
 
 
@@ -177,23 +229,49 @@ class Command(BaseCommand):
     help = 'Seed new-generation security controls. Called by the UI Seed Controls button.'
 
     def handle(self, *args, **options):
-        framework, created = ControlFramework.objects.update_or_create(
-            short_name='NIST SP 800-63-4',
-            defaults={
-                'name': 'NIST Special Publication 800-63 Revision 4 — Digital Identity Guidelines',
-                'version': 'Revision 4',
-                'url': 'https://pages.nist.gov/800-63-4/',
-            },
-        )
-        action = 'Created' if created else 'Updated'
-        self.stdout.write(f'{action} framework: {framework}')
+        # ── Phase 1: upsert every framework ─────────────────────────────────
+        framework_objs = {}
+        for short_name, defaults in FRAMEWORKS.items():
+            fw, created = ControlFramework.objects.update_or_create(
+                short_name=short_name,
+                defaults=defaults,
+            )
+            framework_objs[short_name] = fw
+            action = 'Created' if created else 'Updated'
+            self.stdout.write(f'{action} framework: {fw}')
 
+        # ── Phase 2: upsert every control, preserving user-edited targets ──
+        target_preserved = 0
         for ctrl_data in CONTROLS:
+            data = dict(ctrl_data)
+            fw_short = data.pop('framework_short_name', None)
+            if fw_short not in framework_objs:
+                self.stdout.write(self.style.WARNING(
+                    f'  Skipping {data.get("control_id")} — unknown framework {fw_short!r}'
+                ))
+                continue
+            data['framework'] = framework_objs[fw_short]
+
+            # If the control already exists with a non-empty target, leave it
+            # alone — operators may have customized the threshold for their org.
+            existing = Control.objects.filter(control_id=data['control_id']).first()
+            if existing and existing.target:
+                seed_target = data.pop('target', None)
+                if seed_target and seed_target != existing.target:
+                    target_preserved += 1
+                    self.stdout.write(
+                        f'  Preserving existing target on {data["control_id"]}: '
+                        f'{existing.target!r} (seed value {seed_target!r} ignored)'
+                    )
+
             ctrl, created = Control.objects.update_or_create(
-                control_id=ctrl_data['control_id'],
-                defaults={**ctrl_data, 'framework': framework},
+                control_id=data['control_id'],
+                defaults=data,
             )
             action = 'Created' if created else 'Updated'
             self.stdout.write(f'  {action} control: {ctrl.control_id} — {ctrl.domain}')
 
-        self.stdout.write(self.style.SUCCESS(f'Done. {len(CONTROLS)} control(s) seeded.'))
+        summary = f'Done. {len(CONTROLS)} control(s) seeded across {len(framework_objs)} framework(s).'
+        if target_preserved:
+            summary += f' {target_preserved} user-edited target(s) preserved.'
+        self.stdout.write(self.style.SUCCESS(summary))
