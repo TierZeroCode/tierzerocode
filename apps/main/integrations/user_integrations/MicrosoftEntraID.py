@@ -766,21 +766,65 @@ def syncSignInLogs(access_token):
         # EntraSignInMethodStat per-user dict: upn → {total, replay_resistant, ...}
         stats: dict = {}
 
+        # Track whether the fetch finished cleanly. False means we bailed early
+        # (transient API failure) and should NOT prune UPNs from the table —
+        # partial stats would otherwise wipe legitimate users.
+        completed = True
+        # Diagnostics
+        page_count = 0
+        # Retry budget per page for transient 5xx / connection failures.
+        MAX_PAGE_RETRIES = 5
+        BACKOFF_BASE_SECS = 2  # 2, 4, 8, 16, 32 — total ~60s of backoff before giving up
+
         while url:
-            response = requests.get(url, headers=headers)
+            page = None
+            for attempt in range(MAX_PAGE_RETRIES + 1):
+                try:
+                    response = requests.get(url, headers=headers, timeout=120)
+                except requests.exceptions.RequestException as e:
+                    # Connection reset / read timeout — treat as transient
+                    if attempt < MAX_PAGE_RETRIES:
+                        time.sleep(BACKOFF_BASE_SECS * (2 ** attempt))
+                        continue
+                    _sync_log('Microsoft Entra ID', '1518', 'Warning',
+                              f'Sign-in logs request failed after {MAX_PAGE_RETRIES + 1} attempts: {e}. '
+                              f'Saving partial stats from {page_count} pages.')
+                    completed = False
+                    break
 
-            if response.status_code == 429:
-                retry_after = int(response.headers.get('Retry-After', 60))
-                time.sleep(retry_after)
-                continue
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    time.sleep(retry_after)
+                    continue  # Don't count 429s against the retry budget
 
-            if response.status_code != 200:
-                _sync_log('Microsoft Entra ID', '1518', 'Failure',
-                          f'Sign-in logs fetch failed: {response.status_code} - {response.text[:500]}')
-                return
+                if 500 <= response.status_code < 600:
+                    # Transient server-side: 502/503/504 etc. Back off and retry.
+                    if attempt < MAX_PAGE_RETRIES:
+                        time.sleep(BACKOFF_BASE_SECS * (2 ** attempt))
+                        continue
+                    _sync_log('Microsoft Entra ID', '1518', 'Warning',
+                              f'Sign-in logs fetch failed after {MAX_PAGE_RETRIES + 1} attempts: '
+                              f'{response.status_code} - {response.text[:300]}. '
+                              f'Saving partial stats from {page_count} pages.')
+                    completed = False
+                    break
 
-            page = response.json()
+                if response.status_code != 200:
+                    # 4xx — non-transient; abort and persist what we have
+                    _sync_log('Microsoft Entra ID', '1518', 'Failure',
+                              f'Sign-in logs fetch failed: {response.status_code} - {response.text[:500]}')
+                    completed = False
+                    break
+
+                page = response.json()
+                break  # success — exit retry loop
+
+            if page is None:
+                # Fall through to persist what we have so far
+                break
+
             records = page.get('value', [])
+            page_count += 1
             page_had_recent = False
 
             for signin in records:
@@ -840,8 +884,12 @@ def syncSignInLogs(access_token):
 
             url = page.get('@odata.nextLink')
 
+        partial_tag = '' if completed else ' (PARTIAL — fetch was interrupted)'
+
         # ── Persist SignInSummary ──
-        if total > 0:
+        # Only overwrite the table on a clean run. A partial fetch would under-count
+        # the org-wide totals and replace correct prior data with incomplete data.
+        if total > 0 and completed:
             try:
                 SignInSummary.objects.update_or_create(
                     id=1,
@@ -855,18 +903,27 @@ def syncSignInLogs(access_token):
                 )
                 _sync_log('Microsoft Entra ID', '1506', 'Success',
                           f'Sign-in summary: {total} sign-ins (CA+MFA={ca_mfa}, '
-                          f'CA-only={ca_no_mfa}, MFA-only={no_ca_mfa}, Neither={no_ca_no_mfa})')
+                          f'CA-only={ca_no_mfa}, MFA-only={no_ca_mfa}, Neither={no_ca_no_mfa}) '
+                          f'across {page_count} pages')
             except Exception as e:
                 _sync_log('Microsoft Entra ID', '1507', 'Failure',
                           f'Sign-in summary persist error: {str(e)}')
+        elif total > 0 and not completed:
+            _sync_log('Microsoft Entra ID', '1506', 'Warning',
+                      f'Skipping SignInSummary update — partial fetch ({total} sign-ins, '
+                      f'{page_count} pages). Existing summary preserved.')
         else:
             _sync_log('Microsoft Entra ID', '1506', 'Warning',
                       'No sign-in records returned from Graph API')
 
         # ── Persist EntraSignInMethodStat ──
+        # Per-user partial saves are still useful — each UPN's counts come from
+        # the pages we did fetch, just with fewer total events. We just skip the
+        # stale-UPN cleanup so we don't delete users whose recent sign-ins
+        # haven't been fetched yet.
         if not stats:
             _sync_log('Microsoft Entra ID', '1518', 'Warning',
-                      'No per-user sign-in records returned for sign-in methods sync')
+                      f'No per-user sign-in records returned ({page_count} pages){partial_tag}')
             return
 
         existing = {
@@ -906,11 +963,15 @@ def syncSignInLogs(access_token):
                 batch_size=500,
             )
 
-        EntraSignInMethodStat.objects.exclude(upn__in=stats.keys()).delete()
+        # Only prune UPNs absent from the current sync on a clean run — partial
+        # data would otherwise wipe legitimate users whose pages we didn't reach.
+        if completed:
+            EntraSignInMethodStat.objects.exclude(upn__in=stats.keys()).delete()
 
         replay_total = sum(e['replay_resistant'] for e in stats.values())
         _sync_log('Microsoft Entra ID', '1518', 'Success',
-                  f'Sign-in methods synced: {len(stats)} users, {replay_total} replay-resistant sign-ins')
+                  f'Sign-in methods synced: {len(stats)} users, {replay_total} replay-resistant '
+                  f'sign-ins across {page_count} pages{partial_tag}')
 
     except Exception as e:
         _sync_log('Microsoft Entra ID', '1519', 'Failure',
