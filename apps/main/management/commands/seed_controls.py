@@ -102,6 +102,29 @@ CONTROLS = [
         'evaluator': 'aal_02_6',
     },
 
+    {
+        'control_id': 'AAL-3.2',
+        'domain': 'AAL3 — PHR-MFA Enforcement',
+        'statement': (
+            'AAL3 (or privileged human) sign-ins must be satisfied by hardware-bound '
+            'phishing-resistant authentication (AAL3 enforcement via CA).'
+        ),
+        'source_reference': 'SP 800-63B-4 § 2.3.1–2.3.2',
+        'indicator': (
+            '% of AAL3 (or privileged human) sign-ins satisfied by hardware-bound '
+            'phishing-resistant authenticator'
+        ),
+        'measurement_method': (
+            'Entra ID sign-in logs filtered to AAL3 (or privileged human) accounts — '
+            'verify authentication method = FIDO2 or WHfB with TPM attestation.'
+        ),
+        'target': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 90%',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'aal_03_2',
+    },
+
     # ── PWD — Password Controls ──────────────────────────────────────────────
     {
         'control_id': 'PWD-05',
