@@ -84,6 +84,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     command: python manage.py rqworker default --job-class django_tasks_rq.Job --with-scheduler
+    deploy:
+      replicas: ${TZC_WORKER_REPLICAS:-3}
 
 volumes:
   tzc_postgres_data:
