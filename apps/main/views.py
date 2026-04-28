@@ -22,7 +22,7 @@ from .integrations.user_integrations.MicrosoftEntraID import (
     getMicrosoftEntraIDGuests, getMicrosoftEntraIDGroups,
     getMicrosoftEntraIDApps, getMicrosoftEntraTenantDetails,
 )
-from .models import Control, ControlFramework, Device, DeviceComplianceSettings, Integration, Notification, SignInSummary, UserData, PersonaGroup, Persona, PersonaTag
+from .models import Control, ControlFramework, Device, DeviceComplianceSettings, Integration, IntegrationSchedule, Notification, SignInSummary, UserData, PersonaGroup, Persona, PersonaTag
 from ..code_packages.microsoft import getMicrosoftGraphAccessToken, testMicrosoftGraphConnection
 
 ############################################################################################
@@ -1502,19 +1502,52 @@ def integrations(request):
 	device_integrations = {i.integration_type: i for i in Integration.objects.filter(integration_context="Device")}
 	user_integrations = {i.integration_type: i for i in Integration.objects.filter(integration_context="User")}
 
+	# Pre-build the schedule context for the kebab/Schedule modal: per-integration
+	# list of {task_key, label, cron_expression, enabled, preset_key, next_run_at, last_run_at}.
+	from apps.main.scheduling import INTEGRATION_TASKS, CRON_PRESETS, preset_for_cron
+	all_schedules = {
+		(s.integration_id, s.task_key): s
+		for s in IntegrationSchedule.objects.all()
+	}
+
+	def _schedule_payload(integration):
+		tasks = INTEGRATION_TASKS.get(
+			(integration.integration_type, integration.integration_context), [],
+		)
+		rows = []
+		any_enabled = False
+		for task_key, label in tasks:
+			s = all_schedules.get((integration.id, task_key))
+			cron = s.cron_expression if s else ''
+			enabled = bool(s and s.enabled and cron)
+			if enabled:
+				any_enabled = True
+			rows.append({
+				'task_key': task_key,
+				'label': label,
+				'cron_expression': cron,
+				'enabled': enabled,
+				'preset_key': preset_for_cron(cron) if cron else 'manual',
+				'next_run_at': s.next_run_at if s else None,
+				'last_run_at': s.last_run_at if s else None,
+			})
+		return {'rows': rows, 'any_enabled': any_enabled}
+
 	deviceIntegrationStatuses = []
 	for integration_name in integration_names:
 		integration = device_integrations.get(integration_name)
 		if integration:
 			has_secret = bool(integration.client_secret)
-			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at, integration.device_ownership_filter or 'All'])
+			sched = _schedule_payload(integration)
+			deviceIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at, integration.device_ownership_filter or 'All', sched])
 
 	userIntegrationStatuses = []
 	for integration_name in user_integration_names:
 		integration = user_integrations.get(integration_name)
 		if integration:
 			has_secret = bool(integration.client_secret)
-			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at, integration.integration_config or {}])
+			sched = _schedule_payload(integration)
+			userIntegrationStatuses.append([integration.integration_type, integration.image_integration_path, integration.enabled, has_secret, integration.id, integration.client_id, integration.tenant_id, integration.tenant_domain, integration.last_synced_at, integration.last_connection_test_at, integration.integration_config or {}, sched])
 	context = {
 		'page':'integrations',
 		'notifications': Notification.objects.order_by('-created_at')[:10],
@@ -1522,8 +1555,78 @@ def integrations(request):
 		'enabled_user_integrations': getEnabledUserIntegrations(),
 		'deviceIntegrationStatuses':deviceIntegrationStatuses,
 		'userIntegrationStatuses':userIntegrationStatuses,
+		'cron_presets': CRON_PRESETS,
 	}
 	return render( request, 'main/integrations.html', context)
+
+############################################################################################
+
+@login_required
+@require_POST
+def save_integration_schedules(request, integration_id):
+	"""Bulk-save schedules for every task on an integration.
+
+	Form fields per task: enabled_<task_key>, preset_<task_key>, custom_<task_key>.
+	Missing checkbox = disabled. Empty cron expression = unscheduled (also disabled).
+	"""
+	if not request.user.is_superuser:
+		return HttpResponseForbidden("Unauthorized")
+
+	from apps.main.scheduling import (
+		INTEGRATION_TASKS, CRON_PRESETS, validate_cron, register_schedule, unregister_schedule,
+	)
+
+	try:
+		integration = Integration.objects.get(id=integration_id)
+	except Integration.DoesNotExist:
+		messages.error(request, 'Integration not found.')
+		return redirect('integrations')
+
+	tasks = INTEGRATION_TASKS.get(
+		(integration.integration_type, integration.integration_context), [],
+	)
+	if not tasks:
+		messages.error(request, f'{integration.integration_type} has no schedulable tasks.')
+		return redirect('integrations')
+
+	preset_lookup = {key: expr for key, expr, _ in CRON_PRESETS}
+
+	errors = []
+	for task_key, _label in tasks:
+		enabled = bool(request.POST.get(f'enabled_{task_key}'))
+		preset = request.POST.get(f'preset_{task_key}', 'manual')
+		custom = (request.POST.get(f'custom_{task_key}') or '').strip()
+
+		if preset == 'custom':
+			cron_expression = custom
+		elif preset == 'manual':
+			cron_expression = ''
+		else:
+			cron_expression = preset_lookup.get(preset, '')
+
+		if cron_expression:
+			is_valid, err = validate_cron(cron_expression)
+			if not is_valid:
+				errors.append(f'{task_key}: invalid cron "{cron_expression}" — {err}')
+				continue
+
+		schedule, _ = IntegrationSchedule.objects.get_or_create(
+			integration=integration, task_key=task_key,
+		)
+		schedule.cron_expression = cron_expression or None
+		schedule.enabled = enabled and bool(cron_expression)
+		schedule.save()
+
+		if schedule.enabled:
+			register_schedule(schedule)
+		else:
+			unregister_schedule(schedule)
+
+	if errors:
+		messages.error(request, 'Some schedules were rejected: ' + '; '.join(errors))
+	else:
+		messages.success(request, f'Schedules updated for {integration.integration_type}.')
+	return redirect('integrations')
 
 ############################################################################################
 

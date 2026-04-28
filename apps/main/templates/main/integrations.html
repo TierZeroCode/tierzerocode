@@ -22,22 +22,27 @@
                         <img src="{% static deviceIntegrationStatus.1 %}" alt="{{ deviceIntegrationStatus.0 }}" class="w-12 h-12 object-contain">
                         <div class="flex-1 min-w-0">
                             <h3 class="font-medium text-slate-800 dark:text-slate-200 text-sm leading-snug">{{ deviceIntegrationStatus.0 }}</h3>
-                            {% if deviceIntegrationStatus.2 and deviceIntegrationStatus.3 %}
-                            <span class="inline-flex items-center gap-1.5 text-xs">
-                                <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
-                                <span class="text-code-green-600">Active</span>
-                            </span>
-                            {% elif deviceIntegrationStatus.2 and not deviceIntegrationStatus.3 %}
-                            <span class="inline-flex items-center gap-1.5 text-xs">
-                                <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
-                                <span class="text-code-amber-600">Setup Required</span>
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center gap-1.5 text-xs">
-                                <span class="w-2 h-2 rounded-full bg-slate-300"></span>
-                                <span class="text-slate-400">Disabled</span>
-                            </span>
-                            {% endif %}
+                            <div class="flex items-center gap-2 flex-wrap">
+                                {% if deviceIntegrationStatus.2 and deviceIntegrationStatus.3 %}
+                                <span class="inline-flex items-center gap-1.5 text-xs">
+                                    <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
+                                    <span class="text-code-green-600">Active</span>
+                                </span>
+                                {% elif deviceIntegrationStatus.2 and not deviceIntegrationStatus.3 %}
+                                <span class="inline-flex items-center gap-1.5 text-xs">
+                                    <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
+                                    <span class="text-code-amber-600">Setup Required</span>
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1.5 text-xs">
+                                    <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                                    <span class="text-slate-400">Disabled</span>
+                                </span>
+                                {% endif %}
+                                {% if deviceIntegrationStatus.11.any_enabled %}
+                                <span class="tz-badge tz-badge-info text-[10px]" title="At least one task is on a schedule">Scheduled</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
@@ -67,10 +72,21 @@
                         {% endif %}
                         <a href="/sync-{{ deviceIntegrationStatus.0|slugify }}-devices" class="tz-btn-primary text-xs py-1.5 px-3">Sync</a>
                         {% endif %}
-                        <form method="post" action="/disable-integration/{{ deviceIntegrationStatus.4 }}" class="ml-auto">
-                            {% csrf_token %}
-                            <button type="submit" class="text-xs text-slate-400 hover:text-code-red-500 transition-colors">Disable</button>
-                        </form>
+                        <div class="relative ml-auto tz-kebab" data-kebab>
+                            <button type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-1.5 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50" data-kebab-toggle aria-label="More actions">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+                            </button>
+                            <div class="hidden absolute right-0 top-full mt-1 z-30 min-w-[10rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg" data-kebab-menu>
+                                <button type="button" class="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                                        onclick="this.closest('[data-kebab]').querySelector('[data-kebab-menu]').classList.add('hidden'); document.getElementById('{{ deviceIntegrationStatus.0|slugify }}_schedule_modal_device').classList.remove('hidden'); document.getElementById('{{ deviceIntegrationStatus.0|slugify }}_schedule_modal_device').classList.add('flex');">
+                                    Schedule syncs…
+                                </button>
+                                <form method="post" action="/disable-integration/{{ deviceIntegrationStatus.4 }}" class="border-t border-slate-100 dark:border-slate-700">
+                                    {% csrf_token %}
+                                    <button type="submit" class="w-full text-left px-3 py-2 text-xs text-code-red-600 hover:bg-slate-50 dark:hover:bg-slate-700/50">Disable</button>
+                                </form>
+                            </div>
+                        </div>
                         {% else %}
                         <form method="post" action="/enable-integration/{{ deviceIntegrationStatus.4 }}">
                             {% csrf_token %}
@@ -153,6 +169,55 @@
                 </div>
             </div>
             <!-- End Configure Integration Modal -->
+
+            <!-- Schedule Syncs Modal (Device) -->
+            <div class="tz-modal hidden fixed inset-0 z-50 items-center justify-center" id="{{ deviceIntegrationStatus.0|slugify }}_schedule_modal_device" role="dialog" aria-modal="true">
+                <div class="tz-modal-backdrop absolute inset-0 bg-black/50" onclick="this.parentElement.classList.add('hidden'); this.parentElement.classList.remove('flex');"></div>
+                <div class="tz-modal-content relative z-10 w-full max-w-2xl mx-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                        <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Schedule {{ deviceIntegrationStatus.0 }}</h5>
+                        <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" onclick="this.closest('.tz-modal').classList.add('hidden'); this.closest('.tz-modal').classList.remove('flex');" aria-label="Close">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form action="/integration-schedules/{{ deviceIntegrationStatus.4 }}" method="post">
+                        {% csrf_token %}
+                        <div class="px-6 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+                            <p class="text-[11px] text-slate-500 mb-1">Schedules run in UTC. The "skip-if-running" guard prevents overlapping runs.</p>
+                            {% for task in deviceIntegrationStatus.11.rows %}
+                            <div class="border border-slate-200 dark:border-slate-700 rounded p-3" data-schedule-row="{{ task.task_key }}">
+                                <div class="flex items-center justify-between mb-2 gap-2">
+                                    <label class="flex items-center gap-2 text-xs font-medium text-slate-800 dark:text-slate-200">
+                                        <input type="checkbox" name="enabled_{{ task.task_key }}" {% if task.enabled %}checked{% endif %} class="tz-form-checkbox">
+                                        {{ task.label }}
+                                    </label>
+                                    <span class="text-[11px] text-slate-400">
+                                        {% if task.last_run_at %}Last: {{ task.last_run_at|timesince }} ago{% endif %}
+                                        {% if task.next_run_at %} · Next: {{ task.next_run_at }}{% endif %}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <select name="preset_{{ task.task_key }}" class="tz-form-select text-xs flex-1" data-preset>
+                                        <option value="manual" {% if task.preset_key == 'manual' %}selected{% endif %}>Manual (no schedule)</option>
+                                        {% for key, expr, label in cron_presets %}
+                                        <option value="{{ key }}" {% if task.preset_key == key %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="text" name="custom_{{ task.task_key }}" value="{% if task.preset_key == 'custom' %}{{ task.cron_expression }}{% endif %}" placeholder="m h dom mon dow" class="tz-form-input text-xs flex-1 font-mono {% if task.preset_key != 'custom' %}hidden{% endif %}" data-custom>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-xs text-slate-400">No schedulable tasks for this integration.</p>
+                            {% endfor %}
+                        </div>
+                        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                            <button type="button" class="tz-btn-secondary" onclick="this.closest('.tz-modal').classList.add('hidden'); this.closest('.tz-modal').classList.remove('flex');">Cancel</button>
+                            <button type="submit" class="tz-btn-primary">Save Schedules</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- End Schedule Syncs Modal (Device) -->
             {% endfor %}
         </div>
     </div>
@@ -174,22 +239,27 @@
                         <img src="{% static userIntegrationStatus.1 %}" alt="{{ userIntegrationStatus.0 }}" class="w-12 h-12 object-contain">
                         <div class="flex-1 min-w-0">
                             <h3 class="font-medium text-slate-800 dark:text-slate-200 text-sm truncate">{{ userIntegrationStatus.0 }}</h3>
-                            {% if userIntegrationStatus.2 and userIntegrationStatus.3 %}
-                            <span class="inline-flex items-center gap-1.5 text-xs">
-                                <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
-                                <span class="text-code-green-600">Active</span>
-                            </span>
-                            {% elif userIntegrationStatus.2 and not userIntegrationStatus.3 %}
-                            <span class="inline-flex items-center gap-1.5 text-xs">
-                                <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
-                                <span class="text-code-amber-600">Setup Required</span>
-                            </span>
-                            {% else %}
-                            <span class="inline-flex items-center gap-1.5 text-xs">
-                                <span class="w-2 h-2 rounded-full bg-slate-300"></span>
-                                <span class="text-slate-400">Disabled</span>
-                            </span>
-                            {% endif %}
+                            <div class="flex items-center gap-2 flex-wrap">
+                                {% if userIntegrationStatus.2 and userIntegrationStatus.3 %}
+                                <span class="inline-flex items-center gap-1.5 text-xs">
+                                    <span class="w-2 h-2 rounded-full bg-code-green-500"></span>
+                                    <span class="text-code-green-600">Active</span>
+                                </span>
+                                {% elif userIntegrationStatus.2 and not userIntegrationStatus.3 %}
+                                <span class="inline-flex items-center gap-1.5 text-xs">
+                                    <span class="w-2 h-2 rounded-full bg-code-amber-500"></span>
+                                    <span class="text-code-amber-600">Setup Required</span>
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1.5 text-xs">
+                                    <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+                                    <span class="text-slate-400">Disabled</span>
+                                </span>
+                                {% endif %}
+                                {% if userIntegrationStatus.11.any_enabled %}
+                                <span class="tz-badge tz-badge-info text-[10px]" title="At least one task is on a schedule">Scheduled</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
@@ -211,10 +281,21 @@
                         {% if userIntegrationStatus.3 %}
                         <a href="/sync-{{ userIntegrationStatus.0|slugify }}-users" class="tz-btn-primary text-xs py-1.5 px-3">Sync</a>
                         {% endif %}
-                        <form method="post" action="/disable-integration/{{ userIntegrationStatus.4 }}" class="ml-auto">
-                            {% csrf_token %}
-                            <button type="submit" class="text-xs text-slate-400 hover:text-code-red-500 transition-colors">Disable</button>
-                        </form>
+                        <div class="relative ml-auto tz-kebab" data-kebab>
+                            <button type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-1.5 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50" data-kebab-toggle aria-label="More actions">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+                            </button>
+                            <div class="hidden absolute right-0 top-full mt-1 z-30 min-w-[10rem] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg" data-kebab-menu>
+                                <button type="button" class="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                                        onclick="this.closest('[data-kebab]').querySelector('[data-kebab-menu]').classList.add('hidden'); document.getElementById('{{ userIntegrationStatus.0|slugify }}_schedule_modal_user').classList.remove('hidden'); document.getElementById('{{ userIntegrationStatus.0|slugify }}_schedule_modal_user').classList.add('flex');">
+                                    Schedule syncs…
+                                </button>
+                                <form method="post" action="/disable-integration/{{ userIntegrationStatus.4 }}" class="border-t border-slate-100 dark:border-slate-700">
+                                    {% csrf_token %}
+                                    <button type="submit" class="w-full text-left px-3 py-2 text-xs text-code-red-600 hover:bg-slate-50 dark:hover:bg-slate-700/50">Disable</button>
+                                </form>
+                            </div>
+                        </div>
                         {% else %}
                         <form method="post" action="/enable-integration/{{ userIntegrationStatus.4 }}">
                             {% csrf_token %}
@@ -293,8 +374,93 @@
                 </div>
             </div>
             <!-- End Configure Integration Modal -->
+
+            <!-- Schedule Syncs Modal (User) -->
+            <div class="tz-modal hidden fixed inset-0 z-50 items-center justify-center" id="{{ userIntegrationStatus.0|slugify }}_schedule_modal_user" role="dialog" aria-modal="true">
+                <div class="tz-modal-backdrop absolute inset-0 bg-black/50" onclick="this.parentElement.classList.add('hidden'); this.parentElement.classList.remove('flex');"></div>
+                <div class="tz-modal-content relative z-10 w-full max-w-2xl mx-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                        <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Schedule {{ userIntegrationStatus.0 }}</h5>
+                        <button type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" onclick="this.closest('.tz-modal').classList.add('hidden'); this.closest('.tz-modal').classList.remove('flex');" aria-label="Close">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form action="/integration-schedules/{{ userIntegrationStatus.4 }}" method="post">
+                        {% csrf_token %}
+                        <div class="px-6 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+                            <p class="text-[11px] text-slate-500 mb-1">Schedules run in UTC. The "skip-if-running" guard prevents overlapping runs.</p>
+                            {% for task in userIntegrationStatus.11.rows %}
+                            <div class="border border-slate-200 dark:border-slate-700 rounded p-3" data-schedule-row="{{ task.task_key }}">
+                                <div class="flex items-center justify-between mb-2 gap-2">
+                                    <label class="flex items-center gap-2 text-xs font-medium text-slate-800 dark:text-slate-200">
+                                        <input type="checkbox" name="enabled_{{ task.task_key }}" {% if task.enabled %}checked{% endif %} class="tz-form-checkbox">
+                                        {{ task.label }}
+                                    </label>
+                                    <span class="text-[11px] text-slate-400">
+                                        {% if task.last_run_at %}Last: {{ task.last_run_at|timesince }} ago{% endif %}
+                                        {% if task.next_run_at %} · Next: {{ task.next_run_at }}{% endif %}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <select name="preset_{{ task.task_key }}" class="tz-form-select text-xs flex-1" data-preset>
+                                        <option value="manual" {% if task.preset_key == 'manual' %}selected{% endif %}>Manual (no schedule)</option>
+                                        {% for key, expr, label in cron_presets %}
+                                        <option value="{{ key }}" {% if task.preset_key == key %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="text" name="custom_{{ task.task_key }}" value="{% if task.preset_key == 'custom' %}{{ task.cron_expression }}{% endif %}" placeholder="m h dom mon dow" class="tz-form-input text-xs flex-1 font-mono {% if task.preset_key != 'custom' %}hidden{% endif %}" data-custom>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-xs text-slate-400">No schedulable tasks for this integration.</p>
+                            {% endfor %}
+                        </div>
+                        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                            <button type="button" class="tz-btn-secondary" onclick="this.closest('.tz-modal').classList.add('hidden'); this.closest('.tz-modal').classList.remove('flex');">Cancel</button>
+                            <button type="submit" class="tz-btn-primary">Save Schedules</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- End Schedule Syncs Modal (User) -->
             {% endfor %}
         </div>
     </div>
+
+    <!-- Kebab + preset/custom toggle script. Single global handler for all kebabs/modals. -->
+    <script>
+    (function() {
+        document.addEventListener('click', function(e) {
+            // Close any open kebab menus when clicking outside
+            var openMenus = document.querySelectorAll('[data-kebab-menu]:not(.hidden)');
+            openMenus.forEach(function(menu) {
+                if (!menu.parentElement.contains(e.target)) {
+                    menu.classList.add('hidden');
+                }
+            });
+            // Toggle the menu when its kebab button is clicked
+            var toggle = e.target.closest('[data-kebab-toggle]');
+            if (toggle) {
+                e.stopPropagation();
+                var menu = toggle.parentElement.querySelector('[data-kebab-menu]');
+                openMenus.forEach(function(m) { if (m !== menu) m.classList.add('hidden'); });
+                menu.classList.toggle('hidden');
+            }
+        });
+        // Show/hide the custom cron input based on preset selection
+        document.querySelectorAll('[data-preset]').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                var row = this.closest('[data-schedule-row]');
+                var custom = row.querySelector('[data-custom]');
+                if (this.value === 'custom') {
+                    custom.classList.remove('hidden');
+                    custom.focus();
+                } else {
+                    custom.classList.add('hidden');
+                }
+            });
+        });
+    })();
+    </script>
 
 {% endblock %}

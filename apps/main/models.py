@@ -589,6 +589,43 @@ class Notification(models.Model):
         return self.title
 
 
+class IntegrationSchedule(models.Model):
+    """Cron schedule for an individual sync task on an Integration.
+
+    A given Integration may expose multiple tasks (e.g. Entra ID User has
+    users / signins / ca_policies / ...) — each gets its own row. The
+    rq-scheduler job is registered when enabled=True with a non-empty
+    cron_expression; the rq_job_id is the handle we use to cancel/replace
+    the registration when the schedule is edited or removed.
+    """
+    integration = models.ForeignKey(
+        Integration, on_delete=models.CASCADE, related_name='schedules',
+    )
+    task_key = models.CharField(max_length=64,
+        help_text='Stable identifier for this task within the integration '
+                  '(e.g. "users", "signins", "devices"). See INTEGRATION_TASKS '
+                  'in apps.main.scheduling for the registry.')
+    cron_expression = models.CharField(max_length=128, null=True, blank=True,
+        help_text='5-field cron expression in UTC. Null when no schedule is set.')
+    enabled = models.BooleanField(default=False,
+        help_text='Toggle without losing the cron expression.')
+    rq_job_id = models.CharField(max_length=128, null=True, blank=True,
+        help_text='rq-scheduler job id. Cleared when the schedule is unregistered.')
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    next_run_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('integration', 'task_key')]
+        verbose_name = 'Integration Schedule'
+        verbose_name_plural = 'Integration Schedules'
+        ordering = ['integration__integration_type', 'task_key']
+
+    def __str__(self):
+        return f'{self.integration.integration_type} / {self.task_key}'
+
+
 class ControlFramework(models.Model):
     """Reference framework/document that controls are sourced from."""
     name = models.CharField(max_length=200)

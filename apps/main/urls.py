@@ -37,6 +37,7 @@ urlpatterns = [
     path('enable-integration/<int:id>', views.enableIntegration, name='enable-integration'),
     path('disable-integration/<int:id>', views.disableIntegration, name='disable-integration'),
     path('update-integration/<int:id>', views.updateIntegration, name='update-integration'),
+    path('integration-schedules/<int:integration_id>', views.save_integration_schedules, name='save-integration-schedules'),
     path('sync-<str:integration>-devices', views.syncDevices, name='sync-devices'),
     path('sync-<str:integration>-users', views.syncUsers, name='sync-users'),
     path('test-connection/<int:id>', views.testConnection, name='test-connection'),

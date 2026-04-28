@@ -14,6 +14,7 @@ from apps.main.models import (
     Device,
     DeviceComplianceSettings,
     Integration,
+    IntegrationSchedule,
     MicrosoftDefenderforEndpointDeviceData,
     MicrosoftEntraIDDeviceData,
     MicrosoftIntuneDeviceData,
@@ -362,6 +363,16 @@ class PersonaGroupAdmin(ImportExportModelAdmin):
 class PersonaTagAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+
+
+@admin.register(IntegrationSchedule)
+class IntegrationScheduleAdmin(admin.ModelAdmin):
+    list_display = ('integration', 'task_key', 'cron_expression', 'enabled',
+                    'last_run_at', 'next_run_at', 'rq_job_id')
+    list_filter = ('enabled', 'integration__integration_type', 'task_key')
+    search_fields = ('integration__integration_type', 'task_key', 'cron_expression')
+    readonly_fields = ('rq_job_id', 'last_run_at', 'next_run_at',
+                       'created_at', 'updated_at')
 
 
 @admin.register(UserData)
