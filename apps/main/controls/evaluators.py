@@ -9,7 +9,7 @@ The function name must match the Control.evaluator field value.
 """
 from django.db.models import Q, Case, When, IntegerField, Value, F
 from django.db.models.functions import Coalesce
-from apps.main.models import UserData, Device, Integration, SignInSummary, EntraSignInMethodStat, Persona, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
+from apps.main.models import UserData, Device, Integration, SignInSummary, EntraSignInMethodStat, Persona, PersonaTag, ConditionalAccessPolicy, TenantSecurityConfig, TenantAuthMethodsPolicy
 from apps.authhandler.models import SSOIntegration
 
 
