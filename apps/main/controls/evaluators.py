@@ -42,7 +42,7 @@ PHISHING_RESISTANT_Q = (
     Q(windowsHelloforBusiness_authentication_method=True)
 )
 
-# Hardware-bound phishing-resistant only (AAL-04: AAL3)
+# Hardware-bound phishing-resistant only (AAL-3.1: AAL3 registration)
 HARDWARE_BOUND_Q = (
     Q(passKeyDeviceBound_authentication_method=True) |
     Q(windowsHelloforBusiness_authentication_method=True)
@@ -404,16 +404,19 @@ def aal_05_detail():
     }
 
 
-def aal_04():
-    """AAL-04: % of privileged accounts using hardware-bound phishing-resistant auth.
+def aal_03_1():
+    """AAL-3.1: % of AAL3 (or privileged human) accounts with a hardware-bound
+    phishing-resistant authenticator registered.
 
-    AAL3 requires cryptographic authenticators with non-exportable private keys.
-    Hardware FIDO2 (passKeyDeviceBound) and WHfB with TPM qualify.
-    Syncable passkeys (passKeyDeviceBoundAuthenticator) do NOT qualify.
+    NIST SP 800-63B-4 § 2.3.1–2.3.2: AAL3 SHALL require a cryptographic
+    authenticator with a non-exportable private key. Hardware FIDO2 keys
+    (passKeyDeviceBound) and TPM-backed WHfB (windowsHelloforBusiness) qualify.
+    Syncable passkeys (passKeyDeviceBoundAuthenticator) do NOT — keys are
+    backed up to cloud and software-isolated, not hardware-isolated.
 
-    Targets AAL3 users: isAdmin=True OR persona AAL level >= 3.
+    Scope: AAL3 users (isAdmin=True OR persona.aal_level >= 3).
 
-    Target: 100%
+    Target: 100% — amber at <100%, red at <90%.
     """
     privileged_users = _get_users_by_aal(3)
 
@@ -421,46 +424,76 @@ def aal_04():
     if total == 0:
         return ('-', 'not_measured')
 
-    # Hardware-bound phishing-resistant: FIDO2 device-bound OR WHfB
-    # Explicitly exclude users who ONLY have syncable passkeys
     with_hardware_auth = privileged_users.filter(HARDWARE_BOUND_Q).distinct().count()
-
     pct = round(with_hardware_auth / total * 100)
-    status = 'passing' if pct >= 100 else 'failing'
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 90:
+        status = 'warning'
+    else:
+        status = 'failing'
     return (f'{with_hardware_auth}/{total} ({pct}%)', status)
 
 
-def aal_04_detail():
-    """Return detailed data for AAL-04: AAL3 users and hardware-bound auth."""
+def aal_03_1_detail():
+    """Return detailed data for AAL-3.1: AAL3 users and hardware-bound MFA registration."""
     privileged_users = _get_users_by_aal(3)
 
     total = privileged_users.count()
     if total == 0:
-        return {'total': 0, 'passing_count': 0, 'failing_count': 0, '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (), 'logic': 'No AAL3 (privileged) users found.'}
+        return {
+            'total': 0, 'passing_count': 0, 'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (),
+            '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No AAL3 (privileged) users found.',
+        }
 
     passing_qs = privileged_users.filter(HARDWARE_BOUND_Q).distinct()
     failing_qs = privileged_users.exclude(HARDWARE_BOUND_Q).distinct()
 
-    _pass_fields = (
+    _fields = (
         'upn', 'given_name', 'surname', 'isAdmin', 'persona__persona_name',
+        'persona__aal_level',
         'passKeyDeviceBound_authentication_method',
         'passKeyDeviceBoundAuthenticator_authentication_method',
+        'passKeySynced_authentication_method',
         'windowsHelloforBusiness_authentication_method',
         'highest_authentication_strength',
     )
-    _fail_fields = _pass_fields
 
     return {
         'total': total,
         'passing_count': passing_qs.count(),
         'failing_count': failing_qs.count(),
         '_fail_qs': failing_qs,
-        '_fail_fields': _fail_fields,
+        '_fail_fields': _fields,
         '_pass_qs': passing_qs,
-        '_pass_fields': _pass_fields,
-        'logic': 'AAL3 users (isAdmin=True or persona AAL level >= 3) must have at least one hardware-bound, non-exportable authenticator. Hardware FIDO2 security keys and WHfB (with TPM) are hardware-bound. Syncable passkeys (MS Authenticator) are software-backed and do not qualify.',
-        'qualifying_methods': 'passKeyDeviceBound (hardware FIDO2 security key with SE/TPM), windowsHelloforBusiness (TPM 2.0 bound)',
-        'disqualifying_methods': 'passKeyDeviceBoundAuthenticator (device-bound but software keychain — syncable), MS Authenticator push, OTP, phone/SMS',
+        '_pass_fields': _fields,
+        'logic': (
+            'NIST SP 800-63B-4 § 2.3.1–2.3.2: AAL3 SHALL require a cryptographic '
+            'authenticator with a non-exportable private key. AAL3 users '
+            '(isAdmin=True OR persona.aal_level >= 3) must have at least one '
+            'hardware-bound phishing-resistant authenticator registered. '
+            'Hardware FIDO2 security keys store private keys in a Secure Element / '
+            'TPM and never expose them to the host; WHfB binds the private key to '
+            'the device TPM 2.0 and is non-exportable. Syncable passkeys '
+            '(passKeyDeviceBoundAuthenticator) are device-bound but software-'
+            'isolated and backed up to cloud — they do NOT qualify under § 2.3.2. '
+            'This is a registration check; AAL-3.2 measures actual enforcement '
+            'on sign-in via Conditional Access.'
+        ),
+        'qualifying_methods': (
+            'passKeyDeviceBound (hardware FIDO2 security key with SE/TPM), '
+            'windowsHelloforBusiness (TPM 2.0 bound)'
+        ),
+        'disqualifying_methods': (
+            'passKeyDeviceBoundAuthenticator (device-bound but software keychain — syncable), '
+            'passKeySynced (cloud-synced — explicitly disqualified by § 2.3.2), '
+            'MS Authenticator push/passwordless, OTP, phone/SMS, email'
+        ),
+        'scope': 'AAL3 accounts: isAdmin=True OR persona.aal_level >= 3',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 90%',
     }
 
 
@@ -992,7 +1025,7 @@ def aal_02_4_detail():
         '_pass_fields': _pass_fields,
         'logic': (
             'AAL2-scoped users (persona.aal_level=2 only — admins are NOT included; '
-            'they are measured by AAL-04 / PHR-04) must have at least one '
+            'they are measured by AAL-3.1 / PHR-04) must have at least one '
             'phishing-resistant authenticator registered. FIDO2 device-bound keys, '
             'Authenticator passkeys, and Windows Hello for Business qualify under '
             'NIST SP 800-63B-4 § 2.2.2. ' + _AAL2_4_PR_NOTE
@@ -2134,7 +2167,7 @@ def custom_admin_no_privileged_persona():
 
     "Privileged Persona" = a Persona whose tag set includes the 'Privileged'
     PersonaTag. Admins not assigned to one are operating outside the
-    privileged-account control envelope (PHR-04, AAL-04, AAL-09, AAL-3.2)
+    privileged-account control envelope (PHR-04, AAL-3.1, AAL-09, AAL-3.2)
     and represent a tracking gap.
 
     Target: 100% — amber at <100%, red at <95%.
@@ -2198,7 +2231,7 @@ def custom_admin_no_privileged_persona_detail():
             'Entra ID admin accounts (UserData.isAdmin = True) are checked for a '
             'Persona whose tag set includes "Privileged". Admins without one are '
             'operating outside the privileged-account control envelope used by '
-            'PHR-04, AAL-04, AAL-09, and AAL-3.2 — they should either be '
+            'PHR-04, AAL-3.1, AAL-09, and AAL-3.2 — they should either be '
             'reassigned to a Privileged persona or have admin removed if the '
             'role is no longer required.' + setup_note
         ),

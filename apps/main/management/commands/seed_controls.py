@@ -156,6 +156,32 @@ CONTROLS = [
 
     {
         'framework_short_name': 'NIST SP 800-63-4',
+        'control_id': 'AAL-3.1',
+        'domain': 'AAL3 — PHR-MFA Registration',
+        'statement': (
+            'AAL3 SHALL require a cryptographic authenticator with a non-exportable '
+            'private key. AAL3 (or privileged human) accounts must have hardware-bound '
+            'phishing-resistant MFA registered.'
+        ),
+        'source_reference': 'SP 800-63B-4 § 2.3.1–2.3.2',
+        'indicator': (
+            '% of AAL3 (or privileged human) accounts with a hardware-bound '
+            'phishing-resistant MFA method registered (FIDO2 hardware key or '
+            'TPM-backed WHfB)'
+        ),
+        'measurement_method': (
+            'Entra ID authentication methods report — filter to AAL3 (or privileged '
+            'human) account list; count accounts with FIDO2 or WHfB registered; '
+            'verify no passkey sync enabled.'
+        ),
+        'target': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 90%',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'aal_03_1',
+    },
+    {
+        'framework_short_name': 'NIST SP 800-63-4',
         'control_id': 'AAL-3.2',
         'domain': 'AAL3 — PHR-MFA Enforcement',
         'statement': (

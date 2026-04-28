@@ -27,6 +27,9 @@ class Command(BaseCommand):
         if not Control.objects.filter(control_id='AAL-11').exists():
             Control.objects.filter(control_id='AAL-09').update(control_id='AAL-11')
         Control.objects.filter(control_id='PWD-08').update(control_id='PWD-07')
+        # Evaluator function aal_04 was renamed to aal_03_1 (AAL-3.1).
+        # Update any stored Control rows still referencing the old name.
+        Control.objects.filter(evaluator='aal_04').update(evaluator='aal_03_1')
 
         controls = [
             {
@@ -147,7 +150,7 @@ class Command(BaseCommand):
                 'indicator': '% of AAL3 (T0/T1) accounts using hardware-bound phishing-resistant authenticators',
                 'measurement_method': 'Entra ID auth methods for T0/T1 admins; FIDO2 key attestation; WHfB TPM binding',
                 'target': '100%',
-                'evaluator': 'aal_04',
+                'evaluator': 'aal_03_1',
             },
             {
                 'control_id': 'AAL-09',
