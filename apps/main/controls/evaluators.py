@@ -1905,13 +1905,12 @@ def pwd_07():
     """PWD-07: No KBA for Passwords — count of users with security questions registered.
 
     NIST 800-63B-4 § 3.1.1.2(8) prohibits knowledge-based authentication
-    (security questions) in password flows. Measures:
-    1. Number of users with the securityQuestion auth method registered (user-level).
-    2. Whether SSPR security questions are enabled at the tenant policy level — if yes,
-       the control fails even if 0 users currently have them registered, because the
-       configuration allows new registrations.
-
-    Target: 0 users registered + SSPR security questions disabled
+    (security questions) in password flows. Status logic:
+    - FAIL if SSPR security questions are enabled at the tenant policy level —
+      the configuration permits new registrations regardless of current count.
+    - WARN if SSPR is disabled but users still have residual security-question
+      registrations — those need to be cleared, but no new ones can be added.
+    - PASS only when SSPR is disabled AND no users have them registered.
     """
     total = UserData.objects.count()
     if total == 0:
@@ -1922,12 +1921,12 @@ def pwd_07():
     policy = TenantAuthMethodsPolicy.objects.filter(id=1).first()
     sspr_sq_enabled = policy.sspr_security_questions_enabled if policy else None
 
-    # Fail if users have it registered OR if SSPR policy allows security questions
-    if with_kba > 0 or sspr_sq_enabled:
-        label = str(with_kba)
-        if sspr_sq_enabled:
-            label += ' (SSPR policy: security questions enabled)'
+    if sspr_sq_enabled:
+        label = f'{with_kba} (SSPR policy: security questions ENABLED)'
         return (label, 'failing')
+    if with_kba > 0:
+        label = f'{with_kba} (SSPR disabled, residual registrations)'
+        return (label, 'warning')
     return ('0', 'passing')
 
 
