@@ -185,8 +185,14 @@ RQ_QUEUES = {
         'HOST': os.getenv('REDIS_HOST', 'redis'),
         'PORT': int(os.getenv('REDIS_PORT', '6379')),
         'DB': int(os.getenv('REDIS_DB', '0')),
-        'DEFAULT_TIMEOUT': 7200,  # 2 hours - max time a job can run before being killed
-        'DEFAULT_RESULT_TTL': 10800,  # 3 hours - how long job results are kept in Redis
+        # Max time a job can run before being killed.
+        'DEFAULT_TIMEOUT': int(os.getenv('RQ_TIMEOUT', '7200')),  # 2 hours
+        # How long finished jobs are kept in Redis (visible in /admin/django_rq/).
+        # Bumped from 3h → 7d so operators can audit recent sync runs.
+        'DEFAULT_RESULT_TTL': int(os.getenv('RQ_RESULT_TTL', '604800')),  # 7 days
+        # How long failed jobs are kept. Longer than result_ttl so failures
+        # remain visible across multiple sync cycles for triage.
+        'DEFAULT_FAILURE_TTL': int(os.getenv('RQ_FAILURE_TTL', '2592000')),  # 30 days
     }
 }
 
