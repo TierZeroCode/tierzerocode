@@ -209,12 +209,13 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                         <span class="text-5xl font-black tabular-nums leading-none {% if controls_pass_pct >= 80 %}text-code-green-600 dark:text-code-green-400{% elif controls_pass_pct >= 50 %}text-code-amber-600 dark:text-code-amber-400{% else %}text-code-red-600 dark:text-code-red-400{% endif %}">{{ controls_pass_pct }}%</span>
                         <div>
                             <p class="text-sm font-medium text-slate-700 dark:text-slate-200">controls passing</p>
-                            <p class="text-xs text-slate-400 dark:text-slate-500">{{ controls_passing }} passing &middot; {{ controls_failing }} failing &middot; {{ controls_not_measured }} not measured</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500">{{ controls_passing }} passing &middot; {{ controls_warning }} warning &middot; {{ controls_failing }} failing &middot; {{ controls_not_measured }} not measured</p>
                         </div>
                     </div>
                     <!-- Stacked progress bar -->
                     <div class="flex h-4 overflow-hidden bg-slate-100 dark:bg-slate-700/60 mb-3">
                         {% if controls_passing > 0 %}<div class="bg-code-green-500 transition-all" style="width:{% widthratio controls_passing controls_total 100 %}%"></div>{% endif %}
+                        {% if controls_warning > 0 %}<div class="bg-code-amber-500 transition-all" style="width:{% widthratio controls_warning controls_total 100 %}%"></div>{% endif %}
                         {% if controls_failing > 0 %}<div class="bg-code-red-500 transition-all" style="width:{% widthratio controls_failing controls_total 100 %}%"></div>{% endif %}
                         {% if controls_not_measured > 0 %}<div class="bg-slate-300 dark:bg-slate-600 transition-all" style="width:{% widthratio controls_not_measured controls_total 100 %}%"></div>{% endif %}
                     </div>
@@ -223,6 +224,10 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                         <div class="flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-sm bg-code-green-500 shrink-0"></span>
                             <span class="text-xs text-slate-600 dark:text-slate-400">Passing <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ controls_passing }}</span></span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-sm bg-code-amber-500 shrink-0"></span>
+                            <span class="text-xs text-slate-600 dark:text-slate-400">Warning <span class="font-semibold tabular-nums text-slate-900 dark:text-slate-100">{{ controls_warning }}</span></span>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-sm bg-code-red-500 shrink-0"></span>
@@ -269,7 +274,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 <th class="text-left py-2 px-4 tz-section-label">Framework</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:40%">Coverage</th>
                                 <th class="text-right py-2 px-4 tz-section-label" style="width:5rem">Score</th>
-                                <th class="text-right py-2 px-4 tz-section-label" style="width:8rem">Pass · Fail · Total</th>
+                                <th class="text-right py-2 px-4 tz-section-label" style="width:11rem">Pass · Warn · Fail · Total</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -282,6 +287,7 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 <td class="py-3 px-4">
                                     <div class="flex h-2 overflow-hidden bg-slate-100 dark:bg-slate-700/60">
                                         {% if fs.passing > 0 %}<div class="bg-code-green-500" style="width:{{ fs.pass_pct }}%"></div>{% endif %}
+                                        {% if fs.warning > 0 %}<div class="bg-code-amber-500" style="width:{{ fs.warn_pct }}%"></div>{% endif %}
                                         {% if fs.failing > 0 %}<div class="bg-code-red-500" style="width:{{ fs.fail_pct }}%"></div>{% endif %}
                                         {% if fs.not_measured > 0 %}<div class="bg-slate-300 dark:bg-slate-600" style="width:{{ fs.nm_pct }}%"></div>{% endif %}
                                     </div>
@@ -291,6 +297,8 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 </td>
                                 <td class="py-3 px-4 text-right tabular-nums text-xs">
                                     <span class="text-code-green-600 dark:text-code-green-400 font-medium">{{ fs.passing }}</span>
+                                    <span class="text-slate-300 dark:text-slate-600 mx-0.5">&middot;</span>
+                                    <span class="{% if fs.warning > 0 %}text-code-amber-600 dark:text-code-amber-400{% else %}text-slate-400{% endif %} font-medium">{{ fs.warning }}</span>
                                     <span class="text-slate-300 dark:text-slate-600 mx-0.5">&middot;</span>
                                     <span class="{% if fs.failing > 0 %}text-code-red-600 dark:text-code-red-400{% else %}text-slate-400{% endif %} font-medium">{{ fs.failing }}</span>
                                     <span class="text-slate-300 dark:text-slate-600 mx-0.5">&middot;</span>
@@ -304,18 +312,22 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
             </div>
             {% endif %}
 
-            {% if failing_controls %}
-            <!-- ── Failing Controls Detail ── -->
+            {% if failing_controls or warning_controls %}
+            <!-- ── Failing + Warning Controls Detail ── -->
             <div class="tz-card">
                 <div class="tz-card-header flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Controls Requiring Attention</h3>
-                    <span class="tz-badge tz-badge-danger">{{ controls_failing }} failing</span>
+                    <div class="flex items-center gap-2">
+                        {% if controls_failing > 0 %}<span class="tz-badge tz-badge-danger">{{ controls_failing }} failing</span>{% endif %}
+                        {% if controls_warning > 0 %}<span class="tz-badge tz-badge-warning">{{ controls_warning }} warning</span>{% endif %}
+                    </div>
                 </div>
                 <div class="tz-card-body p-0">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-slate-200 dark:border-slate-700/50">
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:6rem">Control</th>
+                                <th class="text-left py-2 px-4 tz-section-label" style="width:6rem">Status</th>
                                 <th class="text-left py-2 px-4 tz-section-label">Domain</th>
                                 <th class="text-left py-2 px-4 tz-section-label" style="width:7rem">Framework</th>
                                 <th class="text-right py-2 px-4 tz-section-label" style="width:5rem">Current</th>
@@ -328,9 +340,22 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                 <td class="py-2.5 px-4 font-medium tabular-nums">
                                     <a href="{% url 'control_detail' ctrl.control_id %}?from=ciso" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a>
                                 </td>
+                                <td class="py-2.5 px-4"><span class="tz-badge tz-badge-danger">Failing</span></td>
                                 <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">{{ ctrl.domain }}</td>
                                 <td class="py-2.5 px-4 text-xs text-slate-400">{{ ctrl.framework.short_name }}</td>
                                 <td class="py-2.5 px-4 text-right tabular-nums font-medium text-code-red-600 dark:text-code-red-400">{% if ctrl.use_manual and ctrl.manual_value %}{{ ctrl.manual_value }}{% else %}{{ ctrl.current_value|default:"—" }}{% endif %}</td>
+                                <td class="py-2.5 px-4 text-right tabular-nums text-slate-500 dark:text-slate-400">{{ ctrl.target }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% for ctrl in warning_controls %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/20">
+                                <td class="py-2.5 px-4 font-medium tabular-nums">
+                                    <a href="{% url 'control_detail' ctrl.control_id %}?from=ciso" class="text-code-blue-600 hover:text-code-blue-700 dark:text-code-blue-400">{{ ctrl.control_id }}</a>
+                                </td>
+                                <td class="py-2.5 px-4"><span class="tz-badge tz-badge-warning">Warning</span></td>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">{{ ctrl.domain }}</td>
+                                <td class="py-2.5 px-4 text-xs text-slate-400">{{ ctrl.framework.short_name }}</td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium text-code-amber-600 dark:text-code-amber-400">{% if ctrl.use_manual and ctrl.manual_value %}{{ ctrl.manual_value }}{% else %}{{ ctrl.current_value|default:"—" }}{% endif %}</td>
                                 <td class="py-2.5 px-4 text-right tabular-nums text-slate-500 dark:text-slate-400">{{ ctrl.target }}</td>
                             </tr>
                             {% endfor %}
@@ -361,6 +386,13 @@ html.dark .ctrl-cat-row:hover td { background: oklch(0.248 0.022 260); }
                                     {% if controls_failing > 0 %}<span class="tz-badge tz-badge-danger">Action Required</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
                                 </td>
                                 <td class="py-2.5 px-4 text-right tabular-nums font-medium {% if controls_failing > 0 %}text-code-red-600 dark:text-code-red-400{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ controls_failing }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Warning controls</td>
+                                <td class="py-2.5 px-4">
+                                    {% if controls_warning > 0 %}<span class="tz-badge tz-badge-warning">Review</span>{% else %}<span class="tz-badge tz-badge-success">Clear</span>{% endif %}
+                                </td>
+                                <td class="py-2.5 px-4 text-right tabular-nums font-medium {% if controls_warning > 0 %}text-code-amber-600 dark:text-code-amber-400{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ controls_warning }}</td>
                             </tr>
                             <tr>
                                 <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">Non-compliant endpoints</td>

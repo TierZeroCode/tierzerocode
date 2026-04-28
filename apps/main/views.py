@@ -605,6 +605,7 @@ def reports(request):
 		fw_failing = fw_controls_qs.filter(status='failing').count()
 		fw_not_measured = fw_total - fw_passing - fw_warning - fw_failing
 		fw_pass_pct = round(fw_passing / fw_total * 100) if fw_total > 0 else 0
+		fw_warn_pct = round(fw_warning / fw_total * 100) if fw_total > 0 else 0
 		fw_fail_pct = round(fw_failing / fw_total * 100) if fw_total > 0 else 0
 		fw_nm_pct = round(fw_not_measured / fw_total * 100) if fw_total > 0 else 0
 
@@ -616,6 +617,7 @@ def reports(request):
 			'failing': fw_failing,
 			'not_measured': fw_not_measured,
 			'pass_pct': fw_pass_pct,
+			'warn_pct': fw_warn_pct,
 			'fail_pct': fw_fail_pct,
 			'nm_pct': fw_nm_pct,
 		})
@@ -650,6 +652,7 @@ def reports(request):
 		})
 
 	failing_controls = controls.filter(status='failing').order_by('framework__display_order', 'framework__name', 'control_id')
+	warning_controls = controls.filter(status='warning').order_by('framework__display_order', 'framework__name', 'control_id')
 
 	context = {
 		'page': 'reports',
@@ -678,6 +681,7 @@ def reports(request):
 		'framework_stats': framework_stats,
 		'controls_grouped': controls_grouped,
 		'failing_controls': failing_controls,
+		'warning_controls': warning_controls,
 	}
 	return render(request, 'main/reports.html', context)
 
