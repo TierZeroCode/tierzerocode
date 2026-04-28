@@ -48,7 +48,7 @@ HARDWARE_BOUND_Q = (
     Q(windowsHelloforBusiness_authentication_method=True)
 )
 
-# Replay-resistant methods (AAL-06) and intent-demonstrating (AAL-07) — same set
+# Replay-resistant methods (AAL-2.6)
 REPLAY_RESISTANT_Q = (
     Q(passKeyDeviceBound_authentication_method=True) |
     Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
@@ -56,6 +56,19 @@ REPLAY_RESISTANT_Q = (
     Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
     Q(microsoftAuthenticatorPush_authentication_method=True) |
     Q(softwareOneTimePasscode_authentication_method=True)
+)
+
+# Intent-demonstrating methods (AAL-2.7). Per NIST SP 800-63B-4 § 2.2.2, intent
+# requires an explicit user gesture: number matching (Push since Feb 2023),
+# biometric/PIN (WHfB, FIDO2, Passwordless Authenticator). Software OTP is
+# replay-resistant but does NOT structurally demonstrate intent — typing a code
+# does not bind the auth event to a specific verifier prompt.
+INTENT_DEMONSTRATING_Q = (
+    Q(passKeyDeviceBound_authentication_method=True) |
+    Q(passKeyDeviceBoundAuthenticator_authentication_method=True) |
+    Q(windowsHelloforBusiness_authentication_method=True) |
+    Q(microsoftAuthenticatorPasswordless_authentication_method=True) |
+    Q(microsoftAuthenticatorPush_authentication_method=True)
 )
 
 # Stronger methods (everything except phone/SMS — used by ALM-06)
@@ -1331,6 +1344,99 @@ def aal_02_6_detail():
         'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
         'amber_threshold': '< 90%',
         'red_threshold': '< 75%',
+    }
+
+
+def aal_02_7():
+    """AAL-2.7: % of AAL2-scoped accounts with intent-demonstrating MFA registered.
+
+    NIST SP 800-63B-4 § 2.2.2: AAL2 SHOULD demonstrate authentication intent —
+    the user actively confirms each authentication via number matching, an
+    explicit tap, or a biometric gesture. Microsoft enforces number matching
+    on Authenticator Push tenant-wide since Feb 2023, so any registered push
+    counts. WHfB, FIDO2, and Passwordless Authenticator all require a
+    biometric/PIN gesture by design.
+
+    Target: 100% — amber at <100%, red at <90%.
+    """
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    with_intent = base_qs.filter(INTENT_DEMONSTRATING_Q).distinct().count()
+    pct = round(with_intent / total * 100)
+    if pct >= 100:
+        status = 'passing'
+    elif pct >= 90:
+        status = 'warning'
+    else:
+        status = 'failing'
+    return (f'{with_intent}/{total} ({pct}%)', status)
+
+
+def aal_02_7_detail():
+    """Return detailed data for AAL-2.7: AAL2-scoped users with intent-demonstrating MFA."""
+    base_qs = UserData.objects.filter(persona__aal_level=2)
+    total = base_qs.count()
+    if total == 0:
+        return {
+            'total': 0,
+            'passing_count': 0,
+            'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (),
+            '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No AAL2-scoped persona accounts found. Assign a persona with aal_level=2 to include accounts in this control.',
+        }
+
+    passing_qs = base_qs.filter(INTENT_DEMONSTRATING_Q).distinct()
+    failing_qs = base_qs.exclude(INTENT_DEMONSTRATING_Q).distinct()
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength',
+        'passKeyDeviceBound_authentication_method',
+        'passKeyDeviceBoundAuthenticator_authentication_method',
+        'windowsHelloforBusiness_authentication_method',
+        'microsoftAuthenticatorPasswordless_authentication_method',
+        'microsoftAuthenticatorPush_authentication_method',
+        'softwareOneTimePasscode_authentication_method',
+        'mobilePhone_authentication_method',
+        'email_authentication_method',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'logic': (
+            'NIST SP 800-63B-4 § 2.2.2: AAL2 SHOULD demonstrate authentication intent — '
+            'an explicit user gesture per auth event. Microsoft enforces number matching '
+            'on Authenticator Push tenant-wide since Feb 2023, so any push registration '
+            'counts. WHfB, FIDO2, and Passwordless Authenticator all require a biometric/PIN '
+            'gesture by design. Software OTP is replay-resistant but does not structurally '
+            'demonstrate intent (typing a code does not bind the event to a specific verifier '
+            'prompt) and is excluded.'
+        ),
+        'qualifying_methods': (
+            'FIDO2 device-bound key (passKeyDeviceBound), '
+            'Passkey via Authenticator (passKeyDeviceBoundAuthenticator), '
+            'Windows Hello for Business (windowsHelloforBusiness), '
+            'MS Authenticator passwordless (microsoftAuthenticatorPasswordless), '
+            'MS Authenticator push (microsoftAuthenticatorPush — number matching enforced)'
+        ),
+        'disqualifying_methods': (
+            'Software OTP/TOTP (no intent gesture), SMS/Mobile Phone, Email, '
+            'Security Questions — none structurally demonstrate intent.'
+        ),
+        'scope': 'AAL2-scoped accounts only (UserData with persona.aal_level = 2)',
+        'threshold': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 90%',
     }
 
 

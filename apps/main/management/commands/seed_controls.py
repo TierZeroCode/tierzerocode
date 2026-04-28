@@ -129,6 +129,30 @@ CONTROLS = [
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'aal_02_6',
     },
+    {
+        'framework_short_name': 'NIST SP 800-63-4',
+        'control_id': 'AAL-2.7',
+        'domain': 'AAL2 — Authentication Intent',
+        'statement': (
+            'AAL2 SHOULD demonstrate authentication intent from at least one '
+            'authenticator (number matching, explicit tap, or biometric gesture).'
+        ),
+        'source_reference': 'SP 800-63B-4 § 2.2.2',
+        'indicator': (
+            '% of AAL2 accounts with intent-demonstrating authentication enabled '
+            '(number matching for push; gesture for biometric/FIDO2)'
+        ),
+        'measurement_method': (
+            'Entra ID authentication methods report — count AAL2 accounts with at '
+            'least one of: FIDO2, WHfB, MS Authenticator passwordless, MS '
+            'Authenticator push (number matching enforced tenant-wide since Feb 2023).'
+        ),
+        'target': '100%',
+        'amber_threshold': '< 100%',
+        'red_threshold': '< 90%',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'aal_02_7',
+    },
 
     {
         'framework_short_name': 'NIST SP 800-63-4',
