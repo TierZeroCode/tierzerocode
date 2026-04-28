@@ -349,10 +349,12 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                     <th class="text-left py-2 px-4 tz-section-label col-fail-persona" style="display:none">Persona</th>
                     <th class="text-left py-2 px-4 tz-section-label col-fail-admin" style="display:none">Admin</th>
                     <th class="text-left py-2 px-4 tz-section-label">Auth Strength</th>
+                    <th class="text-right py-2 px-4 tz-section-label">Sign-ins (30d)</th>
+                    <th class="text-left py-2 px-4 tz-section-label">Last Sign-in</th>
                 </tr>
             </thead>
             <tbody id="fail-tbody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                <tr id="fail-loading"><td colspan="5" class="py-6 px-4 text-center text-sm text-slate-400">Loading…</td></tr>
+                <tr id="fail-loading"><td colspan="7" class="py-6 px-4 text-center text-sm text-slate-400">Loading…</td></tr>
             </tbody>
         </table>
     </div>
@@ -383,10 +385,12 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                     <th class="text-left py-2 px-4 tz-section-label col-pass-persona" style="display:none">Persona</th>
                     <th class="text-left py-2 px-4 tz-section-label col-pass-admin" style="display:none">Admin</th>
                     <th class="text-left py-2 px-4 tz-section-label">Auth Methods</th>
+                    <th class="text-right py-2 px-4 tz-section-label">Sign-ins (30d)</th>
+                    <th class="text-left py-2 px-4 tz-section-label">Last Sign-in</th>
                 </tr>
             </thead>
             <tbody id="pass-tbody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                <tr id="pass-loading"><td colspan="5" class="py-6 px-4 text-center text-sm text-slate-400">Loading…</td></tr>
+                <tr id="pass-loading"><td colspan="7" class="py-6 px-4 text-center text-sm text-slate-400">Loading…</td></tr>
             </tbody>
         </table>
     </div>
@@ -503,6 +507,28 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
         return out || '<span class="text-slate-400">—</span>';
     }
 
+    function fmtSignins(n) {
+        if (n == null) return '<span class="text-slate-400">—</span>';
+        if (n === 0) return '<span class="text-slate-500 tabular-nums">0</span>';
+        return '<span class="text-slate-700 dark:text-slate-300 tabular-nums">' + n.toLocaleString() + '</span>';
+    }
+
+    function fmtLastSignin(iso) {
+        if (!iso) return '<span class="text-slate-400">—</span>';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '<span class="text-slate-400">—</span>';
+        var now = new Date();
+        var diffDays = Math.floor((now - d) / 86400000);
+        var label;
+        if (diffDays <= 0) label = 'today';
+        else if (diffDays === 1) label = 'yesterday';
+        else if (diffDays < 30) label = diffDays + 'd ago';
+        else label = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        var tone = diffDays > 30 ? 'text-code-amber-600 dark:text-code-amber-400'
+                                  : 'text-slate-600 dark:text-slate-400';
+        return '<span class="' + tone + '" title="' + esc(d.toISOString()) + '">' + esc(label) + '</span>';
+    }
+
     function renderFooter(footer, data) {
         if (!footer) return;
         var start = data.page * data.size + 1;
@@ -542,7 +568,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                     /* Build rows */
                     var html = '';
                     if (data.rows.length === 0) {
-                        html = '<tr><td colspan="5" class="py-6 px-4 text-center text-sm text-slate-400">No records.</td></tr>';
+                        html = '<tr><td colspan="7" class="py-6 px-4 text-center text-sm text-slate-400">No records.</td></tr>';
                     } else {
                         data.rows.forEach(function(row) {
                             var cells =
@@ -552,9 +578,14 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                             if (meta.has_admin) cells += '<td class="py-2 px-4 col-' + cfg.type + '-admin">' + (row.isAdmin ? badge('tz-badge-danger','Yes') : badge('tz-badge-neutral','No')) + '</td>';
                             if (cfg.type === 'failing') {
                                 cells += '<td class="py-2 px-4 text-slate-600 dark:text-slate-400">' + esc(row.highest_authentication_strength||'—') + '</td>';
-                                html += '<tr class="bg-code-red-50/30 dark:bg-code-red-500/5">' + cells + '</tr>';
                             } else {
                                 cells += '<td class="py-2 px-4 text-xs space-x-1">' + authBadges(row) + '</td>';
+                            }
+                            cells += '<td class="py-2 px-4 text-right">' + fmtSignins(row.signins_30d) + '</td>';
+                            cells += '<td class="py-2 px-4 text-xs">' + fmtLastSignin(row.last_signin_at) + '</td>';
+                            if (cfg.type === 'failing') {
+                                html += '<tr class="bg-code-red-50/30 dark:bg-code-red-500/5">' + cells + '</tr>';
+                            } else {
                                 html += '<tr>' + cells + '</tr>';
                             }
                         });
@@ -570,7 +601,7 @@ html.dark .ctrl-gauge .gauge-needle { stroke: oklch(0.750 0.022 260); }
                         if (btnN) btnN.addEventListener('click', function(){ if (page < data.pages - 1) fetch(page + 1, size); });
                     }
                 })
-                .catch(function(){ cfg.tbody.innerHTML = '<tr><td colspan="5" class="py-4 px-4 text-center text-xs text-slate-400">Failed to load data.</td></tr>'; });
+                .catch(function(){ cfg.tbody.innerHTML = '<tr><td colspan="7" class="py-4 px-4 text-center text-xs text-slate-400">Failed to load data.</td></tr>'; });
         }
 
         if (cfg.sizeEl) {

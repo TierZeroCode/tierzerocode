@@ -930,8 +930,25 @@ def control_findings_ajax(request, control_id):
     offset = page * size
     rows = list(qs.values(*fields)[offset:offset + size])
 
-    # Normalize values for JSON serialisation
+    # Annotate each row with the per-user 30-day sign-in stats. EntraSignInMethodStat
+    # isn't FK-related to UserData (only by UPN string), so do a single bulk lookup
+    # for the page's UPNs and merge.
+    from apps.main.models import EntraSignInMethodStat
+    page_upns = [r.get('upn') for r in rows if r.get('upn')]
+    signin_lookup = {
+        s['upn']: s for s in EntraSignInMethodStat.objects.filter(
+            upn__in=page_upns
+        ).values('upn', 'total_signins', 'last_signin_at')
+    } if page_upns else {}
+
     for row in rows:
+        stat = signin_lookup.get(row.get('upn'))
+        if stat:
+            row['signins_30d'] = stat['total_signins']
+            row['last_signin_at'] = stat['last_signin_at'].isoformat() if stat['last_signin_at'] else None
+        else:
+            row['signins_30d'] = None
+            row['last_signin_at'] = None
         for k, v in list(row.items()):
             if v is None:
                 row[k] = None
