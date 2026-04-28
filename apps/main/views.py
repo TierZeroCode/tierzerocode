@@ -591,6 +591,8 @@ def reports(request):
 		'ALM': 'Authenticator Lifecycle Management',
 		'PHR': 'Phishing-Resistant Authentication',
 		'PWD': 'Password Controls',
+		'PRIV': 'Privileged Account Hygiene',
+		'PER': 'Persona Assignment Hygiene',
 	}
 
 	framework_stats = []

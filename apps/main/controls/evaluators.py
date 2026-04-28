@@ -2122,6 +2122,12 @@ def alm_11():
 
 _PRIVILEGED_TAG_NAME = 'Privileged'
 
+# Synthetic persona names used by the Entra sync when a user's group memberships
+# can't be resolved to exactly one configured Persona. Must stay in sync with
+# updateMicrosoftEntraIDUserDatabase() in MicrosoftEntraID.py.
+_UNKNOWN_PERSONA_NAME = 'Unknown'
+_DUPLICATE_PERSONA_NAME = 'DUPLICATE'
+
 
 def custom_admin_no_privileged_persona():
     """PRIV-01: % of Entra ID admins assigned to a Privileged-tagged Persona.
@@ -2201,4 +2207,133 @@ def custom_admin_no_privileged_persona_detail():
         'scope': 'Every UserData row where isAdmin = True',
         'amber_threshold': '< 100%',
         'red_threshold': '< 95%',
+    }
+
+
+def custom_user_unknown_persona():
+    """PER-01: count of users with the synthetic 'Unknown' persona.
+
+    The Entra sync assigns the 'Unknown' persona when a user's group memberships
+    don't match any configured PersonaGroup. These users are unclassified — they
+    fall outside every AAL-scoped control and represent a tracking gap.
+
+    Target: 0 users — any unclassified user fails the control.
+    """
+    total = UserData.objects.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    unknown_count = UserData.objects.filter(persona__persona_name=_UNKNOWN_PERSONA_NAME).count()
+    if unknown_count == 0:
+        return ('0', 'passing')
+    return (str(unknown_count), 'failing')
+
+
+def custom_user_unknown_persona_detail():
+    """Return detailed data for PER-01."""
+    total = UserData.objects.count()
+    if total == 0:
+        return {
+            'total': 0, 'passing_count': 0, 'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (),
+            '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No users synced.',
+        }
+
+    failing_qs = UserData.objects.filter(persona__persona_name=_UNKNOWN_PERSONA_NAME)
+    passing_qs = UserData.objects.exclude(persona__persona_name=_UNKNOWN_PERSONA_NAME)
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'isAdmin',
+        'persona__persona_name', 'persona__aal_level',
+        'highest_authentication_strength',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'logic': (
+            'The Entra sync assigns the synthetic "Unknown" persona when a user is '
+            'not a member of any group mapped to a configured PersonaGroup. '
+            'Unclassified users fall outside every AAL-scoped control envelope '
+            '(AAL-1.x, AAL-2.x, AAL-3.x, PHR-*, ALM-*) and won\'t be measured. '
+            'Remediate by either: (a) adding the user\'s existing group to a '
+            'PersonaGroup mapping in Settings → Personas, or (b) creating a new '
+            'PersonaGroup that includes them.'
+        ),
+        'qualifying_methods': 'User assigned to any persona other than "Unknown"',
+        'disqualifying_methods': 'User assigned to the synthetic "Unknown" persona (no matching PersonaGroup)',
+        'scope': 'Every UserData row',
+        'red_threshold': '>= 1',
+    }
+
+
+def custom_user_duplicate_persona():
+    """PER-02: count of users with the synthetic 'DUPLICATE' persona.
+
+    The Entra sync assigns the 'DUPLICATE' persona when a user is a member of
+    multiple groups that map to *different* PersonaGroups — the resolver can't
+    pick one without losing information. These users are mis-scoped: their
+    AAL/admin/lifecycle controls all evaluate against the synthetic persona,
+    not their actual role.
+
+    Target: 0 users — any duplicate-resolved user fails the control.
+    """
+    total = UserData.objects.count()
+    if total == 0:
+        return ('-', 'not_measured')
+
+    duplicate_count = UserData.objects.filter(persona__persona_name=_DUPLICATE_PERSONA_NAME).count()
+    if duplicate_count == 0:
+        return ('0', 'passing')
+    return (str(duplicate_count), 'failing')
+
+
+def custom_user_duplicate_persona_detail():
+    """Return detailed data for PER-02."""
+    total = UserData.objects.count()
+    if total == 0:
+        return {
+            'total': 0, 'passing_count': 0, 'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (),
+            '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No users synced.',
+        }
+
+    failing_qs = UserData.objects.filter(persona__persona_name=_DUPLICATE_PERSONA_NAME)
+    passing_qs = UserData.objects.exclude(persona__persona_name=_DUPLICATE_PERSONA_NAME)
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'isAdmin',
+        'persona__persona_name', 'persona__aal_level',
+        'highest_authentication_strength',
+    )
+
+    return {
+        'total': total,
+        'passing_count': passing_qs.count(),
+        'failing_count': failing_qs.count(),
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
+        'logic': (
+            'The Entra sync assigns the synthetic "DUPLICATE" persona when a '
+            'user is a member of multiple groups that map to *different* '
+            'PersonaGroups. The resolver cannot pick one without losing '
+            'information, so the user is bucketed to "DUPLICATE" instead. '
+            'Remediate by: (a) removing the user from one of the conflicting '
+            'groups, (b) merging the conflicting PersonaGroups under a single '
+            'Persona, or (c) defining priority rules so one group consistently '
+            'wins.'
+        ),
+        'qualifying_methods': 'User\'s group memberships resolve to exactly one Persona',
+        'disqualifying_methods': 'User\'s group memberships resolve to multiple distinct Personas (DUPLICATE marker)',
+        'scope': 'Every UserData row',
+        'red_threshold': '>= 1',
     }

@@ -250,6 +250,49 @@ CONTROLS = [
         'data_sources': ['Microsoft Entra ID'],
         'evaluator': 'custom_admin_no_privileged_persona',
     },
+    {
+        'framework_short_name': 'Custom',
+        'control_id': 'PER-01',
+        'domain': 'Users with Unknown Persona',
+        'statement': (
+            'Every user must be assigned to a configured Persona. Users with '
+            'the synthetic "Unknown" persona are unclassified and fall outside '
+            'every AAL-scoped control envelope.'
+        ),
+        'source_reference': 'Internal — Tier Zero C.O.D.E. Custom',
+        'indicator': 'Count of users assigned to the synthetic "Unknown" persona',
+        'measurement_method': (
+            'UserData query — count rows where persona.persona_name = "Unknown" '
+            '(the marker the Entra sync assigns when no configured PersonaGroup '
+            'matches the user\'s group memberships).'
+        ),
+        'target': '0',
+        'red_threshold': '>= 1',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'custom_user_unknown_persona',
+    },
+    {
+        'framework_short_name': 'Custom',
+        'control_id': 'PER-02',
+        'domain': 'Users with Duplicate Persona Resolution',
+        'statement': (
+            'Every user\'s group memberships must resolve to exactly one '
+            'Persona. Users with the synthetic "DUPLICATE" persona belong to '
+            'multiple groups mapped to different Personas — their AAL/admin '
+            'controls evaluate against the synthetic persona, not their role.'
+        ),
+        'source_reference': 'Internal — Tier Zero C.O.D.E. Custom',
+        'indicator': 'Count of users assigned to the synthetic "DUPLICATE" persona',
+        'measurement_method': (
+            'UserData query — count rows where persona.persona_name = "DUPLICATE" '
+            '(the marker the Entra sync assigns when group memberships resolve '
+            'to multiple distinct PersonaGroups).'
+        ),
+        'target': '0',
+        'red_threshold': '>= 1',
+        'data_sources': ['Microsoft Entra ID'],
+        'evaluator': 'custom_user_duplicate_persona',
+    },
 ]
 
 
