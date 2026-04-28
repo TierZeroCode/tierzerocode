@@ -199,7 +199,7 @@ CONTROLS = [
         'target': '0',
         'red_threshold': '>= 1',
         'data_sources': ['Microsoft Entra ID'],
-        'evaluator': 'pwd_08',
+        'evaluator': 'pwd_07',
     },
 
     # ── Custom — non-framework controls ──────────────────────────────────────

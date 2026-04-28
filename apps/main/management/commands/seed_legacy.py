@@ -26,6 +26,7 @@ class Command(BaseCommand):
         Control.objects.filter(control_id='AAL-08').update(control_id='AAL-06')
         if not Control.objects.filter(control_id='AAL-11').exists():
             Control.objects.filter(control_id='AAL-09').update(control_id='AAL-11')
+        Control.objects.filter(control_id='PWD-08').update(control_id='PWD-07')
 
         controls = [
             {
@@ -189,14 +190,14 @@ class Command(BaseCommand):
                 'evaluator': 'pwd_10',
             },
             {
-                'control_id': 'PWD-08',
+                'control_id': 'PWD-07',
                 'domain': 'No KBA for Passwords',
                 'statement': 'Verifiers SHALL NOT prompt subscribers to use knowledge-based authentication (security questions) when choosing passwords.',
                 'source_reference': '800-63B-4 § 3.1.1.2(8)',
                 'indicator': 'Number of applications using security questions in password flows',
                 'measurement_method': 'Application auth configuration review; Entra ID SSPR method audit',
                 'target': '0',
-                'evaluator': 'pwd_08',
+                'evaluator': 'pwd_07',
             },
         ]
 

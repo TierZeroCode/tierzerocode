@@ -1901,8 +1901,8 @@ def pwd_10_detail():
     }
 
 
-def pwd_08():
-    """PWD-08: No KBA for Passwords — count of users with security questions registered.
+def pwd_07():
+    """PWD-07: No KBA for Passwords — count of users with security questions registered.
 
     NIST 800-63B-4 § 3.1.1.2(8) prohibits knowledge-based authentication
     (security questions) in password flows. Measures:
@@ -1931,8 +1931,8 @@ def pwd_08():
     return ('0', 'passing')
 
 
-def pwd_08_detail():
-    """Return detailed data for PWD-08: users with security questions registered."""
+def pwd_07_detail():
+    """Return detailed data for PWD-07: users with security questions registered."""
     total = UserData.objects.count()
     if total == 0:
         return {
