@@ -1935,20 +1935,25 @@ def pwd_08_detail():
     """Return detailed data for PWD-08: users with security questions registered."""
     total = UserData.objects.count()
     if total == 0:
-        return {'total': 0, 'kba_count': 0, 'failing_users': [], 'logic': 'No users synced.'}
+        return {
+            'total': 0, 'passing_count': 0, 'failing_count': 0,
+            '_fail_qs': None, '_fail_fields': (), '_pass_qs': None, '_pass_fields': (),
+            'logic': 'No users synced.',
+        }
 
-    kba_users = UserData.objects.filter(securityQuestion_authentication_method=True)
-    kba_count = kba_users.count()
+    failing_qs = UserData.objects.filter(securityQuestion_authentication_method=True)
+    passing_qs = UserData.objects.filter(securityQuestion_authentication_method=False)
+    kba_count = failing_qs.count()
+
+    _fields = (
+        'upn', 'given_name', 'surname', 'persona__persona_name',
+        'highest_authentication_strength', 'securityQuestion_authentication_method',
+    )
 
     policy = TenantAuthMethodsPolicy.objects.filter(id=1).first()
     sspr_sq_enabled = policy.sspr_security_questions_enabled if policy else None
     sspr_state = policy.sspr_state if policy else None
     sspr_allowed_methods = policy.sspr_allowed_methods if policy else []
-
-    failing = list(kba_users.values(
-        'upn', 'given_name', 'surname', 'persona__persona_name',
-        'highest_authentication_strength', 'securityQuestion_authentication_method',
-    ))
 
     policy_note = ''
     if policy:
@@ -1962,10 +1967,12 @@ def pwd_08_detail():
 
     return {
         'total': total,
-        'kba_count': kba_count,
         'failing_count': kba_count,
         'passing_count': total - kba_count,
-        'failing_users': failing,
+        '_fail_qs': failing_qs,
+        '_fail_fields': _fields,
+        '_pass_qs': passing_qs,
+        '_pass_fields': _fields,
         'policy': {
             'sspr_security_questions_enabled': sspr_sq_enabled,
             'sspr_state': sspr_state,
